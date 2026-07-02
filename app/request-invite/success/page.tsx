@@ -4,10 +4,10 @@ import { CheckCircle } from "lucide-react";
 import Link from "next/link";
 
 export const metadata = {
-  title: "Success | Weave",
+  title: "Application Received | Weave",
 };
 
-export default function WaitlistSuccessPage() {
+export default function RequestInviteSuccessPage() {
   return (
     <>
       <Header />
@@ -20,14 +20,14 @@ export default function WaitlistSuccessPage() {
           </div>
 
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-heading mb-6">
-            You're In!
+            Application Received
           </h1>
           
           <div className="text-lg text-body space-y-4 mb-12 bg-surface border border-border p-8 rounded-[var(--radius-card)]">
-            <p className="font-medium text-heading">Thank you for joining the waitlist.</p>
-            <p>We've received your information and will keep you updated via email.</p>
-            <p>We are intentionally onboarding new members in stages to maintain a trusted community.</p>
-            <p>We'll notify you as soon as more spots become available.</p>
+            <p className="font-medium text-heading">Your application is under review.</p>
+            <p>Thank you for requesting an invitation to Weave.</p>
+            <p>Our team personally reviews every application to ensure we maintain a trusted and high-quality community of professionals.</p>
+            <p>We will reach out via email if your application is approved for early access.</p>
             <p className="pt-4 border-t border-border text-sm text-muted">
               In the meantime, feel free to explore Weave and learn more about how Skill Hours work.
             </p>

@@ -243,7 +243,7 @@ export default function RequestInvitePage() {
                   </div>
 
                   <div className="pt-2">
-                    <Link href="/waitlist/success" className="w-full px-8 py-3 text-base font-bold text-surface bg-primary rounded-[var(--radius-button)] hover:bg-primary-hover transition-colors flex items-center justify-center">
+                    <Link href="/request-invite/success" className="w-full px-8 py-3 text-base font-bold text-surface bg-primary rounded-[var(--radius-button)] hover:bg-primary-hover transition-colors flex items-center justify-center">
                       Submit Application
                     </Link>
                   </div>

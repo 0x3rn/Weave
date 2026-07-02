@@ -51,7 +51,10 @@ export default function Footer() {
   return (
     <footer className="bg-background border-t border-border pt-16 pb-8">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-16">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-8 mb-16">
+          <div className="col-span-2 md:col-span-1 mb-4 md:mb-0">
+            <Link href="/" className="font-heading text-2xl font-bold tracking-tight text-primary inline-block">Weave</Link>
+          </div>
           {sections.map((section, index) => (
             <div key={index}>
               <h4 className="text-sm font-bold text-heading mb-4 uppercase tracking-wider">{section.title}</h4>
@@ -68,11 +71,8 @@ export default function Footer() {
           ))}
         </div>
 
-        <div className="border-t border-border pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span className="font-heading text-xl font-bold tracking-tight text-primary">Weave</span>
-          </div>
-          <p className="text-sm text-muted">
+        <div className="border-t border-border pt-8 flex justify-center">
+          <p className="text-sm text-muted text-center">
             &copy; 2026 Weave. Trade skills. Build together.
           </p>
         </div>
