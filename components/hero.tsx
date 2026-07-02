@@ -37,7 +37,7 @@ export default function Hero() {
           </button>
         </div>
 
-        <div className="flex flex-wrap justify-center gap-x-8 gap-y-4 text-sm font-medium text-muted">
+        <div className="inline-flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center sm:justify-center gap-x-8 gap-y-4 text-sm font-medium text-muted text-left">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-primary" />
             <span>Invite-only community</span>
