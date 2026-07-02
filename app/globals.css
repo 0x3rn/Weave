@@ -1,3 +1,36 @@
 @import "tailwindcss";
 
+@theme {
+  --color-primary: #255D4A;
+  --color-primary-hover: #1F4D3D;
+  --color-accent: #4E8F73;
+  --color-background: #FAFAF8;
+  --color-surface: #FFFFFF;
+  --color-surface-secondary: #F3F4F1;
+  --color-border: #E5E7E2;
+  --color-heading: #171717;
+  --color-body: #525252;
+  --color-muted: #7A7A7A;
+  --color-success: #2F855A;
+  --color-warning: #C98A18;
+  --color-error: #C53030;
 
+  --font-sans: var(--font-inter), var(--font-geist-sans), sans-serif;
+  --font-heading: var(--font-geist-sans), var(--font-inter), sans-serif;
+
+  --radius-button: 10px;
+  --radius-card: 14px;
+  --radius-input: 10px;
+  --radius-badge: 999px;
+
+  --shadow-subtle: 0 1px 2px rgba(0,0,0,.05);
+}
+
+@layer base {
+  body {
+    @apply bg-background text-body font-sans;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-heading font-heading font-semibold tracking-tight;
+  }
+}
