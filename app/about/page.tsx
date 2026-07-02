@@ -37,7 +37,7 @@ export default function AboutPage() {
       
       <main className="bg-background">
         {/* HERO */}
-        <section className="pt-24 pb-20 md:pt-32 md:pb-32 border-b border-border">
+        <section className="pt-8 pb-20 md:pt-12 md:pb-32 border-b border-border">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl text-center">
             <span className="text-sm font-bold tracking-widest uppercase text-primary mb-6 block">About Weave</span>
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-heading mb-8 leading-tight">

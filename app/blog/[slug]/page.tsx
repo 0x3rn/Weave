@@ -46,7 +46,7 @@ export default function BlogPostTemplate({ params }: { params: { slug: string } 
       <main className="bg-background">
         
         {/* ARTICLE HERO */}
-        <section className="pt-12 pb-12 md:pt-20">
+        <section className="pt-8 pb-12 md:pt-12">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-3xl text-center">
             <Link href="/blog/category/collaboration" className="inline-block px-3 py-1 bg-primary/10 text-primary text-xs font-bold rounded-[var(--radius-badge)] uppercase tracking-wider mb-6 hover:bg-primary hover:text-surface transition-colors">
               Collaboration

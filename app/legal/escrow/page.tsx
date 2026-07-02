@@ -13,7 +13,7 @@ export default function EscrowPolicyPage() {
     <>
       <Header />
       
-      <main className="bg-background pt-12 pb-16 md:pt-20 md:pb-24">
+      <main className="bg-background pt-8 pb-16 md:pt-12 md:pb-24">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl">
           
           <Link href="/" className="inline-flex items-center gap-2 text-sm font-bold text-muted hover:text-primary transition-colors mb-12">

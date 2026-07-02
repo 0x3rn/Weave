@@ -223,7 +223,7 @@ export default function HelpCenterPage() {
       <main className="bg-background">
         
         {/* HERO SECTION */}
-        <section className="pt-12 pb-20 md:pt-20 bg-surface border-b border-border text-center">
+        <section className="pt-8 pb-20 md:pt-12 bg-surface border-b border-border text-center">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-3xl">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-heading mb-6">
               How can we help?

@@ -76,7 +76,7 @@ export default function ContactPage() {
       <main className="bg-background">
         
         {/* HERO */}
-        <section className="pt-24 pb-16 md:pt-32 md:pb-24 border-b border-border">
+        <section className="pt-8 pb-16 md:pt-12 md:pb-24 border-b border-border">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-3xl text-center">
             <span className="text-sm font-bold tracking-widest uppercase text-primary mb-6 block">Contact Us</span>
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-heading mb-8">

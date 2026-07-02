@@ -101,7 +101,7 @@ export default function BlogIndexPage() {
       <main className="bg-background">
         
         {/* HERO */}
-        <section className="pt-12 pb-16 md:pt-20 md:pb-24 border-b border-border text-center">
+        <section className="pt-8 pb-16 md:pt-12 md:pb-24 border-b border-border text-center">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl">
             <span className="text-sm font-bold tracking-widest uppercase text-primary mb-6 block">Weave Blog</span>
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-heading mb-8 leading-tight">

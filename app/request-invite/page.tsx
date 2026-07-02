@@ -62,7 +62,7 @@ export default function RequestInvitePage() {
       <main className="bg-background">
         
         {/* HERO */}
-        <section className="pt-24 pb-16 border-b border-border text-center bg-surface-secondary">
+        <section className="pt-8 pb-16 md:pt-12 border-b border-border text-center bg-surface-secondary">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-3xl">
             <span className="text-sm font-bold tracking-widest uppercase text-primary mb-6 block">Request an Invitation</span>
             <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-heading mb-6">
