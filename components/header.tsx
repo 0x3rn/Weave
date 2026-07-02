@@ -1,17 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Sun, Moon } from "lucide-react";
+import { useTheme } from "next-themes";
 
 export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { theme, setTheme, systemTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const currentTheme = theme === "system" ? systemTheme : theme;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
-          <div className="flex items-center">
+          <div className="flex flex-1 items-center justify-start">
             <Link href="/" className="flex items-center gap-2" onClick={() => setIsMobileMenuOpen(false)}>
               <span className="font-heading text-xl font-bold tracking-tight text-primary">
                 Weave
@@ -20,27 +29,34 @@ export default function Header() {
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex gap-6 items-center">
+          <nav className="hidden md:flex flex-1 justify-center gap-6 items-center">
             <Link href="/#how-it-works" className="text-sm font-medium text-muted hover:text-primary transition-colors">
               How It Works
             </Link>
             <Link href="/#marketplace" className="text-sm font-medium text-muted hover:text-primary transition-colors">
               Marketplace
             </Link>
-            <Link href="/#trust-safety" className="text-sm font-medium text-muted hover:text-primary transition-colors">
-              Trust & Safety
-            </Link>
             <Link href="/#pricing" className="text-sm font-medium text-muted hover:text-primary transition-colors">
               Pricing
             </Link>
-            <Link href="/help" className="text-sm font-medium text-muted hover:text-primary transition-colors">
-              FAQ
-            </Link>
           </nav>
 
-          {/* Desktop Auth/CTAs */}
-          <div className="hidden md:flex items-center gap-4">
-            <Link href="/request-invite" className="text-sm font-medium text-primary bg-surface border border-primary px-4 py-2 rounded-[var(--radius-button)] hover:bg-surface-secondary transition-colors">
+          {/* Desktop Auth/CTAs & Theme Toggle */}
+          <div className="hidden md:flex flex-1 items-center justify-end gap-3 lg:gap-4">
+            {mounted && (
+              <button
+                onClick={() => setTheme(currentTheme === "dark" ? "light" : "dark")}
+                className="p-2 text-muted hover:text-primary transition-colors rounded-full hover:bg-surface-secondary"
+                aria-label="Toggle theme"
+              >
+                {currentTheme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              </button>
+            )}
+            
+            <Link href="/login" className="text-sm font-medium text-heading hover:text-primary transition-colors ml-2">
+              Sign In
+            </Link>
+            <Link href="/request-invite" className="text-sm font-medium text-heading border border-border px-4 py-2 rounded-[var(--radius-button)] hover:bg-surface-secondary transition-colors">
               Request Invite
             </Link>
             <Link href="/waitlist" className="text-sm font-medium text-surface bg-primary border border-transparent px-4 py-2 rounded-[var(--radius-button)] hover:bg-primary-hover transition-colors">
@@ -48,8 +64,17 @@ export default function Header() {
             </Link>
           </div>
 
-          {/* Mobile Menu Toggle */}
-          <div className="md:hidden">
+          {/* Mobile Menu Toggle & Theme */}
+          <div className="md:hidden flex items-center gap-2">
+            {mounted && (
+              <button
+                onClick={() => setTheme(currentTheme === "dark" ? "light" : "dark")}
+                className="p-2 text-muted hover:text-primary transition-colors rounded-full"
+                aria-label="Toggle theme"
+              >
+                {currentTheme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              </button>
+            )}
             <button 
               className="p-2 text-muted hover:text-primary"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -70,17 +95,14 @@ export default function Header() {
             <Link href="/#marketplace" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium text-body hover:text-primary transition-colors">
               Marketplace
             </Link>
-            <Link href="/#trust-safety" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium text-body hover:text-primary transition-colors">
-              Trust & Safety
-            </Link>
             <Link href="/#pricing" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium text-body hover:text-primary transition-colors">
               Pricing
             </Link>
-            <Link href="/help" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium text-body hover:text-primary transition-colors">
-              FAQ
-            </Link>
             
             <div className="pt-4 mt-2 border-t border-border flex flex-col gap-3">
+              <Link href="/login" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium text-center text-heading bg-surface border border-border px-4 py-3 rounded-[var(--radius-button)] hover:bg-surface-secondary transition-colors">
+                Sign In
+              </Link>
               <Link href="/request-invite" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium text-center text-primary bg-surface border border-primary px-4 py-3 rounded-[var(--radius-button)] hover:bg-surface-secondary transition-colors">
                 Request Invite
               </Link>

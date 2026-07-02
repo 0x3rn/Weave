@@ -1,19 +1,24 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #255D4A;
-  --color-primary-hover: #1F4D3D;
-  --color-accent: #4E8F73;
-  --color-background: #FAFAF8;
-  --color-surface: #FFFFFF;
-  --color-surface-secondary: #F3F4F1;
-  --color-border: #E5E7E2;
-  --color-heading: #171717;
-  --color-body: #525252;
-  --color-muted: #7A7A7A;
-  --color-success: #2F855A;
-  --color-warning: #C98A18;
-  --color-error: #C53030;
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-accent: var(--accent);
+  
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-secondary: var(--surface-secondary);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-border: var(--border);
+  
+  --color-heading: var(--heading);
+  --color-body: var(--body);
+  --color-muted: var(--muted);
+  
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-error: var(--error);
+  --color-info: var(--info);
 
   --font-sans: var(--font-inter), var(--font-geist-sans), sans-serif;
   --font-heading: var(--font-geist-sans), var(--font-inter), sans-serif;
@@ -27,8 +32,52 @@
 }
 
 @layer base {
+  :root {
+    /* Light Mode */
+    --background: #FAFAF8;
+    --surface: #FFFFFF;
+    --surface-secondary: #F3F4F1;
+    --surface-elevated: #FFFFFF;
+    --border: #E6E8E6;
+    
+    --primary: #2E7D32;
+    --primary-hover: #256A2A;
+    --accent: #2E7D32;
+    
+    --heading: #1A1A1A;
+    --body: #555555;
+    --muted: #7A7A7A;
+    
+    --success: #4ADE80;
+    --warning: #FBBF24;
+    --error: #F87171;
+    --info: #60A5FA;
+  }
+
+  .dark {
+    /* Dark Mode */
+    --background: #050505;
+    --surface: #0A0A0A;
+    --surface-secondary: #0F0F0F; /* Sidebar background */
+    --surface-elevated: #141414;
+    --border: #1F1F1F;
+    
+    --primary: #58C76D;
+    --primary-hover: #6AD97A;
+    --accent: #58C76D;
+    
+    --heading: #F4F4F5;
+    --body: #B8BDC7;
+    --muted: #8B9099;
+    
+    --success: #4ADE80;
+    --warning: #FBBF24;
+    --error: #F87171;
+    --info: #60A5FA;
+  }
+
   body {
-    @apply bg-background text-body font-sans;
+    @apply bg-background text-body font-sans transition-colors duration-200;
   }
   h1, h2, h3, h4, h5, h6 {
     @apply text-heading font-heading font-semibold tracking-tight;
