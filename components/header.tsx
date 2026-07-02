@@ -33,7 +33,7 @@ export default function Header() {
           </nav>
 
           <div className="hidden md:flex items-center gap-4">
-            <Link href="/waitlist" className="text-sm font-medium text-primary bg-surface border border-primary px-4 py-2 rounded-[var(--radius-button)] hover:bg-surface-secondary transition-colors">
+            <Link href="/request-invite" className="text-sm font-medium text-primary bg-surface border border-primary px-4 py-2 rounded-[var(--radius-button)] hover:bg-surface-secondary transition-colors">
               Request Invite
             </Link>
             <Link href="/waitlist" className="text-sm font-medium text-surface bg-primary border border-transparent px-4 py-2 rounded-[var(--radius-button)] hover:bg-primary-hover transition-colors">
