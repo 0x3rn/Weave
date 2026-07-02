@@ -22,7 +22,7 @@ export default function Economy() {
             </div>
             
             <div className="mt-8 p-4 bg-surface-secondary border border-border rounded-[var(--radius-card)] text-sm text-muted leading-relaxed">
-              <strong>Note:</strong> Skill quality is maintained through verification, reputation, reviews, and invite-only membership—not hourly pricing.
+              <strong>Note:</strong> Skill quality is maintained through verification, reputation, reviews, and invite-only membership, not hourly pricing.
             </div>
           </div>
 

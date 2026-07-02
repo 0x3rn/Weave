@@ -2,7 +2,7 @@ import { Lock, CheckCircle2 } from "lucide-react";
 
 export default function Hero() {
   return (
-    <section className="pt-24 pb-16 md:pt-32 md:pb-24 overflow-hidden">
+    <section className="pt-12 pb-16 md:pt-20 md:pb-24 overflow-hidden">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center max-w-4xl">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-[var(--radius-badge)] bg-surface-secondary border border-border text-sm font-medium text-body mb-8">
           <Lock className="w-4 h-4 text-primary" />
@@ -24,7 +24,7 @@ export default function Hero() {
             <p className="text-body font-medium">Need a website but you're a copywriter? <span className="text-primary">Trade writing hours.</span></p>
           </div>
           <div className="mt-6 pt-6 border-t border-border">
-            <p className="text-muted text-sm leading-relaxed">Every hour has equal value inside Weave, creating a fair marketplace where talent—not cash flow—determines opportunity.</p>
+            <p className="text-muted text-sm leading-relaxed">Every hour has equal value inside Weave, creating a fair marketplace where talent, not cash flow, determines opportunity.</p>
           </div>
         </div>
 
