@@ -4,23 +4,47 @@ export default function Footer() {
   const sections = [
     {
       title: "Product",
-      links: ["How It Works", "Marketplace", "Trust & Safety", "Pricing"]
+      links: [
+        { label: "How It Works", href: "/#how-it-works" },
+        { label: "Marketplace", href: "/#marketplace" },
+        { label: "Trust & Safety", href: "/#trust-safety" },
+        { label: "Pricing", href: "/#pricing" }
+      ]
     },
     {
       title: "Company",
-      links: ["About", "Blog", "Careers", "Contact"]
+      links: [
+        { label: "About", href: "/about" },
+        { label: "Blog", href: "/blog" },
+        { label: "Careers", href: "/careers" },
+        { label: "Contact", href: "/contact" }
+      ]
     },
     {
       title: "Resources",
-      links: ["Help Center", "Community Guidelines"]
+      links: [
+        { label: "Help Center", href: "/help" },
+        { label: "Community Guidelines", href: "/legal/guidelines" }
+      ]
     },
     {
       title: "Legal",
-      links: ["Terms of Service", "Privacy Policy", "Escrow Policy", "Acceptable Use", "Cookie Policy"]
+      links: [
+        { label: "Terms of Service", href: "/legal/terms" },
+        { label: "Privacy Policy", href: "/legal/privacy" },
+        { label: "Escrow Policy", href: "/legal/escrow" },
+        { label: "Acceptable Use", href: "/legal/acceptable-use" },
+        { label: "Cookie Policy", href: "/legal/cookies" }
+      ]
     },
     {
       title: "Social",
-      links: ["X", "LinkedIn", "GitHub", "Discord"]
+      links: [
+        { label: "X", href: "#" },
+        { label: "LinkedIn", href: "#" },
+        { label: "GitHub", href: "#" },
+        { label: "Discord", href: "#" }
+      ]
     }
   ];
 
@@ -34,8 +58,8 @@ export default function Footer() {
               <ul className="space-y-3">
                 {section.links.map((link, i) => (
                   <li key={i}>
-                    <Link href="#" className="text-sm text-muted hover:text-primary transition-colors">
-                      {link}
+                    <Link href={link.href} className="text-sm text-muted hover:text-primary transition-colors">
+                      {link.label}
                     </Link>
                   </li>
                 ))}

@@ -15,30 +15,30 @@ export default function Header() {
           </div>
 
           <nav className="hidden md:flex gap-6 items-center">
-            <Link href="#how-it-works" className="text-sm font-medium text-muted hover:text-primary transition-colors">
+            <Link href="/#how-it-works" className="text-sm font-medium text-muted hover:text-primary transition-colors">
               How It Works
             </Link>
-            <Link href="#marketplace" className="text-sm font-medium text-muted hover:text-primary transition-colors">
+            <Link href="/#marketplace" className="text-sm font-medium text-muted hover:text-primary transition-colors">
               Marketplace
             </Link>
-            <Link href="#trust-safety" className="text-sm font-medium text-muted hover:text-primary transition-colors">
+            <Link href="/#trust-safety" className="text-sm font-medium text-muted hover:text-primary transition-colors">
               Trust & Safety
             </Link>
-            <Link href="#pricing" className="text-sm font-medium text-muted hover:text-primary transition-colors">
+            <Link href="/#pricing" className="text-sm font-medium text-muted hover:text-primary transition-colors">
               Pricing
             </Link>
-            <Link href="#faq" className="text-sm font-medium text-muted hover:text-primary transition-colors">
+            <Link href="/#faq" className="text-sm font-medium text-muted hover:text-primary transition-colors">
               FAQ
             </Link>
           </nav>
 
           <div className="hidden md:flex items-center gap-4">
-            <button className="text-sm font-medium text-primary bg-surface border border-primary px-4 py-2 rounded-[var(--radius-button)] hover:bg-surface-secondary transition-colors">
+            <Link href="/waitlist" className="text-sm font-medium text-primary bg-surface border border-primary px-4 py-2 rounded-[var(--radius-button)] hover:bg-surface-secondary transition-colors">
               Request Invite
-            </button>
-            <button className="text-sm font-medium text-surface bg-primary border border-transparent px-4 py-2 rounded-[var(--radius-button)] hover:bg-primary-hover transition-colors">
+            </Link>
+            <Link href="/waitlist" className="text-sm font-medium text-surface bg-primary border border-transparent px-4 py-2 rounded-[var(--radius-button)] hover:bg-primary-hover transition-colors">
               Join Waitlist
-            </button>
+            </Link>
           </div>
 
           <div className="md:hidden">
