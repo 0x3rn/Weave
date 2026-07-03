@@ -1,3 +1,9 @@
-export default function EscrowPage() {
-  return <div>Placeholder for /admin/escrow</div>;
+import ComingSoon from "@/components/admin/coming-soon";
+
+export const metadata = {
+  title: "Escrow Holdings"
+};
+
+export default function AdminPage() {
+  return <ComingSoon title="Escrow Holdings" />;
 }

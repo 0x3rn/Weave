@@ -1,9 +1,9 @@
 import ComingSoon from "@/components/admin/coming-soon";
 
 export const metadata = {
-  title: "Subscription Billing"
+  title: "Platform Settings"
 };
 
 export default function AdminPage() {
-  return <ComingSoon title="Subscription Billing" />;
+  return <ComingSoon title="Platform Settings" />;
 }

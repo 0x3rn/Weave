@@ -56,11 +56,8 @@ export default function Header() {
             <Link href="/login" className="text-sm font-medium text-heading hover:text-primary transition-colors ml-2">
               Sign In
             </Link>
-            <Link href="/request-invite" className="text-sm font-medium text-heading border border-border px-4 py-2 rounded-[var(--radius-button)] hover:bg-surface-secondary transition-colors">
+            <Link href="/request-invite" className="text-sm font-medium text-surface bg-primary border border-transparent px-4 py-2 rounded-[var(--radius-button)] hover:bg-primary-hover transition-colors">
               Request Invite
-            </Link>
-            <Link href="/waitlist" className="text-sm font-medium text-surface bg-primary border border-transparent px-4 py-2 rounded-[var(--radius-button)] hover:bg-primary-hover transition-colors">
-              Join Waitlist
             </Link>
           </div>
 
@@ -103,11 +100,8 @@ export default function Header() {
               <Link href="/login" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium text-center text-heading bg-surface border border-border px-4 py-3 rounded-[var(--radius-button)] hover:bg-surface-secondary transition-colors">
                 Sign In
               </Link>
-              <Link href="/request-invite" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium text-center text-primary bg-surface border border-primary px-4 py-3 rounded-[var(--radius-button)] hover:bg-surface-secondary transition-colors">
+              <Link href="/request-invite" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium text-center text-surface bg-primary border border-transparent px-4 py-3 rounded-[var(--radius-button)] hover:bg-primary-hover transition-colors">
                 Request Invite
-              </Link>
-              <Link href="/waitlist" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium text-center text-surface bg-primary border border-transparent px-4 py-3 rounded-[var(--radius-button)] hover:bg-primary-hover transition-colors">
-                Join Waitlist
               </Link>
             </div>
           </div>

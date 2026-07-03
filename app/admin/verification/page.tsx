@@ -1,3 +1,9 @@
-export default function VerificationPage() {
-  return <div>Placeholder for /admin/verification</div>;
+import ComingSoon from "@/components/admin/coming-soon";
+
+export const metadata = {
+  title: "Identity Verification"
+};
+
+export default function AdminPage() {
+  return <ComingSoon title="Identity Verification" />;
 }
