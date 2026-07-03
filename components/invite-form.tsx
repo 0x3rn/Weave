@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import Link from "next/link";
 import { getNames } from "country-list";
+import Select from "react-select";
 
 // Pre-compute formatted timezones with UTC offsets outside the component to avoid re-calculating on render
 const timeZonesWithOffsets = Intl.supportedValuesOf('timeZone').map(tz => {
@@ -79,7 +80,7 @@ export default function InviteForm() {
   };
 
   return (
-    <form id="invite-form" onSubmit={handleSubmit} className="bg-surface border border-border p-8 rounded-[var(--radius-card)] space-y-8 shadow-subtle">
+    <form onSubmit={handleSubmit} className="bg-surface border border-border p-8 rounded-[var(--radius-card)] space-y-6 shadow-subtle">
       {error && (
         <div className="bg-error/10 border border-error/20 text-error px-4 py-3 rounded-[var(--radius-input)] text-sm font-medium">
           {error}
@@ -103,21 +104,47 @@ export default function InviteForm() {
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <label className="text-sm font-bold text-heading">Country <span className="text-error">*</span></label>
-            <input required type="text" list="countries" name="country" placeholder="e.g. United States" className="w-full bg-background border border-border rounded-[var(--radius-input)] px-4 py-3 focus:outline-none focus:border-primary text-body" />
-            <datalist id="countries">
-              {getNames().map(country => (
-                <option key={country} value={country} />
-              ))}
-            </datalist>
+            <Select 
+              instanceId="country-select"
+              name="country"
+              options={getNames().map(c => ({ value: c, label: c }))}
+              placeholder="e.g. United States"
+              required
+              unstyled
+              classNames={{
+                control: (state) => `flex min-h-[48px] w-full bg-background border ${state.isFocused ? 'border-primary' : 'border-border'} rounded-[10px] px-4 py-1.5 focus:outline-none transition-colors cursor-pointer`,
+                input: () => `text-body`,
+                singleValue: () => `text-body`,
+                placeholder: () => `text-muted`,
+                menu: () => `mt-2 bg-surface border border-border rounded-[14px] shadow-subtle overflow-hidden z-50`,
+                menuList: () => `p-1 max-h-60 overflow-y-auto`,
+                option: (state) => `px-4 py-2 cursor-pointer rounded-md transition-colors ${state.isSelected ? 'bg-primary/10 text-primary font-medium' : state.isFocused ? 'bg-background text-body' : 'bg-transparent text-body'}`,
+                dropdownIndicator: () => `text-muted hover:text-heading cursor-pointer`,
+                indicatorSeparator: () => `hidden`,
+              }}
+            />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-bold text-heading">Time Zone <span className="text-error">*</span></label>
-            <input required type="text" list="timezones" name="timeZone" placeholder="e.g. (UTC-05:00) America/New York" className="w-full bg-background border border-border rounded-[var(--radius-input)] px-4 py-3 focus:outline-none focus:border-primary text-body" />
-            <datalist id="timezones">
-              {timeZonesWithOffsets.map(tz => (
-                <option key={tz.id} value={tz.label} />
-              ))}
-            </datalist>
+            <Select 
+              instanceId="timezone-select"
+              name="timeZone"
+              options={timeZonesWithOffsets.map(tz => ({ value: tz.label, label: tz.label }))}
+              placeholder="e.g. (UTC-05:00) America/New York"
+              required
+              unstyled
+              classNames={{
+                control: (state) => `flex min-h-[48px] w-full bg-background border ${state.isFocused ? 'border-primary' : 'border-border'} rounded-[10px] px-4 py-1.5 focus:outline-none transition-colors cursor-pointer`,
+                input: () => `text-body`,
+                singleValue: () => `text-body truncate max-w-[90%]`,
+                placeholder: () => `text-muted`,
+                menu: () => `mt-2 bg-surface border border-border rounded-[14px] shadow-subtle overflow-hidden z-50`,
+                menuList: () => `p-1 max-h-60 overflow-y-auto`,
+                option: (state) => `px-4 py-2 cursor-pointer rounded-md transition-colors ${state.isSelected ? 'bg-primary/10 text-primary font-medium' : state.isFocused ? 'bg-background text-body' : 'bg-transparent text-body'}`,
+                dropdownIndicator: () => `text-muted hover:text-heading cursor-pointer`,
+                indicatorSeparator: () => `hidden`,
+              }}
+            />
           </div>
         </div>
       </div>

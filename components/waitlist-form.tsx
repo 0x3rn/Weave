@@ -27,7 +27,7 @@ export default function WaitlistForm() {
   };
 
   return (
-    <form id="waitlist-form" onSubmit={handleSubmit} className="bg-surface border border-border p-8 rounded-[var(--radius-card)] space-y-6 shadow-subtle">
+    <form onSubmit={handleSubmit} className="bg-surface border border-border p-8 rounded-[var(--radius-card)] space-y-6 shadow-subtle">
       {error && (
         <div className="bg-error/10 border border-error/20 text-error px-4 py-3 rounded-[var(--radius-input)] text-sm font-medium">
           {error}

@@ -159,7 +159,7 @@ export default function RequestInvitePage() {
             </div>
 
             {/* RIGHT COLUMN: FORM */}
-            <div>
+            <div id="invite-form" className="scroll-mt-32">
               <div className="sticky top-24">
                 <h2 className="text-3xl font-bold text-heading mb-2">Tell Us About Yourself</h2>
                 <p className="text-body mb-8">Please provide details so we can evaluate your request.</p>

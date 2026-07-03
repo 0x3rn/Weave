@@ -134,7 +134,7 @@ export default function WaitlistPage() {
             </div>
 
             {/* RIGHT COLUMN: FORM */}
-            <div>
+            <div id="waitlist-form" className="scroll-mt-32">
               <div className="sticky top-24">
                 <h2 className="text-3xl font-bold text-heading mb-2">Reserve Your Spot</h2>
                 <p className="text-body mb-8">Join thousands of professionals waiting for early access.</p>
