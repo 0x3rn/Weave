@@ -101,7 +101,7 @@ export default function InviteForm() {
           <input required type="email" name="email" className="w-full bg-background border border-border rounded-[var(--radius-input)] px-4 py-3 focus:outline-none focus:border-primary text-body" />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid sm:grid-cols-2 gap-4">
           <div className="space-y-2">
             <label className="text-sm font-bold text-heading">Country <span className="text-error">*</span></label>
             <Select 

@@ -34,7 +34,7 @@ export default function WaitlistForm() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <label className="text-sm font-bold text-heading">First Name <span className="text-error">*</span></label>
           <input required type="text" name="firstName" className="w-full bg-background border border-border rounded-[var(--radius-input)] px-4 py-3 focus:outline-none focus:border-primary text-body" />
