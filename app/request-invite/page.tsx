@@ -10,6 +10,7 @@ import {
   ArrowRight
 } from "lucide-react";
 import Link from "next/link";
+import InviteForm from "../../components/invite-form";
 
 export const metadata = {
   title: "Request an Invitation | Weave",
@@ -69,14 +70,14 @@ export default function RequestInvitePage() {
               Join a Trusted Community of Professionals
             </h1>
             <p className="text-lg text-body mb-8 leading-relaxed">
-              Weave is currently invite-only. Every application is reviewed to help maintain a collaborative, trustworthy marketplace where professionals can confidently exchange their expertise.
+              Weave is currently invite-only. Tell us about yourself and we'll review your application for early access.
             </p>
             <p className="text-lg font-medium text-heading mb-8">
               If you're passionate about your craft and believe in collaboration over competition, we'd love to hear from you.
             </p>
-            <button className="px-8 py-3 text-base font-bold text-surface bg-primary rounded-[var(--radius-button)] hover:bg-primary-hover transition-colors shadow-subtle mb-4">
+            <a href="#invite-form" className="inline-block px-8 py-3 text-base font-bold text-surface bg-primary rounded-[var(--radius-button)] hover:bg-primary-hover transition-colors shadow-subtle mb-4">
               Request Invite
-            </button>
+            </a>
             <p className="text-sm text-muted">Applications are reviewed individually.</p>
           </div>
         </section>
@@ -163,91 +164,7 @@ export default function RequestInvitePage() {
                 <h2 className="text-3xl font-bold text-heading mb-2">Tell Us About Yourself</h2>
                 <p className="text-body mb-8">Please provide details so we can evaluate your request.</p>
 
-                <form className="bg-surface border border-border p-8 rounded-[var(--radius-card)] space-y-6 shadow-subtle">
-                  
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-heading">Full Name</label>
-                    <input type="text" className="w-full bg-background border border-border rounded-[var(--radius-input)] px-4 py-3 focus:outline-none focus:border-primary text-body" />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-heading">Email Address</label>
-                    <input type="email" className="w-full bg-background border border-border rounded-[var(--radius-input)] px-4 py-3 focus:outline-none focus:border-primary text-body" />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-heading">Profession</label>
-                      <input type="text" placeholder="e.g. UI Designer" className="w-full bg-background border border-border rounded-[var(--radius-input)] px-4 py-3 focus:outline-none focus:border-primary text-body" />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-heading">Years of Exp.</label>
-                      <input type="text" placeholder="e.g. 5" className="w-full bg-background border border-border rounded-[var(--radius-input)] px-4 py-3 focus:outline-none focus:border-primary text-body" />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-heading">Primary Skill</label>
-                      <input type="text" className="w-full bg-background border border-border rounded-[var(--radius-input)] px-4 py-3 focus:outline-none focus:border-primary text-body" />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-heading">Secondary Skill</label>
-                      <input type="text" className="w-full bg-background border border-border rounded-[var(--radius-input)] px-4 py-3 focus:outline-none focus:border-primary text-body" />
-                    </div>
-                  </div>
-
-                  <div className="space-y-4 pt-2">
-                    <h4 className="text-sm font-bold text-muted uppercase tracking-wider">Links & Presence</h4>
-                    <div className="space-y-2">
-                      <input type="url" placeholder="LinkedIn Profile" className="w-full bg-background border border-border rounded-[var(--radius-input)] px-4 py-3 focus:outline-none focus:border-primary text-sm text-body" />
-                    </div>
-                    <div className="space-y-2">
-                      <input type="url" placeholder="Portfolio Website" className="w-full bg-background border border-border rounded-[var(--radius-input)] px-4 py-3 focus:outline-none focus:border-primary text-sm text-body" />
-                    </div>
-                    <div className="space-y-2">
-                      <input type="url" placeholder="Personal Website / GitHub (optional)" className="w-full bg-background border border-border rounded-[var(--radius-input)] px-4 py-3 focus:outline-none focus:border-primary text-sm text-body" />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-heading">Location</label>
-                    <input type="text" placeholder="City, Country" className="w-full bg-background border border-border rounded-[var(--radius-input)] px-4 py-3 focus:outline-none focus:border-primary text-body" />
-                  </div>
-
-                  <div className="space-y-4 pt-4 border-t border-border">
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-heading">Short Bio</label>
-                      <p className="text-xs text-muted mb-1">Tell us about your professional background.</p>
-                      <textarea rows={3} className="w-full bg-background border border-border rounded-[var(--radius-input)] px-4 py-3 focus:outline-none focus:border-primary text-body resize-none"></textarea>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-heading">What do you hope to exchange on Weave?</label>
-                      <p className="text-xs text-muted mb-1">Examples: Development for design. Marketing for copywriting.</p>
-                      <textarea rows={2} className="w-full bg-background border border-border rounded-[var(--radius-input)] px-4 py-3 focus:outline-none focus:border-primary text-body resize-none"></textarea>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-heading">Why do you want to join Weave?</label>
-                      <p className="text-xs text-muted mb-1">We want to understand what excites you about collaborative skill exchanges.</p>
-                      <textarea rows={3} className="w-full bg-background border border-border rounded-[var(--radius-input)] px-4 py-3 focus:outline-none focus:border-primary text-body resize-none"></textarea>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3 pt-4 border-t border-border">
-                    <input type="checkbox" className="mt-1" />
-                    <p className="text-sm text-body">
-                      I agree to follow the <Link href="/legal/guidelines" className="text-primary hover:underline">Community Guidelines</Link> and Code of Conduct.
-                    </p>
-                  </div>
-
-                  <div className="pt-2">
-                    <Link href="/request-invite/success" className="w-full px-8 py-3 text-base font-bold text-surface bg-primary rounded-[var(--radius-button)] hover:bg-primary-hover transition-colors flex items-center justify-center">
-                      Submit Application
-                    </Link>
-                  </div>
-                </form>
+                <InviteForm />
               </div>
             </div>
           </div>

@@ -20,25 +20,17 @@ export default function RequestInviteSuccessPage() {
           </div>
 
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-heading mb-6">
-            Application Received
+            You're on the list
           </h1>
           
           <div className="text-lg text-body space-y-4 mb-12 bg-surface border border-border p-8 rounded-[var(--radius-card)]">
-            <p className="font-medium text-heading">Your application is under review.</p>
-            <p>Thank you for requesting an invitation to Weave.</p>
-            <p>Our team personally reviews every application to ensure we maintain a trusted and high-quality community of professionals.</p>
-            <p>We will reach out via email if your application is approved for early access.</p>
-            <p className="pt-4 border-t border-border text-sm text-muted">
-              In the meantime, feel free to explore Weave and learn more about how Skill Hours work.
-            </p>
+            <p className="font-medium text-heading">Thanks for applying.</p>
+            <p>We'll review your application and email you if you're invited to join Weave.</p>
           </div>
 
-          <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <Link href="/#how-it-works" className="px-8 py-3 text-base font-bold text-surface bg-primary rounded-[var(--radius-button)] hover:bg-primary-hover transition-colors shadow-subtle">
-              Learn How It Works
-            </Link>
-            <Link href="/" className="px-8 py-3 text-base font-bold text-heading bg-surface border border-border rounded-[var(--radius-button)] hover:bg-surface-secondary transition-colors">
-              Return to Home
+          <div className="flex justify-center">
+            <Link href="/" className="px-8 py-3 text-base font-bold text-surface bg-primary rounded-[var(--radius-button)] hover:bg-primary-hover transition-colors shadow-subtle">
+              Return Home
             </Link>
           </div>
 

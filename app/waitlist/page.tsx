@@ -9,6 +9,7 @@ import {
   ArrowRight
 } from "lucide-react";
 import Link from "next/link";
+import WaitlistForm from "../../components/waitlist-form";
 
 export const metadata = {
   title: "Join the Waitlist | Weave",
@@ -61,9 +62,9 @@ export default function WaitlistPage() {
               We're carefully growing the Weave community to ensure every member has access to meaningful opportunities and trusted collaborations.
               Join the waitlist today and we'll let you know as soon as new spots become available.
             </p>
-            <button className="px-8 py-3 text-base font-bold text-surface bg-primary rounded-[var(--radius-button)] hover:bg-primary-hover transition-colors shadow-subtle mb-4">
+            <a href="#waitlist-form" className="inline-block px-8 py-3 text-base font-bold text-surface bg-primary rounded-[var(--radius-button)] hover:bg-primary-hover transition-colors shadow-subtle mb-4">
               Join the Waitlist
-            </button>
+            </a>
             <p className="text-sm text-muted">No spam. No commitment. Just early access updates.</p>
           </div>
         </section>
@@ -138,84 +139,7 @@ export default function WaitlistPage() {
                 <h2 className="text-3xl font-bold text-heading mb-2">Reserve Your Spot</h2>
                 <p className="text-body mb-8">Join thousands of professionals waiting for early access.</p>
 
-                <form className="bg-surface border border-border p-8 rounded-[var(--radius-card)] space-y-6 shadow-subtle">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-heading">First Name</label>
-                      <input type="text" className="w-full bg-background border border-border rounded-[var(--radius-input)] px-4 py-3 focus:outline-none focus:border-primary text-body" />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-heading">Last Name</label>
-                      <input type="text" className="w-full bg-background border border-border rounded-[var(--radius-input)] px-4 py-3 focus:outline-none focus:border-primary text-body" />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-heading">Email Address</label>
-                    <input type="email" className="w-full bg-background border border-border rounded-[var(--radius-input)] px-4 py-3 focus:outline-none focus:border-primary text-body" />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-heading">Primary Skill</label>
-                    <select className="w-full bg-background border border-border rounded-[var(--radius-input)] px-4 py-3 focus:outline-none focus:border-primary text-body appearance-none">
-                      <option>Select a skill...</option>
-                      <option>Frontend Development</option>
-                      <option>Backend Development</option>
-                      <option>UI Design</option>
-                      <option>UX Design</option>
-                      <option>Graphic Design</option>
-                      <option>Branding</option>
-                      <option>Copywriting</option>
-                      <option>Marketing</option>
-                      <option>SEO</option>
-                      <option>Video Editing</option>
-                      <option>Motion Design</option>
-                      <option>Product Management</option>
-                      <option>No-Code</option>
-                      <option>AI Automation</option>
-                      <option>Other</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-heading">Years of Experience</label>
-                    <select className="w-full bg-background border border-border rounded-[var(--radius-input)] px-4 py-3 focus:outline-none focus:border-primary text-body appearance-none">
-                      <option>Select experience...</option>
-                      <option>Less than 1 year</option>
-                      <option>1–3 years</option>
-                      <option>3–5 years</option>
-                      <option>5–10 years</option>
-                      <option>10+ years</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-heading">Portfolio Website (optional)</label>
-                    <input type="url" placeholder="https://" className="w-full bg-background border border-border rounded-[var(--radius-input)] px-4 py-3 focus:outline-none focus:border-primary text-body" />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-heading">How did you hear about Weave?</label>
-                    <select className="w-full bg-background border border-border rounded-[var(--radius-input)] px-4 py-3 focus:outline-none focus:border-primary text-body appearance-none">
-                      <option>Select an option...</option>
-                      <option>Twitter / X</option>
-                      <option>LinkedIn</option>
-                      <option>Friend or Colleague</option>
-                      <option>Blog Post</option>
-                      <option>Search Engine</option>
-                      <option>Other</option>
-                    </select>
-                  </div>
-
-                  <div className="pt-4">
-                    <Link href="/waitlist/success" className="w-full px-8 py-3 text-base font-bold text-surface bg-primary rounded-[var(--radius-button)] hover:bg-primary-hover transition-colors flex items-center justify-center">
-                      Join Waitlist
-                    </Link>
-                    <p className="text-xs text-muted mt-4 text-center">
-                      We'll only contact you regarding Weave updates and your waitlist status.
-                    </p>
-                  </div>
-                </form>
+                <WaitlistForm />
               </div>
             </div>
           </div>
@@ -265,9 +189,9 @@ export default function WaitlistPage() {
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-2xl">
             <h2 className="text-3xl md:text-4xl font-bold text-heading mb-6">Your Skills Already Have Value.</h2>
             <p className="text-xl text-body mb-8">Soon, they'll help you build even bigger ideas.</p>
-            <button className="px-8 py-3 text-base font-bold text-surface bg-primary rounded-[var(--radius-button)] hover:bg-primary-hover transition-colors shadow-subtle inline-flex items-center gap-2">
+            <a href="#waitlist-form" className="px-8 py-3 text-base font-bold text-surface bg-primary rounded-[var(--radius-button)] hover:bg-primary-hover transition-colors shadow-subtle inline-flex items-center gap-2">
               Join the Waitlist <ArrowRight className="w-4 h-4" />
-            </button>
+            </a>
           </div>
         </section>
 
