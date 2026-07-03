@@ -14,9 +14,10 @@ export const revalidate = 0;
 export default async function AdminInvitesPage({
   searchParams,
 }: {
-  searchParams: { tab?: string };
+  searchParams: Promise<{ tab?: string }>;
 }) {
-  const currentTab = searchParams.tab || "requests";
+  const params = await searchParams;
+  const currentTab = params.tab || "requests";
 
   let result: any = null;
   if (currentTab === "requests") {

@@ -1,4 +1,5 @@
 import { Lock } from "lucide-react";
+import Link from "next/link";
 
 export default function ReadyCTA() {
   return (
@@ -16,12 +17,9 @@ export default function ReadyCTA() {
         </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
-          <button className="w-full sm:w-auto px-8 py-4 text-lg font-bold text-surface bg-primary rounded-[var(--radius-button)] hover:bg-primary-hover transition-colors shadow-subtle">
+          <Link href="/request-invite" className="w-full sm:w-auto px-8 py-4 text-lg font-bold text-surface bg-primary rounded-[var(--radius-button)] hover:bg-primary-hover transition-colors shadow-subtle">
             Request Your Invite
-          </button>
-          <button className="w-full sm:w-auto px-8 py-4 text-lg font-bold text-heading bg-surface border border-border rounded-[var(--radius-button)] hover:bg-surface-secondary transition-colors">
-            Join the Waitlist
-          </button>
+          </Link>
         </div>
 
         <div className="flex items-center justify-center gap-2 text-sm text-muted font-medium">

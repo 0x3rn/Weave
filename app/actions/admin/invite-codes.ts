@@ -111,3 +111,61 @@ export async function extendInviteCode(id: string, additionalDays: number) {
     return { error: error.message };
   }
 }
+
+import { sendEmail } from "@/lib/email";
+
+export async function resendInviteEmail(id: string) {
+  if (!db) return { error: "Database not initialized" };
+
+  try {
+    const doc = await db.collection("invites").doc(id).get();
+    if (!doc.exists) return { error: "Invite not found" };
+
+    const data = doc.data()!;
+    if (data.status === "used" || data.status === "revoked") {
+      return { error: "Cannot resend email for a used or revoked invite" };
+    }
+
+    let fullName = "there";
+    let startingHours = 0;
+
+    // Try to fetch the original application to get their name and starting hours
+    if (data.inviteApplicationId) {
+      const appDoc = await db.collection("invite_applications").doc(data.inviteApplicationId).get();
+      if (appDoc.exists) {
+        const appData = appDoc.data()!;
+        fullName = appData.fullName?.split(' ')[0] || "there";
+        startingHours = appData.approvedSettings?.startingHours || 0;
+      }
+    }
+
+    const signupUrl = `https://weave.network/signup?invite=${data.code}`;
+    
+    const emailHtml = `
+      <div style="font-family: sans-serif; max-w: 600px; margin: 0 auto;">
+        <h2>Welcome to Weave, ${fullName}!</h2>
+        <p>This is a reminder that your invite to join Weave is still pending.</p>
+        <p>You have been credited with <strong>${startingHours}</strong> starting Skill Hours to begin exchanging services.</p>
+        
+        <div style="background-color: #f5f5f5; padding: 16px; border-radius: 8px; margin: 24px 0; text-align: center;">
+          <p style="margin-top: 0; color: #666; font-size: 14px;">Your unique invite code:</p>
+          <div style="font-size: 24px; font-weight: bold; letter-spacing: 2px; color: #111;">${data.code}</div>
+        </div>
+
+        <p>Click the link below to set up your password and access the platform.</p>
+        <a href="${signupUrl}" style="display: inline-block; padding: 12px 24px; background-color: #2E7D32; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 16px;">Create Your Account</a>
+      </div>
+    `;
+
+    await sendEmail({
+      to: data.email,
+      subject: "Reminder: Your Weave invite is waiting!",
+      html: emailHtml
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error resending email:", error);
+    return { error: error.message };
+  }
+}

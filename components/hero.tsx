@@ -1,4 +1,5 @@
 import { Lock, CheckCircle2 } from "lucide-react";
+import Link from "next/link";
 
 export default function Hero() {
   return (
@@ -29,12 +30,12 @@ export default function Hero() {
         </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
-          <button className="w-full sm:w-auto px-8 py-3 text-base font-medium text-surface bg-primary rounded-[var(--radius-button)] hover:bg-primary-hover transition-colors shadow-subtle">
+          <Link href="/request-invite" className="w-full sm:w-auto px-8 py-3 text-base font-medium text-surface bg-primary rounded-[var(--radius-button)] hover:bg-primary-hover transition-colors shadow-subtle">
             Request Your Invite
-          </button>
-          <button className="w-full sm:w-auto px-8 py-3 text-base font-medium text-heading bg-surface border border-border rounded-[var(--radius-button)] hover:bg-surface-secondary transition-colors">
+          </Link>
+          <Link href="#how-it-works" className="w-full sm:w-auto px-8 py-3 text-base font-medium text-heading bg-surface border border-border rounded-[var(--radius-button)] hover:bg-surface-secondary transition-colors">
             See How It Works
-          </button>
+          </Link>
         </div>
 
         <div className="inline-flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center sm:justify-center gap-x-8 gap-y-4 text-sm font-medium text-muted text-left">

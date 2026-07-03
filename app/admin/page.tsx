@@ -61,7 +61,7 @@ export default async function AdminPage() {
          type: "invite",
          name: data.fullName || "Someone",
          action: data.status === "approved" ? "was approved" : data.status === "rejected" ? "was rejected" : "submitted an invite request",
-         date: new Date(data.createdAt),
+         date: new Date(data.status === "approved" ? (data.approvedAt || data.createdAt) : data.status === "rejected" ? (data.rejectedAt || data.createdAt) : data.createdAt),
          status: data.status || "pending"
        });
      }

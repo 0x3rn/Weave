@@ -78,7 +78,12 @@ export default function RequestInvitePage() {
             <a href="#invite-form" className="inline-block px-8 py-3 text-base font-bold text-surface bg-primary rounded-[var(--radius-button)] hover:bg-primary-hover transition-colors shadow-subtle mb-4">
               Request Invite
             </a>
-            <p className="text-sm text-muted">Applications are reviewed individually.</p>
+            <div className="flex flex-col items-center gap-2">
+              <p className="text-sm text-muted">Applications are reviewed individually.</p>
+              <Link href="/signup" className="text-sm font-medium text-primary hover:text-primary-hover transition-colors">
+                Already have an invite code? Sign up here &rarr;
+              </Link>
+            </div>
           </div>
         </section>
 
@@ -224,8 +229,8 @@ export default function RequestInvitePage() {
               <button className="px-8 py-3 text-base font-bold text-surface bg-primary rounded-[var(--radius-button)] hover:bg-primary-hover transition-colors shadow-subtle">
                 Request Invite
               </button>
-              <Link href="/waitlist" className="px-8 py-3 text-base font-bold text-heading bg-surface border border-border rounded-[var(--radius-button)] hover:bg-surface-secondary transition-colors">
-                Join Waitlist Instead
+              <Link href="/signup" className="px-8 py-3 text-base font-bold text-heading bg-surface border border-border rounded-[var(--radius-button)] hover:bg-surface-secondary transition-colors">
+                Have an Invite Code?
               </Link>
             </div>
           </div>

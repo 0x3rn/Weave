@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Copy, RefreshCw, Clock, Ban } from "lucide-react";
-import { revokeInviteCode, extendInviteCode } from "@/app/actions/admin/invite-codes";
+import { Search, Copy, RefreshCw, Clock, Ban, Mail } from "lucide-react";
+import { revokeInviteCode, extendInviteCode, resendInviteEmail } from "@/app/actions/admin/invite-codes";
+import toast from "react-hot-toast";
 
 interface IssuedCodesTableProps {
   initialData: any[];
@@ -28,32 +29,53 @@ export default function IssuedCodesTable({ initialData }: IssuedCodesTableProps)
 
   const handleCopy = (code: string) => {
     navigator.clipboard.writeText(`https://weave.network/signup?invite=${code}`);
-    alert("Invite link copied to clipboard!");
+    toast.success("Invite link copied to clipboard!");
   };
 
+  const [confirmRevokeId, setConfirmRevokeId] = useState<string | null>(null);
+
   const handleRevoke = async (id: string) => {
-    if (!confirm("Are you sure you want to revoke this invite code? It will immediately become unusable.")) return;
+    if (confirmRevokeId !== id) {
+      setConfirmRevokeId(id);
+      setTimeout(() => setConfirmRevokeId(null), 3000); // Reset after 3 seconds
+      return;
+    }
     
+    // Proceed with revoke
+    setConfirmRevokeId(null);
     const result = await revokeInviteCode(id);
     if (result.success) {
       setData(prev => prev.map(item => item.id === id ? { ...item, status: "revoked" } : item));
+      toast.success("Invite revoked successfully");
     } else {
-      alert("Error revoking invite");
+      toast.error("Error revoking invite");
     }
   };
 
   const handleExtend = async (id: string) => {
-    const days = prompt("How many additional days should this invite be extended by?", "7");
-    if (!days) return;
-    const parsed = parseInt(days);
-    if (isNaN(parsed)) return;
+    const parsed = 7; // Automatically extend by 7 days
 
     const result = await extendInviteCode(id, parsed);
     if (result.success) {
-      alert("Invite extended successfully. Please refresh the page to see the new expiration date.");
+      toast.success(`Invite extended by ${parsed} days.`);
       setData(prev => prev.map(item => item.id === id ? { ...item, status: "pending" } : item));
     } else {
-      alert("Error extending invite");
+      toast.error("Error extending invite");
+    }
+  };
+
+  const [isResending, setIsResending] = useState<string | null>(null);
+
+  const handleResend = async (id: string) => {
+    
+    setIsResending(id);
+    const result = await resendInviteEmail(id);
+    setIsResending(null);
+
+    if (result.success) {
+      toast.success("Invite email sent successfully!");
+    } else {
+      toast.error(`Error sending email: ${result.error}`);
     }
   };
 
@@ -141,6 +163,16 @@ export default function IssuedCodesTable({ initialData }: IssuedCodesTableProps)
                           >
                             <Copy className="w-4 h-4" />
                           </button>
+                          {item.status === 'pending' && (
+                            <button 
+                              onClick={() => handleResend(item.id)}
+                              disabled={isResending === item.id}
+                              className={`p-2 text-muted hover:text-success transition-colors rounded-md hover:bg-background ${isResending === item.id ? 'opacity-50 cursor-wait' : ''}`}
+                              title="Resend Email"
+                            >
+                              <Mail className="w-4 h-4" />
+                            </button>
+                          )}
                           <button 
                             onClick={() => handleExtend(item.id)}
                             disabled={item.status === 'used' || item.status === 'revoked'}
@@ -152,10 +184,18 @@ export default function IssuedCodesTable({ initialData }: IssuedCodesTableProps)
                           <button 
                             onClick={() => handleRevoke(item.id)}
                             disabled={item.status === 'used' || item.status === 'revoked'}
-                            className="p-2 text-muted hover:text-error transition-colors rounded-md hover:bg-background disabled:opacity-30 disabled:cursor-not-allowed"
+                            className={`p-2 transition-colors rounded-md hover:bg-background disabled:opacity-30 disabled:cursor-not-allowed ${
+                              confirmRevokeId === item.id 
+                                ? 'text-surface bg-error hover:bg-error hover:text-surface px-3' 
+                                : 'text-muted hover:text-error'
+                            }`}
                             title="Revoke Invite"
                           >
-                            <Ban className="w-4 h-4" />
+                            {confirmRevokeId === item.id ? (
+                              <span className="text-xs font-bold uppercase tracking-wider">Confirm</span>
+                            ) : (
+                              <Ban className="w-4 h-4" />
+                            )}
                           </button>
                         </div>
                       </td>

@@ -10,9 +10,10 @@ export const metadata = {
 export default async function SignupPage({
   searchParams,
 }: {
-  searchParams: { invite?: string };
+  searchParams: Promise<{ invite?: string }>;
 }) {
-  const inviteCode = searchParams.invite || "";
+  const params = await searchParams;
+  const inviteCode = params.invite || "";
   
   let inviteDetails = null;
   if (inviteCode) {

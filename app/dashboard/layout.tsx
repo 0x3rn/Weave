@@ -1,23 +1,9 @@
-import { Metadata } from "next";
-import AdminShell from "../../components/admin/admin-shell";
-
-export const metadata: Metadata = {
-  title: {
-    default: "Admin Dashboard | Weave",
-    template: "%s | Weave Admin"
-  },
-  robots: {
-    index: false,
-    follow: false,
-  }
-};
-
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/firebase-admin-auth";
 import { db } from "@/lib/firebase-admin";
 
-export default async function AdminLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -30,28 +16,24 @@ export default async function AdminLayout({
   }
 
   try {
-    // 1. Verify the session cookie
+    // 1. Verify the session cookie cryptographically
     const decodedClaims = await auth.verifySessionCookie(sessionCookie, true);
     
-    // 2. Fetch the user's document from Firestore
+    // 2. Fetch the user's document from Firestore to ensure they haven't been deleted
     const userDoc = await db.collection("users").doc(decodedClaims.uid).get();
     
     if (!userDoc.exists) {
       redirect("/login");
     }
 
-    const userData = userDoc.data()!;
-
-    // 3. Check for admin privileges
-    if (userData.isAdmin !== true) {
-      redirect("/dashboard"); // Send non-admins back to their dashboard
-    }
+    // Unlike /admin, we don't require isAdmin === true here.
+    // Any valid, authenticated user can access the dashboard.
 
   } catch (error) {
     // If the session cookie is invalid, expired, or tampered with
-    console.error("Admin route protection error:", error);
+    console.error("Dashboard route protection error:", error);
     redirect("/login");
   }
 
-  return <AdminShell>{children}</AdminShell>;
+  return <div className="min-h-screen bg-surface-secondary">{children}</div>;
 }
