@@ -1,6 +1,7 @@
 "use server";
 
-import { db, auth } from "@/lib/firebase-admin";
+import { db } from "@/lib/firebase-admin";
+import { auth } from "@/lib/firebase-admin-auth";
 
 export async function getInviteDetails(code: string) {
   if (!db) return null;
