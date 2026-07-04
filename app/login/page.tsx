@@ -82,10 +82,10 @@ export default function Login() {
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-surface py-8 px-4 shadow-subtle sm:rounded-[var(--radius-card)] sm:px-10 border border-border">
+        <div className="py-8 px-4 sm:px-10">
           
           {error && (
-            <div className="mb-6 p-3 bg-error/10 border border-error/20 text-error text-sm rounded-md">
+            <div className="mb-6 p-3 bg-error/10 border border-error/20 text-error text-sm rounded-[var(--radius-input)]">
               {error}
             </div>
           )}

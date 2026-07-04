@@ -63,7 +63,7 @@ export default async function SignupPage({
         )}
 
         {/* Form */}
-        <div className="bg-surface border border-border rounded-xl p-6 shadow-xl">
+        <div className="py-2">
           <SignupForm 
             initialCode={inviteCode} 
             initialEmail={inviteDetails?.email || ""}
@@ -72,11 +72,17 @@ export default async function SignupPage({
         </div>
 
         {/* Footer Links */}
-        <div className="text-center space-y-4 pt-4 border-t border-border">
-          <p className="text-sm text-muted">Don't have an invite?</p>
-          <div className="flex justify-center gap-4">
-            <Link href="/request-invite" className="text-sm font-medium text-primary hover:underline">
-              Request an Invite
+        <div className="mt-8 pt-6 border-t border-border flex flex-col gap-3 text-center text-sm text-body">
+          <div>
+            Already have an account?{" "}
+            <Link href="/login" className="font-medium text-primary hover:text-primary-hover transition-colors">
+              Log in
+            </Link>
+          </div>
+          <div>
+            Don't have an invite?{" "}
+            <Link href="/request-invite" className="font-medium text-primary hover:text-primary-hover transition-colors">
+              Request an invite
             </Link>
           </div>
         </div>
