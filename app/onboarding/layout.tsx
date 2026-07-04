@@ -1,23 +1,9 @@
-import { Metadata } from "next";
-import AdminShell from "../../components/admin/admin-shell";
-
-export const metadata: Metadata = {
-  title: {
-    default: "Admin Dashboard | Weave",
-    template: "%s | Weave Admin"
-  },
-  robots: {
-    index: false,
-    follow: false,
-  }
-};
-
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/firebase-admin-auth";
 import { db } from "@/lib/firebase-admin";
 
-export default async function AdminLayout({
+export default async function OnboardingLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -32,7 +18,7 @@ export default async function AdminLayout({
   let targetRedirect = "";
 
   try {
-    // 1. Verify the session cookie
+    // 1. Verify the session cookie cryptographically
     const decodedClaims = await auth.verifySessionCookie(sessionCookie, true);
     
     // 2. Fetch the user's document from Firestore
@@ -42,16 +28,15 @@ export default async function AdminLayout({
       targetRedirect = "/login";
     } else {
       const userData = userDoc.data()!;
-
-      // 3. Check for admin privileges
-      if (userData.isAdmin !== true) {
-        targetRedirect = "/dashboard"; // Send non-admins back to their dashboard
+      
+      // 3. If they are already onboarded, send them to the dashboard
+      if (userData.onboarded === true) {
+        targetRedirect = "/dashboard";
       }
     }
 
   } catch (error) {
-    // If the session cookie is invalid, expired, or tampered with
-    console.error("Admin route protection error:", error);
+    console.error("Onboarding route protection error:", error);
     targetRedirect = "/login";
   }
 
@@ -59,5 +44,5 @@ export default async function AdminLayout({
     redirect(targetRedirect);
   }
 
-  return <AdminShell>{children}</AdminShell>;
+  return <div className="min-h-screen bg-background">{children}</div>;
 }

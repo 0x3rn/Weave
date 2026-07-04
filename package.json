@@ -18,6 +18,7 @@
     "nodemailer": "^9.0.3",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "react-easy-crop": "^6.1.0",
     "react-hot-toast": "^2.6.0",
     "react-select": "^5.10.2"
   },
