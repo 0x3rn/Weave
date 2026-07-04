@@ -6,7 +6,7 @@ export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
   // 1. Protected routes that require authentication
-  const isProtectedRoute = path.startsWith("/dashboard") || path.startsWith("/admin");
+  const isProtectedRoute = path.startsWith("/dashboard") || path.startsWith("/admin") || path.startsWith("/onboarding");
 
   // 2. Auth routes that logged-in users shouldn't access
   const isAuthRoute = path === "/login" || path === "/signup" || path === "/forgot-password";

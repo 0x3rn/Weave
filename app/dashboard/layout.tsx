@@ -28,6 +28,12 @@ export default async function DashboardLayout({
 
     // Unlike /admin, we don't require isAdmin === true here.
     // Any valid, authenticated user can access the dashboard.
+    
+    // 3. Ensure user has completed onboarding
+    const userData = userDoc.data()!;
+    if (userData.onboarded !== true) {
+      redirect("/onboarding");
+    }
 
   } catch (error) {
     // If the session cookie is invalid, expired, or tampered with
