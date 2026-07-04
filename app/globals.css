@@ -56,11 +56,11 @@
 
   .dark {
     /* Dark Mode */
-    --background: #050505;
+    --background: #000000;
     --surface: #0A0A0A;
-    --surface-secondary: #0F0F0F; /* Sidebar background */
-    --surface-elevated: #141414;
-    --border: #1F1F1F;
+    --surface-secondary: #121212;
+    --surface-elevated: #1A1A1A;
+    --border: #222222;
     
     --primary: #58C76D;
     --primary-hover: #6AD97A;

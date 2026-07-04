@@ -28,7 +28,7 @@ export default function DashboardPlaceholder() {
   };
 
   return (
-    <div className="min-h-screen bg-surface-secondary p-4 md:p-8 flex flex-col items-center justify-center">
+    <div className="min-h-screen bg-background p-4 md:p-8 flex flex-col items-center justify-center animate-in fade-in duration-1000">
       
       {/* Top Right Logout Button */}
       <div className="absolute top-4 right-4 md:top-8 md:right-8">
@@ -68,27 +68,30 @@ export default function DashboardPlaceholder() {
           </p>
         </div>
 
-        {/* Fancy Card */}
-        <div className="mt-12 bg-surface border border-border p-6 rounded-[var(--radius-card)] shadow-subtle text-left max-w-md mx-auto relative overflow-hidden group">
-          {/* Decorative background gradient */}
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-          
-          <h3 className="font-bold text-heading mb-2 flex items-center justify-between">
+        {/* Unboxed List */}
+        <div className="mt-12 text-left max-w-md mx-auto">
+          <h3 className="font-bold text-heading mb-6 flex items-center gap-2 uppercase tracking-wider text-sm">
             Coming Up Next
-            <ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-1 transition-transform" />
+            <ArrowRight className="w-4 h-4 text-primary" />
           </h3>
-          <ul className="text-sm text-body space-y-3 relative z-10">
-            <li className="flex items-start gap-2">
-              <span className="text-primary font-bold">&bull;</span>
-              Complete your public profile and portfolio.
+          <ul className="text-body space-y-4">
+            <li className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <span className="text-primary font-bold text-sm">1</span>
+              </div>
+              <span className="font-medium text-heading">Complete your public profile and portfolio.</span>
             </li>
-            <li className="flex items-start gap-2">
-              <span className="text-primary font-bold">&bull;</span>
-              Browse the trusted marketplace for services.
+            <li className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <span className="text-primary font-bold text-sm">2</span>
+              </div>
+              <span className="font-medium text-heading">Browse the trusted marketplace for services.</span>
             </li>
-            <li className="flex items-start gap-2">
-              <span className="text-primary font-bold">&bull;</span>
-              Start exchanging your Skill Hours!
+            <li className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <span className="text-primary font-bold text-sm">3</span>
+              </div>
+              <span className="font-medium text-heading">Start exchanging your Skill Hours!</span>
             </li>
           </ul>
         </div>
