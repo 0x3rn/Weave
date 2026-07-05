@@ -11,16 +11,21 @@ export default function TrustScoreCard({ user }: TrustScoreCardProps) {
   const trustScore = user.trustScore || 0;
   
   // Determine color based on score
-  let scoreColor = "text-error";
+  let scoreColor = "text-red-600 dark:text-red-500";
+  let pillBgColor = "bg-red-600 dark:bg-red-500 text-white border-transparent";
   let scoreText = "Needs Work";
+  
   if (trustScore >= 90) {
-    scoreColor = "text-success";
+    scoreColor = "text-green-600 dark:text-green-500";
+    pillBgColor = "bg-green-600 dark:bg-green-500 text-white border-transparent";
     scoreText = "Excellent";
   } else if (trustScore >= 75) {
-    scoreColor = "text-primary";
+    scoreColor = "text-blue-600 dark:text-blue-500";
+    pillBgColor = "bg-blue-600 dark:bg-blue-500 text-white border-transparent";
     scoreText = "Good";
   } else if (trustScore >= 50) {
-    scoreColor = "text-warning";
+    scoreColor = "text-amber-600 dark:text-amber-500";
+    pillBgColor = "bg-amber-600 dark:bg-amber-500 text-white border-transparent";
     scoreText = "Average";
   }
 
@@ -43,7 +48,7 @@ export default function TrustScoreCard({ user }: TrustScoreCardProps) {
           {trustScore}
         </div>
         <div className="text-muted text-lg font-medium mb-1">/ 100</div>
-        <div className={`ml-auto px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${scoreColor} bg-current/10 border border-current/20`}>
+        <div className={`ml-auto px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${pillBgColor}`}>
           {scoreText}
         </div>
       </div>
