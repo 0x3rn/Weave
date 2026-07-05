@@ -8,8 +8,53 @@ interface TrustScoreCardProps {
 }
 
 export default function TrustScoreCard({ user }: TrustScoreCardProps) {
-  const trustScore = user.trustScore || 0;
-  
+  // Calculate trust score dynamically
+  const calculateTrustScore = () => {
+    let score = 0;
+    
+    // 1. Identity & Verification (40 points)
+    if (user.isVerified) score += 30;
+    if (user.photoURL || (user as any).photoUrl) score += 10;
+    
+    // 2. Profile Depth (40 points)
+    if (user.bio && user.bio.length > 10) score += 15;
+    if (user.headline) score += 5;
+    if (user.skillsOffered && user.skillsOffered.length > 0) score += 10;
+    if (user.skillsLookingFor && user.skillsLookingFor.length > 0) score += 5;
+    if (user.country && user.timeZone) score += 5;
+    
+    // 3. Track Record (20 points)
+    const stats = user.stats || { exchangesCompleted: 0, rating: 0, reviewsCount: 0 };
+    
+    // Positive Track Record
+    if (stats.exchangesCompleted > 0) score += 10;
+    if (stats.exchangesCompleted > 5) score += 5;
+    if (stats.rating >= 4.5 && (stats.reviewsCount || 0) > 0) score += 5;
+    
+    // 4. Negative Community Standing (Deductions)
+    let deductions = 0;
+    
+    // Bad ratings (only applies if they actually have reviews)
+    if ((stats.reviewsCount || 0) > 0) {
+      if (stats.rating < 3.0) deductions += 5;
+      else if (stats.rating < 4.0) deductions += 1;
+    }
+    
+    // Disputes lost (Resolved against user)
+    if (stats.disputesLost && stats.disputesLost > 0) {
+      deductions += (stats.disputesLost * 10);
+    }
+    
+    // Reports against (Resolved/Valid reports against user)
+    if (stats.reportsAgainst && stats.reportsAgainst > 0) {
+      deductions += (stats.reportsAgainst * 10);
+    }
+    
+    const finalScore = score - deductions;
+    return Math.max(0, Math.min(100, finalScore));
+  };
+
+  const trustScore = calculateTrustScore();
   // Determine color based on score
   let scoreColor = "text-red-600 dark:text-red-500";
   let pillBgColor = "bg-red-600 dark:bg-red-500 text-white border-transparent";
@@ -20,8 +65,8 @@ export default function TrustScoreCard({ user }: TrustScoreCardProps) {
     pillBgColor = "bg-green-600 dark:bg-green-500 text-white border-transparent";
     scoreText = "Excellent";
   } else if (trustScore >= 75) {
-    scoreColor = "text-blue-600 dark:text-blue-500";
-    pillBgColor = "bg-blue-600 dark:bg-blue-500 text-white border-transparent";
+    scoreColor = "text-blue-700 dark:text-blue-600";
+    pillBgColor = "bg-blue-700 dark:bg-blue-600 text-white border-transparent";
     scoreText = "Good";
   } else if (trustScore >= 50) {
     scoreColor = "text-amber-600 dark:text-amber-500";
@@ -92,7 +137,7 @@ export default function TrustScoreCard({ user }: TrustScoreCardProps) {
       <div className="mt-6 pt-4 border-t border-border flex items-start gap-2 text-xs text-muted relative z-10">
         <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
         <p className="leading-relaxed">
-          Trust Score is calculated using profile completeness, completed exchanges, responsiveness, and review quality.
+          Trust Score is calculated dynamically based on identity verification, profile completeness, and community track record. Penalties apply for low ratings or validated reports.
         </p>
       </div>
     </div>

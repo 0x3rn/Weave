@@ -9,6 +9,8 @@ export interface UserStats {
   completionRate: number; // 0-100
   responseTimeHours: number;
   repeatCollaborations: number;
+  disputesLost?: number; // Resolved disputes against user
+  reportsAgainst?: number; // Validated reports against user
 }
 
 // Deprecated: We now use Record<string, boolean> directly on the user object
