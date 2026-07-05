@@ -13,9 +13,10 @@ import ScheduleSettings from "./schedule-settings";
 
 interface EditProfileFormProps {
   user: User;
+  onSuccess?: () => void;
 }
 
-export default function EditProfileForm({ user }: EditProfileFormProps) {
+export default function EditProfileForm({ user, onSuccess }: EditProfileFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -113,7 +114,11 @@ export default function EditProfileForm({ user }: EditProfileFormProps) {
         throw new Error(result.error);
       }
 
-      router.push(`/u/${user.username}`);
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        router.push(`/u/${user.username}`);
+      }
       router.refresh();
     } catch (err: any) {
       console.error(err);

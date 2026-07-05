@@ -80,17 +80,6 @@ export default async function UserProfilePage({ params }: { params: Promise<{ us
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Navigation for Logged-In Users */}
-      {currentUserId && (
-        <div className="bg-surface border-b border-border sticky top-0 z-50">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl h-14 flex items-center justify-between">
-            <Link href="/dashboard" className="text-sm font-medium text-muted hover:text-primary flex items-center gap-2 transition-colors">
-              <ArrowLeft className="w-4 h-4" /> Back to Dashboard
-            </Link>
-          </div>
-        </div>
-      )}
-
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl py-8 md:py-12">
         
         {/* Responsive Grid: Sidebar (Left) + Main Content (Right) */}
