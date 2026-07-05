@@ -142,8 +142,8 @@ export default function DashboardShell({ children, user }: { children: React.Rea
             <ThemeToggle />
             
             <Link href="/profile" className="w-8 h-8 rounded-full bg-heading flex items-center justify-center text-background font-bold text-sm ml-2 overflow-hidden border border-border shrink-0">
-              {user?.photoURL ? (
-                <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" />
+              {user?.photoURL || user?.photoUrl ? (
+                <img src={user.photoURL || user.photoUrl} alt="Profile" className="w-full h-full object-cover" />
               ) : (
                 user?.fullName ? user.fullName.charAt(0) : "Me"
               )}
