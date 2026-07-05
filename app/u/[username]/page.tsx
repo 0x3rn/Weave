@@ -10,6 +10,8 @@ import PortfolioGrid from "@/components/profile/portfolio-grid";
 import RecentExchanges from "@/components/profile/recent-exchanges";
 import ReviewsSection from "@/components/profile/reviews-section";
 import AchievementsGrid from "@/components/profile/achievements-grid";
+import AvailabilityCalendar from "@/components/profile/availability-calendar";
+import ProfileCompletion from "@/components/profile/profile-completion";
 import SimilarProfessionals from "@/components/profile/similar-professionals";
 import Link from "next/link";
 import { Flag, ShieldOff } from "lucide-react";
@@ -59,15 +61,17 @@ export default async function UserProfilePage({ params }: { params: Promise<{ us
         {/* Responsive Grid: Sidebar (Left) + Main Content (Right) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
           
-          {/* LEFT SIDEBAR (Hero + Stats + Trust Score) */}
+          {/* LEFT SIDEBAR (Hero + Stats + Trust Score + Calendar) */}
           <div className="lg:col-span-4 space-y-6">
             <HeroSection user={user} isOwner={isOwner} />
             <TrustScoreCard user={user} />
+            <AvailabilityCalendar user={user} />
             <AchievementsGrid user={user} />
           </div>
 
           {/* MAIN CONTENT (About + Skills + Portfolio + Reviews) */}
           <div className="lg:col-span-8 space-y-12">
+            {isOwner && <ProfileCompletion user={user} portfolio={portfolio} />}
             <AboutSection user={user} />
             <SkillsSection user={user} />
             <PortfolioGrid portfolio={portfolio} isOwner={isOwner} />

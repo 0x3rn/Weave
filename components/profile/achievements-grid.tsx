@@ -1,44 +1,117 @@
 "use client";
 
 import { User } from "@/types";
-import { Medal, Trophy, Zap, Target, Gem, Flame } from "lucide-react";
+import { ACHIEVEMENTS, AchievementTier } from "@/lib/constants/achievements";
+import { 
+  Sprout, Sparkles, Target, Handshake, Medal, Crown, Star, 
+  Shield, Zap, Bird, Clock, Hourglass, Scale, Palette, Puzzle, 
+  BadgeCheck, HeartHandshake, Megaphone, CalendarDays, Cake, Trophy
+} from "lucide-react";
 
 interface AchievementsGridProps {
   user: User;
 }
 
-// Map string icon names to Lucide components
+const getTierColor = (tier: AchievementTier) => {
+  switch (tier) {
+    case "bronze": return "text-[#CD7F32]";
+    case "silver": return "text-[#C0C0C0]";
+    case "gold": return "text-[#FFD700]";
+    case "platinum": return "text-[#E5E4E2]";
+    default: return "text-primary";
+  }
+};
+
+const getTierBorder = (tier: AchievementTier) => {
+  switch (tier) {
+    case "bronze": return "border-[#CD7F32]/20 hover:border-[#CD7F32]/50";
+    case "silver": return "border-[#C0C0C0]/30 hover:border-[#C0C0C0]/60";
+    case "gold": return "border-[#FFD700]/30 hover:border-[#FFD700]/60";
+    case "platinum": return "border-[#E5E4E2]/40 hover:border-[#E5E4E2]/70 shadow-[0_0_8px_rgba(229,228,226,0.3)]";
+    default: return "border-border hover:border-primary/50";
+  }
+};
+
 const iconMap: Record<string, React.ReactNode> = {
-  medal: <Medal className="w-5 h-5" />,
-  trophy: <Trophy className="w-5 h-5" />,
-  zap: <Zap className="w-5 h-5" />,
-  target: <Target className="w-5 h-5" />,
-  gem: <Gem className="w-5 h-5" />,
-  flame: <Flame className="w-5 h-5" />
+  "sprout": <Sprout className="w-4 h-4" />,
+  "sparkles": <Sparkles className="w-4 h-4" />,
+  "target": <Target className="w-4 h-4" />,
+  "handshake": <Handshake className="w-4 h-4" />,
+  "medal": <Medal className="w-4 h-4" />,
+  "crown": <Crown className="w-4 h-4" />,
+  "star": <Star className="w-4 h-4" />,
+  "shield": <Shield className="w-4 h-4" />,
+  "zap": <Zap className="w-4 h-4" />,
+  "bird": <Bird className="w-4 h-4" />,
+  "clock": <Clock className="w-4 h-4" />,
+  "hourglass": <Hourglass className="w-4 h-4" />,
+  "scale": <Scale className="w-4 h-4" />,
+  "palette": <Palette className="w-4 h-4" />,
+  "puzzle": <Puzzle className="w-4 h-4" />,
+  "badge-check": <BadgeCheck className="w-4 h-4" />,
+  "heart-handshake": <HeartHandshake className="w-4 h-4" />,
+  "megaphone": <Megaphone className="w-4 h-4" />,
+  "calendar-days": <CalendarDays className="w-4 h-4" />,
+  "cake": <Cake className="w-4 h-4" />
 };
 
 export default function AchievementsGrid({ user }: AchievementsGridProps) {
-  const achievements = user.achievements || [];
+  // Parse user achievements
+  // If it's the old array format, map to string ids. If it's Record, get the true keys.
+  let earnedIds: string[] = [];
+  
+  if (Array.isArray(user.achievements)) {
+    // Legacy support for when it was an array of objects
+    if (user.achievements.length > 0 && typeof user.achievements[0] === 'object') {
+      earnedIds = (user.achievements as any[]).map(a => a.id);
+    } else {
+      earnedIds = user.achievements as string[];
+    }
+  } else if (user.achievements && typeof user.achievements === 'object') {
+    earnedIds = Object.keys(user.achievements).filter(k => user.achievements![k]);
+  }
 
-  if (achievements.length === 0) {
+  // Map earned IDs to full definitions and filter out invalid ones
+  const earnedBadges = earnedIds
+    .map(id => ACHIEVEMENTS[id])
+    .filter(Boolean);
+
+  if (earnedBadges.length === 0) {
     return null;
   }
 
   return (
     <div className="bg-surface border border-border p-6 rounded-[var(--radius-card)] shadow-subtle">
-      <h3 className="text-sm font-bold text-heading uppercase tracking-wider mb-4">Achievements</h3>
+      <h3 className="text-sm font-bold text-heading uppercase tracking-wider mb-4 flex items-center gap-2">
+        <Trophy className="w-4 h-4 text-primary" />
+        Achievements
+      </h3>
       
-      <div className="flex flex-wrap gap-3">
-        {achievements.map((achievement) => (
+      <div className="flex flex-wrap gap-2">
+        {earnedBadges.map((badge) => (
           <div 
-            key={achievement.id}
-            className="flex items-center gap-2 bg-background border border-border px-3 py-1.5 rounded-full"
-            title={`Earned on ${new Date(achievement.earnedAt).toLocaleDateString()}`}
+            key={badge.id}
+            className={`flex items-center gap-2 bg-surface-secondary border px-3 py-1.5 rounded-full transition-all cursor-help group relative ${getTierBorder(badge.tier)}`}
           >
-            <span className="text-primary">
-              {iconMap[achievement.icon] || <Medal className="w-5 h-5" />}
+            <span className={getTierColor(badge.tier)}>
+              {iconMap[badge.iconName] || <Medal className="w-4 h-4" />}
             </span>
-            <span className="text-sm font-medium text-heading">{achievement.title}</span>
+            <span className="text-xs font-bold text-heading">{badge.title}</span>
+            
+            {/* Tooltip */}
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[200px] opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
+              <div className="bg-heading text-surface text-xs p-2 rounded-md shadow-lg text-center">
+                <p className="font-bold mb-0.5">{badge.title}</p>
+                <p className="text-[10px] text-surface/80">{badge.description}</p>
+                {badge.tier !== "none" && (
+                  <p className={`text-[9px] uppercase tracking-wider mt-1 font-bold ${getTierColor(badge.tier)}`}>
+                    {badge.tier} Tier
+                  </p>
+                )}
+              </div>
+              {/* Arrow */}
+              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-heading" />
+            </div>
           </div>
         ))}
       </div>

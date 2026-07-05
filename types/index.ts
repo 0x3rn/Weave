@@ -11,11 +11,12 @@ export interface UserStats {
   repeatCollaborations: number;
 }
 
+// Deprecated: We now use Record<string, boolean> directly on the user object
 export interface UserAchievement {
   id: string;
   title: string;
-  icon: string; // e.g. emoji or icon name
-  earnedAt: string; // ISO string
+  icon: string;
+  earnedAt: string;
 }
 
 export interface UserSkill {
@@ -47,7 +48,7 @@ export interface User {
   
   stats: UserStats;
   trustScore: number; // 0-100
-  achievements: UserAchievement[];
+  achievements?: Record<string, boolean> | UserAchievement[]; // Support both for migration
   isVerified: boolean;
   
   profileCompletion: number; // 0-100

@@ -2,7 +2,7 @@
 
 import { User } from "@/types";
 import { formatDistanceToNow, format } from "date-fns";
-import { BadgeCheck, MapPin, Globe, Calendar, Clock, Star, Zap, Activity, MessageSquare, Plus } from "lucide-react";
+import { BadgeCheck, MapPin, Globe, Calendar, Clock, Star, Zap, Activity, MessageSquare, Plus, Share2, QrCode, Link2, UserPlus } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -92,6 +92,26 @@ export default function HeroSection({ user, isOwner }: HeroSectionProps) {
               </button>
             </>
           )}
+
+          {/* Social / Sharing (Coming Soon Placeholders) */}
+          <div className="flex items-center gap-2 mt-2">
+             <button className="flex-1 py-2 bg-surface hover:bg-surface-secondary text-muted text-xs font-bold rounded-[var(--radius-button)] transition-colors border border-border flex items-center justify-center gap-2 cursor-not-allowed" title="Coming soon">
+               <UserPlus className="w-3.5 h-3.5" /> Follow
+             </button>
+             <button className="w-10 h-10 bg-surface hover:bg-surface-secondary text-muted rounded-[var(--radius-button)] transition-colors border border-border flex items-center justify-center flex-shrink-0 cursor-not-allowed" title="Share (Coming soon)">
+               <Share2 className="w-4 h-4" />
+             </button>
+             <button className="w-10 h-10 bg-surface hover:bg-surface-secondary text-muted rounded-[var(--radius-button)] transition-colors border border-border flex items-center justify-center flex-shrink-0 cursor-not-allowed" title="QR Code (Coming soon)">
+               <QrCode className="w-4 h-4" />
+             </button>
+          </div>
+          <div className="w-full py-2 px-3 bg-surface border border-border rounded-[var(--radius-button)] flex items-center justify-between mt-1 opacity-70">
+             <div className="flex items-center gap-2 overflow-hidden">
+               <Link2 className="w-3.5 h-3.5 text-muted flex-shrink-0" />
+               <span className="text-xs text-muted truncate">weave.network/u/{user.username}</span>
+             </div>
+             <span className="text-[10px] font-bold uppercase tracking-wider text-muted bg-surface-secondary px-1.5 py-0.5 rounded">Soon</span>
+          </div>
         </div>
       </div>
 

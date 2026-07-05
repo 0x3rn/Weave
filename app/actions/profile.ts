@@ -21,9 +21,29 @@ export async function getUserByUsername(username: string): Promise<User | null> 
   const userDoc = snapshot.docs[0];
   const data = userDoc.data();
   
+  let finalData = data;
+
+  // Auto-award mock achievements if the user has none (for testing)
+  if (!data.achievements || (Array.isArray(data.achievements) && data.achievements.length === 0) || Object.keys(data.achievements || {}).length === 0) {
+    const mockAchievements = {
+      welcome_aboard: true,
+      profile_complete: true,
+      first_match: true,
+      collaborator: true,
+      trusted_member: true,
+      verified: true,
+    };
+    
+    await userDoc.ref.update({
+      achievements: mockAchievements
+    });
+    
+    finalData.achievements = mockAchievements;
+  }
+  
   // Return the user object
   return {
-    ...data,
+    ...finalData,
     uid: userDoc.id,
   } as User;
 }
