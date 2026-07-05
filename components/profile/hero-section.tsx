@@ -157,7 +157,9 @@ export default function HeroSection({ user, isOwner, currentUserId }: HeroSectio
       <div className="grid grid-cols-2 gap-4">
         <div className="bg-background border border-border p-4 rounded-[var(--radius-card)] flex flex-col items-center justify-center text-center">
           <div className="flex items-center gap-1 mb-1">
-            <span className="font-bold text-heading text-lg">{stats.rating.toFixed(1)}</span>
+            <span className="font-bold text-heading text-lg">
+              {stats.exchangesCompleted > 0 ? stats.rating.toFixed(1) : "N/A"}
+            </span>
           </div>
           <span className="text-xs text-muted">Rating</span>
         </div>
@@ -178,7 +180,9 @@ export default function HeroSection({ user, isOwner, currentUserId }: HeroSectio
 
         <div className="bg-background border border-border p-4 rounded-[var(--radius-card)] flex flex-col items-center justify-center text-center">
           <div className="flex items-center gap-1 mb-1">
-            <span className="font-bold text-heading text-lg">{stats.completionRate}%</span>
+            <span className="font-bold text-heading text-lg">
+              {stats.exchangesCompleted > 0 ? `${stats.completionRate}%` : "N/A"}
+            </span>
           </div>
           <span className="text-xs text-muted">Completion Rate</span>
         </div>

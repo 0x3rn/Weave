@@ -1,27 +1,38 @@
 "use client";
 
-import { User } from "@/types";
+import { User, PortfolioItem } from "@/types";
 import { Shield, Info, CheckCircle2 } from "lucide-react";
 
 interface TrustScoreCardProps {
   user: User;
+  portfolio: PortfolioItem[];
 }
 
-export default function TrustScoreCard({ user }: TrustScoreCardProps) {
+export default function TrustScoreCard({ user, portfolio }: TrustScoreCardProps) {
+  // Calculate Profile Completion Dynamically
+  const calculateProfileCompletion = () => {
+    let complete = 0;
+    if (user.photoURL || (user as any).photoUrl) complete += 15;
+    if (user.headline) complete += 10;
+    if (user.bio && user.bio.length > 10) complete += 20;
+    if (user.country && user.timeZone) complete += 10;
+    if (user.skillsOffered && user.skillsOffered.length > 0) complete += 15;
+    if (user.skillsLookingFor && user.skillsLookingFor.length > 0) complete += 10;
+    if (portfolio && portfolio.length > 0) complete += 20;
+    return complete;
+  };
+  const dynamicProfileCompletion = calculateProfileCompletion();
+
   // Calculate trust score dynamically
   const calculateTrustScore = () => {
     let score = 0;
     
-    // 1. Identity & Verification (40 points)
+    // 1. Identity & Verification (30 points)
     if (user.isVerified) score += 30;
-    if (user.photoURL || (user as any).photoUrl) score += 10;
     
-    // 2. Profile Depth (40 points)
-    if (user.bio && user.bio.length > 10) score += 15;
-    if (user.headline) score += 5;
-    if (user.skillsOffered && user.skillsOffered.length > 0) score += 10;
-    if (user.skillsLookingFor && user.skillsLookingFor.length > 0) score += 5;
-    if (user.country && user.timeZone) score += 5;
+    // 2. Profile Depth (based directly on the dynamic profile completion) (50 points max)
+    // 100% profile completion = 50 trust points. 
+    score += Math.floor(dynamicProfileCompletion / 2);
     
     // 3. Track Record (20 points)
     const stats = user.stats || { exchangesCompleted: 0, rating: 0, reviewsCount: 0 };
@@ -104,7 +115,9 @@ export default function TrustScoreCard({ user }: TrustScoreCardProps) {
             <CheckCircle2 className="w-4 h-4 text-muted" />
             Completion Rate
           </span>
-          <span className="font-bold text-heading">{stats.completionRate}%</span>
+          <span className="font-bold text-heading">
+            {stats.exchangesCompleted > 0 ? `${stats.completionRate || 0}%` : "N/A"}
+          </span>
         </div>
         
         <div className="flex items-center justify-between text-sm">
@@ -122,7 +135,9 @@ export default function TrustScoreCard({ user }: TrustScoreCardProps) {
             <CheckCircle2 className="w-4 h-4 text-muted" />
             Repeat Collaborations
           </span>
-          <span className="font-bold text-heading">{stats.repeatCollaborations}</span>
+          <span className="font-bold text-heading">
+            {stats.exchangesCompleted > 0 ? (stats.repeatCollaborations || 0) : "N/A"}
+          </span>
         </div>
         
         <div className="flex items-center justify-between text-sm">
@@ -130,7 +145,7 @@ export default function TrustScoreCard({ user }: TrustScoreCardProps) {
             <CheckCircle2 className="w-4 h-4 text-muted" />
             Profile Completion
           </span>
-          <span className="font-bold text-heading">{user.profileCompletion || 0}%</span>
+          <span className="font-bold text-heading">{dynamicProfileCompletion}%</span>
         </div>
       </div>
 
