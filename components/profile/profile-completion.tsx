@@ -73,53 +73,36 @@ export default function ProfileCompletion({ user, portfolio }: ProfileCompletion
     return null;
   }
 
-  return (
-    <div className="bg-primary/5 border border-primary/20 rounded-[var(--radius-card)] overflow-hidden">
-      <div className="p-4 border-b border-primary/10">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="font-bold text-heading flex items-center gap-2">
-            <Trophy className="w-4 h-4 text-primary" />
-            Profile Completion
-          </h3>
-          <span className="font-bold text-primary">{completionPercentage}%</span>
-        </div>
-        
-        {/* Progress Bar */}
-        <div className="w-full h-2 bg-primary/10 rounded-full overflow-hidden">
-          <div 
-            className="h-full bg-primary transition-all duration-1000 ease-out rounded-full"
-            style={{ width: `${completionPercentage}%` }}
-          />
-        </div>
-        
-        <p className="text-xs text-muted mt-2">
-          Profiles that are 100% complete receive 3x more exchange requests!
-        </p>
-      </div>
+  // Find next step
+  const nextStep = steps.find(s => !s.completed);
 
-      <div className="p-2 space-y-1">
-        {steps.map(step => (
-          <Link 
-            key={step.id} 
-            href={step.href}
-            className={`flex items-center justify-between p-2 rounded-md hover:bg-surface-secondary transition-colors ${step.completed ? "opacity-50" : ""}`}
-          >
-            <div className="flex items-center gap-2">
-              {step.completed ? (
-                <CheckCircle2 className="w-4 h-4 text-success" />
-              ) : (
-                <Circle className="w-4 h-4 text-muted" />
-              )}
-              <span className={`text-sm ${step.completed ? "text-muted line-through" : "text-heading font-medium"}`}>
-                {step.label}
-              </span>
-            </div>
-            {!step.completed && (
-              <span className="text-[10px] uppercase font-bold text-primary">+{step.weight}%</span>
-            )}
-          </Link>
-        ))}
+  return (
+    <div className="bg-surface border border-border rounded-[var(--radius-card)] p-4 shadow-subtle">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="font-bold text-heading text-sm">Profile Completion</h3>
+        <span className="font-bold text-primary text-sm">{completionPercentage}%</span>
       </div>
+      
+      <div className="w-full h-1.5 bg-surface-secondary rounded-full overflow-hidden mb-3">
+        <div 
+          className="h-full bg-primary transition-all duration-1000 ease-out"
+          style={{ width: `${completionPercentage}%` }}
+        />
+      </div>
+      
+      {nextStep && (
+        <div className="flex flex-col gap-2">
+          <p className="text-xs text-muted">
+            Next: <span className="font-semibold text-heading">{nextStep.label}</span>
+          </p>
+          <Link 
+            href={nextStep.href}
+            className="w-full py-1.5 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold rounded-[var(--radius-button)] transition-colors text-center border border-primary/20"
+          >
+            Complete Now (+{nextStep.weight}%)
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

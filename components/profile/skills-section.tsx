@@ -6,9 +6,10 @@ import { SkillIcon } from "./skill-icon";
 
 interface SkillsSectionProps {
   user: User;
+  isOwner?: boolean;
 }
 
-export default function SkillsSection({ user }: SkillsSectionProps) {
+export default function SkillsSection({ user, isOwner }: SkillsSectionProps) {
   // Normalize skillsOffered (could be strings or UserSkill objects)
   const skillsOffered: UserSkill[] = (user.skillsOffered || []).map(skill => {
     if (typeof skill === "string") {
@@ -49,12 +50,15 @@ export default function SkillsSection({ user }: SkillsSectionProps) {
                     )}
                   </div>
                 ) : null}
-                <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50">
-                  <button className="flex items-center gap-1.5 text-[11px] font-bold text-muted hover:text-primary transition-colors cursor-not-allowed opacity-60" title="Endorsements coming soon">
-                    <ThumbsUp className="w-3 h-3" /> Endorse
-                  </button>
-                  <span className="text-[9px] uppercase font-bold text-muted bg-surface-secondary px-1.5 py-0.5 rounded">Soon</span>
-                </div>
+                {/* Only show endorse option to visitors, not the owner */}
+                {!isOwner && (
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50">
+                    <button className="flex items-center gap-1.5 text-[11px] font-bold text-muted hover:text-primary transition-colors cursor-not-allowed opacity-60" title="Endorsements coming soon">
+                      <ThumbsUp className="w-3 h-3" /> Endorse
+                    </button>
+                    <span className="text-[9px] uppercase font-bold text-muted bg-surface-secondary px-1.5 py-0.5 rounded">Soon</span>
+                  </div>
+                )}
               </div>
             ))}
           </div>

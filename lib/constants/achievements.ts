@@ -25,7 +25,7 @@ export const ACHIEVEMENTS: Record<string, AchievementDefinition> = {
     description: "Reach 100% profile completion.",
     category: "Getting Started",
     tier: "none",
-    iconName: "sparkles"
+    iconName: "user-check"
   },
   first_match: {
     id: "first_match",

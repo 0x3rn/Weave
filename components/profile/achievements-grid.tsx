@@ -5,7 +5,7 @@ import { ACHIEVEMENTS, AchievementTier } from "@/lib/constants/achievements";
 import { 
   Sprout, Sparkles, Target, Handshake, Medal, Crown, Star, 
   Shield, Zap, Bird, Clock, Hourglass, Scale, Palette, Puzzle, 
-  BadgeCheck, HeartHandshake, Megaphone, CalendarDays, Cake, Trophy
+  BadgeCheck, HeartHandshake, Megaphone, CalendarDays, Cake, Trophy, UserCheck
 } from "lucide-react";
 
 interface AchievementsGridProps {
@@ -22,19 +22,10 @@ const getTierColor = (tier: AchievementTier) => {
   }
 };
 
-const getTierBorder = (tier: AchievementTier) => {
-  switch (tier) {
-    case "bronze": return "border-[#CD7F32]/20 hover:border-[#CD7F32]/50";
-    case "silver": return "border-[#C0C0C0]/30 hover:border-[#C0C0C0]/60";
-    case "gold": return "border-[#FFD700]/30 hover:border-[#FFD700]/60";
-    case "platinum": return "border-[#E5E4E2]/40 hover:border-[#E5E4E2]/70 shadow-[0_0_8px_rgba(229,228,226,0.3)]";
-    default: return "border-border hover:border-primary/50";
-  }
-};
-
 const iconMap: Record<string, React.ReactNode> = {
   "sprout": <Sprout className="w-4 h-4" />,
   "sparkles": <Sparkles className="w-4 h-4" />,
+  "user-check": <UserCheck className="w-4 h-4" />,
   "target": <Target className="w-4 h-4" />,
   "handshake": <Handshake className="w-4 h-4" />,
   "medal": <Medal className="w-4 h-4" />,
@@ -91,7 +82,7 @@ export default function AchievementsGrid({ user }: AchievementsGridProps) {
         {earnedBadges.map((badge) => (
           <div 
             key={badge.id}
-            className={`flex items-center gap-2 bg-surface-secondary border px-3 py-1.5 rounded-full transition-all cursor-help group relative ${getTierBorder(badge.tier)}`}
+            className="flex items-center gap-2 bg-background border border-border hover:border-primary/50 px-3 py-1.5 rounded-full transition-all cursor-help group relative"
           >
             <span className={getTierColor(badge.tier)}>
               {iconMap[badge.iconName] || <Medal className="w-4 h-4" />}

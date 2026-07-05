@@ -64,6 +64,7 @@ export default async function UserProfilePage({ params }: { params: Promise<{ us
           {/* LEFT SIDEBAR (Hero + Stats + Trust Score + Calendar) */}
           <div className="lg:col-span-4 space-y-6">
             <HeroSection user={user} isOwner={isOwner} />
+            {isOwner && <ProfileCompletion user={user} portfolio={portfolio} />}
             <TrustScoreCard user={user} />
             <AvailabilityCalendar user={user} />
             <AchievementsGrid user={user} />
@@ -71,9 +72,8 @@ export default async function UserProfilePage({ params }: { params: Promise<{ us
 
           {/* MAIN CONTENT (About + Skills + Portfolio + Reviews) */}
           <div className="lg:col-span-8 space-y-12">
-            {isOwner && <ProfileCompletion user={user} portfolio={portfolio} />}
             <AboutSection user={user} />
-            <SkillsSection user={user} />
+            <SkillsSection user={user} isOwner={isOwner} />
             <PortfolioGrid portfolio={portfolio} isOwner={isOwner} />
             <RecentExchanges exchanges={exchanges} isOwner={isOwner} />
             <ReviewsSection reviews={reviews} isOwner={isOwner} />

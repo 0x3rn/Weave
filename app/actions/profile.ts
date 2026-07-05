@@ -23,23 +23,37 @@ export async function getUserByUsername(username: string): Promise<User | null> 
   
   let finalData = data;
 
-  // Auto-award mock achievements if the user has none (for testing)
-  if (!data.achievements || (Array.isArray(data.achievements) && data.achievements.length === 0) || Object.keys(data.achievements || {}).length === 0) {
-    const mockAchievements = {
-      welcome_aboard: true,
-      profile_complete: true,
-      first_match: true,
-      collaborator: true,
-      trusted_member: true,
-      verified: true,
-    };
-    
-    await userDoc.ref.update({
-      achievements: mockAchievements
-    });
-    
-    finalData.achievements = mockAchievements;
-  }
+  // Auto-award mock achievements (TEMPORARY: force all badges so user can see them)
+  const mockAchievements = {
+    welcome_aboard: true,
+    profile_complete: true,
+    first_match: true,
+    first_exchange: true,
+    collaborator: true,
+    power_collaborator: true,
+    exchange_expert: true,
+    exchange_master: true,
+    top_rated: true,
+    trusted_member: true,
+    fast_responder: true,
+    dispute_free: true,
+    hour_earner: true,
+    time_investor: true,
+    balanced_contributor: true,
+    multi_talented: true,
+    specialist: true,
+    verified: true,
+    helpful_member: true,
+    ambassador: true,
+    six_month_member: true,
+    one_year_member: true,
+  };
+  
+  await userDoc.ref.update({
+    achievements: mockAchievements
+  });
+  
+  finalData.achievements = mockAchievements;
   
   // Return the user object
   return {
