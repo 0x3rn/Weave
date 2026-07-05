@@ -1,6 +1,6 @@
 "use client";
 
-import { User } from "@/types";
+import { User, PortfolioItem } from "@/types";
 import { ACHIEVEMENTS, AchievementTier } from "@/lib/constants/achievements";
 import { 
   Sprout, Sparkles, Target, Handshake, Medal, Crown, Star, 
@@ -10,6 +10,7 @@ import {
 
 interface AchievementsGridProps {
   user: User;
+  portfolio?: PortfolioItem[];
 }
 
 const getTierColor = (tier: AchievementTier) => {
@@ -46,22 +47,71 @@ const iconMap: Record<string, React.ReactNode> = {
   "cake": <Cake className="w-4 h-4" />
 };
 
-export default function AchievementsGrid({ user }: AchievementsGridProps) {
-  // Parse user achievements
-  // If it's the old array format, map to string ids. If it's Record, get the true keys.
-  let earnedIds: string[] = [];
-  
-  if (Array.isArray(user.achievements)) {
-    // Legacy support for when it was an array of objects
-    if (user.achievements.length > 0 && typeof user.achievements[0] === 'object') {
-      earnedIds = (user.achievements as any[]).map(a => a.id);
-    } else {
-      earnedIds = user.achievements as unknown as string[];
-    }
-  } else if (user.achievements && typeof user.achievements === 'object') {
-    const achs = user.achievements as Record<string, boolean>;
-    earnedIds = Object.keys(achs).filter(k => achs[k]);
-  }
+export default function AchievementsGrid({ user, portfolio = [] }: AchievementsGridProps) {
+  // Dynamically calculate profile completion to check for "Profile Complete" badge
+  const calculateProfileCompletion = () => {
+    let complete = 0;
+    if (user.photoURL || (user as any).photoUrl) complete += 15;
+    if (user.headline) complete += 10;
+    if (user.bio && user.bio.length > 10) complete += 20;
+    if (user.country && user.timeZone) complete += 10;
+    if (user.skillsOffered && user.skillsOffered.length > 0) complete += 15;
+    if (user.skillsLookingFor && user.skillsLookingFor.length > 0) complete += 10;
+    if (portfolio && portfolio.length > 0) complete += 20;
+    return complete;
+  };
+
+  const dynamicProfileCompletion = calculateProfileCompletion();
+  const stats = user.stats || {
+    rating: 0,
+    reviewsCount: 0,
+    exchangesCompleted: 0,
+    skillHoursEarned: 0,
+    skillHoursSpent: 0,
+    responseTimeHours: 0,
+    repeatCollaborations: 0,
+    disputesLost: 0,
+    reportsAgainst: 0
+  };
+
+  // Calculate dynamic achievements based strictly on real-time data
+  const earnedIds: string[] = [];
+
+  // Getting Started
+  earnedIds.push("welcome_aboard"); // everyone who is signed up gets this
+  if (dynamicProfileCompletion >= 100) earnedIds.push("profile_complete");
+  if (stats.exchangesCompleted > 0) earnedIds.push("first_exchange"); // First match and exchange can be synonymous for MVP
+
+  // Collaboration
+  if (stats.exchangesCompleted >= 5) earnedIds.push("collaborator");
+  if (stats.exchangesCompleted >= 25) earnedIds.push("power_collaborator");
+  if (stats.exchangesCompleted >= 50) earnedIds.push("exchange_expert");
+  if (stats.exchangesCompleted >= 100) earnedIds.push("exchange_master");
+
+  // Reputation
+  if (stats.rating >= 4.8 && stats.reviewsCount >= 20) earnedIds.push("top_rated");
+  if (stats.responseTimeHours > 0 && stats.responseTimeHours <= 2) earnedIds.push("fast_responder");
+  // If they have 100+ exchanges and 0 lost disputes, they are dispute free
+  if (stats.exchangesCompleted >= 100 && (stats.disputesLost || 0) === 0) earnedIds.push("dispute_free");
+
+  // Economy
+  if (stats.skillHoursEarned >= 50) earnedIds.push("hour_earner");
+  if (stats.skillHoursEarned >= 250) earnedIds.push("time_investor");
+  if (stats.skillHoursEarned >= 100 && stats.skillHoursSpent >= 100) earnedIds.push("balanced_contributor");
+
+  // Expertise
+  const skillsOfferedCount = user.skillsOffered ? user.skillsOffered.length : 0;
+  if (skillsOfferedCount >= 5) earnedIds.push("multi_talented");
+
+  // Community
+  if (user.isVerified) earnedIds.push("verified");
+
+  // Time-based
+  const userCreatedAt = new Date(user.createdAt);
+  const now = new Date();
+  const monthsDiff = (now.getFullYear() - userCreatedAt.getFullYear()) * 12 + (now.getMonth() - userCreatedAt.getMonth());
+  if (monthsDiff >= 6) earnedIds.push("six_month_member");
+  if (monthsDiff >= 12) earnedIds.push("one_year_member");
 
   // Map earned IDs to full definitions and filter out invalid ones
   const earnedBadges = earnedIds

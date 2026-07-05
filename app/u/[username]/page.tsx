@@ -102,7 +102,7 @@ export default async function UserProfilePage({ params }: { params: Promise<{ us
               <AvailabilityCalendar user={user} currentUserId={currentUserId} />
             </div>
             <div className="order-9">
-              <AchievementsGrid user={user} />
+              <AchievementsGrid user={user} portfolio={portfolio} />
             </div>
           </div>
 
