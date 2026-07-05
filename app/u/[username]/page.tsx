@@ -109,7 +109,7 @@ export default async function UserProfilePage({ params }: { params: Promise<{ us
           {/* MAIN CONTENT (About + Skills + Portfolio + Reviews) */}
           <div className="contents lg:block lg:col-span-8 lg:space-y-12">
             <div className="order-4">
-              <AboutSection user={user} />
+              <AboutSection user={user} isOwner={isOwner} />
             </div>
             <div className="order-5">
               <SkillsSection user={user} isOwner={isOwner} />

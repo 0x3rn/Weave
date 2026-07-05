@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/firebase-admin-auth";
 import { db } from "@/lib/firebase-admin";
+import DashboardShell from "@/components/dashboard/dashboard-shell";
 
 export default async function DashboardLayout({
   children,
@@ -47,5 +48,5 @@ export default async function DashboardLayout({
     redirect(targetRedirect);
   }
 
-  return <div className="min-h-screen bg-background">{children}</div>;
+  return <DashboardShell>{children}</DashboardShell>;
 }

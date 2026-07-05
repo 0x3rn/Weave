@@ -41,38 +41,36 @@ export default function DashboardClient({ initialData }: { initialData: Dashboar
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-in fade-in duration-500">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-in fade-in duration-500">
+      
+      {/* Welcome Section */}
+      <WelcomeHeader 
+        user={user} 
+        activeExchangesCount={activeExchanges.length} 
+        matchesCount={matches.length} 
+      />
+
+      <div className="mt-8 flex flex-col lg:grid lg:grid-cols-12 gap-8 items-start">
         
-        {/* Welcome Section */}
-        <WelcomeHeader 
-          user={user} 
-          activeExchangesCount={activeExchanges.length} 
-          matchesCount={matches.length} 
-        />
-
-        <div className="mt-8 flex flex-col xl:grid xl:grid-cols-12 gap-8 items-start">
-          
-          {/* Main Content Area (Left) */}
-          <div className="xl:col-span-8 flex flex-col gap-8 w-full">
-            <QuickStats user={user} pendingRequestsCount={pendingRequestsCount} activeExchangesCount={activeExchanges.length} />
-            <ActiveExchanges exchanges={activeExchanges} currentUserId={user.uid} />
-            <MarketplaceMatches matches={matches} />
-            <MyRequests requests={myRequests} currentUserId={user.uid} />
-          </div>
-
-          {/* Sidebar Area (Right) */}
-          <div className="xl:col-span-4 flex flex-col gap-8 w-full">
-            <QuickActions />
-            <TasksReminders tasks={tasks} />
-            <LedgerSnapshot ledger={ledgerSnapshot} />
-            <PerformanceInsights stats={user.stats} />
-            <RecentMessages />
-            <CommunityFeed />
-            <LearningCenter />
-          </div>
-
+        {/* Main Content Area (Left) */}
+        <div className="lg:col-span-8 flex flex-col gap-8 w-full">
+          <QuickStats user={user} pendingRequestsCount={pendingRequestsCount} activeExchangesCount={activeExchanges.length} />
+          <ActiveExchanges exchanges={activeExchanges} currentUserId={user.uid} />
+          <MarketplaceMatches matches={matches} />
+          <MyRequests requests={myRequests} currentUserId={user.uid} />
         </div>
+
+        {/* Sidebar Area (Right) */}
+        <div className="lg:col-span-4 flex flex-col gap-8 w-full">
+          <TasksReminders tasks={tasks} />
+          <LedgerSnapshot ledger={ledgerSnapshot} />
+          <CommunityFeed />
+          <LearningCenter />
+          <PerformanceInsights stats={user.stats} />
+          <RecentMessages />
+          <QuickActions />
+        </div>
+
       </div>
     </div>
   );

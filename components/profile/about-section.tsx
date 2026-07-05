@@ -5,9 +5,10 @@ import { Bot } from "lucide-react";
 
 interface AboutSectionProps {
   user: User;
+  isOwner?: boolean;
 }
 
-export default function AboutSection({ user }: AboutSectionProps) {
+export default function AboutSection({ user, isOwner }: AboutSectionProps) {
   const languages = user.languages || ["English"];
   const experience = user.experienceLevel || "Not specified";
   const availability = user.availability || "Not specified";
@@ -25,7 +26,9 @@ export default function AboutSection({ user }: AboutSectionProps) {
             <span className="text-[10px] uppercase font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">Coming Soon</span>
           </div>
           <p className="text-xs text-muted leading-relaxed">
-            Our AI will automatically analyze {user.fullName.split(' ')[0]}'s portfolio, reviews, and completed exchanges to generate a quick, trustworthy summary of their expertise.
+            {isOwner 
+              ? `Our AI will automatically analyze your portfolio, reviews, and completed exchanges to generate a quick, trustworthy summary of your expertise.`
+              : `Our AI will automatically analyze ${user.fullName.split(' ')[0]}'s portfolio, reviews, and completed exchanges to generate a quick, trustworthy summary of their expertise.`}
           </p>
         </div>
       </div>
@@ -35,7 +38,9 @@ export default function AboutSection({ user }: AboutSectionProps) {
           {user.bio}
         </p>
       ) : (
-        <p className="text-muted italic mb-8">This user hasn't written a bio yet.</p>
+        <p className="text-muted italic mb-8">
+          {isOwner ? "You haven't written a bio yet." : "This user hasn't written a bio yet."}
+        </p>
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
