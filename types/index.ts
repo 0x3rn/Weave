@@ -42,6 +42,7 @@ export interface User {
   languages?: string[];
   experienceLevel?: string;
   availability?: string; // e.g., "10-20 hours/week"
+  schedule?: UserSchedule;
   
   skillsOffered: string[] | UserSkill[];
   skillsLookingFor: string[];
@@ -86,5 +87,58 @@ export interface Review {
   rating: number; // 1-5
   comment: string;
   isPositive: boolean;
+  createdAt: string; // ISO string
+}
+
+export interface DaySchedule {
+  active: boolean;
+  start: string; // "09:00"
+  end: string;   // "17:00"
+}
+
+export interface UserSchedule {
+  timezone: string;
+  weeklySchedule: {
+    monday: DaySchedule;
+    tuesday: DaySchedule;
+    wednesday: DaySchedule;
+    thursday: DaySchedule;
+    friday: DaySchedule;
+    saturday: DaySchedule;
+    sunday: DaySchedule;
+  };
+  blockedDates: string[]; // ["2026-10-14"]
+}
+
+export type ExchangeRequestStatus = "pending" | "reviewing" | "accepted" | "rejected";
+
+export interface ExchangeRequest {
+  id: string;
+  senderId: string; // The visitor requesting the exchange
+  receiverId: string; // The profile owner
+  skillNeeded: string; // Name of the skill from receiver's offered skills
+  dateOptions: string[]; // ["2026-10-14", "2026-10-15"]
+  
+  // Either specific time or total hours needed
+  timeNeeded?: string; // "14:00"
+  hoursNeeded?: number; // e.g., 2
+  
+  message?: string;
+  status: ExchangeRequestStatus;
+  createdAt: string; // ISO string
+  updatedAt: string; // ISO string
+}
+
+export type NotificationType = "exchange_request" | "request_update" | "system";
+
+export interface Notification {
+  id: string;
+  userId: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  isRead: boolean;
+  link?: string;
+  relatedId?: string; // e.g., requestId
   createdAt: string; // ISO string
 }

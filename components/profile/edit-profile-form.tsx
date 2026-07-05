@@ -2,13 +2,14 @@
 
 import { useState, useRef, useCallback } from "react";
 import { User, UserSkill } from "@/types";
-import { saveProfileSettings } from "@/app/actions/user";
+import { saveProfileSettings, updateUserSchedule } from "@/app/actions/user";
 import { useRouter } from "next/navigation";
 import { Loader2, Camera, Check, X, Lock } from "lucide-react";
 import Cropper from "react-easy-crop";
 import { getCroppedImg } from "@/lib/crop-image";
 import Image from "next/image";
 import Select from "react-select";
+import ScheduleSettings from "./schedule-settings";
 
 interface EditProfileFormProps {
   user: User;
@@ -33,6 +34,7 @@ export default function EditProfileForm({ user }: EditProfileFormProps) {
 
   // Dropdown states
   const [selectedAvailability, setSelectedAvailability] = useState(user.availability || "");
+  const [schedule, setSchedule] = useState(user.schedule);
   
   // Pre-process skills to comma-separated strings
   const initialSkillsOffered = (user.skillsOffered || []).map(skill => {
@@ -101,6 +103,11 @@ export default function EditProfileForm({ user }: EditProfileFormProps) {
       }
 
       const result = await saveProfileSettings(formData);
+      
+      if (result.success && schedule) {
+         // Also update the complex schedule object
+         await updateUserSchedule(user.uid, schedule);
+      }
       
       if (result.error) {
         throw new Error(result.error);
@@ -313,6 +320,12 @@ export default function EditProfileForm({ user }: EditProfileFormProps) {
                 }}
               />
             </div>
+          </section>
+
+          {/* Section: Schedule & Availability */}
+          <section className="bg-surface border border-border rounded-[var(--radius-card)] p-6 shadow-subtle space-y-5">
+            <h2 className="text-xl font-bold text-heading border-b border-border pb-2">Schedule & Availability</h2>
+            <ScheduleSettings user={user} value={schedule} onChange={setSchedule} />
           </section>
 
           {/* Section: Skills */}

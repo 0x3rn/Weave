@@ -171,6 +171,20 @@ export async function saveProfileSettings(formData: FormData) {
     return { success: true };
   } catch (error: any) {
     console.error("Error saving profile settings:", error);
-    return { error: error.message || "Failed to save profile." };
+    return { success: false, error: error.message };
+  }
+}
+
+export async function updateUserSchedule(uid: string, schedule: any) {
+  try {
+    if (!db) throw new Error("Database not initialized");
+    const userRef = db.collection("users").doc(uid);
+    await userRef.update({
+      schedule
+    });
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error updating user schedule:", error);
+    return { success: false, error: error.message };
   }
 }
