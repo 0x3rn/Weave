@@ -1,8 +1,9 @@
 "use server";
 
-import { db } from "@/lib/firebase-admin";
+import { db, storage } from "@/lib/firebase-admin";
 import { auth } from "@/lib/firebase-admin-auth";
 import { cookies } from "next/headers";
+import { revalidatePath } from "next/cache";
 
 /**
  * Secures the current session and returns the decoded claims (including uid).
@@ -97,5 +98,83 @@ export async function checkUsernameAvailability(username: string): Promise<{ ava
     return { available: true };
   } catch (e: any) {
     return { available: false, error: e.message };
+  }
+}
+
+/**
+ * Handles the profile edit form submission, including uploading a new profile picture.
+ */
+export async function saveProfileSettings(formData: FormData) {
+  try {
+    const claims = await requireAuth();
+    const userId = claims.uid;
+
+    if (!db) throw new Error("Firebase Admin not initialized");
+
+    const fullName = formData.get("fullName") as string;
+    const headline = formData.get("headline") as string;
+    const country = formData.get("country") as string;
+    const timeZone = formData.get("timeZone") as string;
+    const bio = formData.get("bio") as string;
+    const availability = formData.get("availability") as string;
+    
+    // Skills
+    const skillsOfferedRaw = formData.get("skillsOffered") as string;
+    const skillsLookingForRaw = formData.get("skillsLookingFor") as string;
+    
+    const skillsOffered = skillsOfferedRaw ? skillsOfferedRaw.split(",").map(s => s.trim()).filter(s => s.length > 0) : [];
+    const skillsLookingFor = skillsLookingForRaw ? skillsLookingForRaw.split(",").map(s => s.trim()).filter(s => s.length > 0) : [];
+
+    // Image Upload
+    const imageFile = formData.get("photo") as File | null;
+    let photoURL: string | undefined = undefined;
+
+    if (imageFile && imageFile.size > 0 && storage) {
+      const bucket = storage.bucket();
+      const extension = imageFile.name.split('.').pop() || 'jpg';
+      const filename = `avatars/${userId}/${Date.now()}.${extension}`;
+      const fileRef = bucket.file(filename);
+      
+      const buffer = Buffer.from(await imageFile.arrayBuffer());
+      
+      await fileRef.save(buffer, {
+        metadata: {
+          contentType: imageFile.type,
+        },
+      });
+
+      photoURL = `https://storage.googleapis.com/${bucket.name}/${filename}`;
+    }
+
+    const updates: any = {
+      fullName,
+      headline,
+      country,
+      timeZone,
+      bio,
+      availability,
+      skillsOffered, // Overwrites UserSkill objects with strings based on MVP decision
+      skillsLookingFor
+    };
+
+    if (photoURL) {
+      updates.photoURL = photoURL;
+    }
+
+    // Update Firestore
+    await db.collection("users").doc(userId).update(updates);
+
+    // Get username to revalidate path
+    const userDoc = await db.collection("users").doc(userId).get();
+    const username = userDoc.data()?.username;
+
+    if (username) {
+      revalidatePath(`/u/${username}`);
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error saving profile settings:", error);
+    return { error: error.message || "Failed to save profile." };
   }
 }
