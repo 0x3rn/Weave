@@ -73,7 +73,7 @@ export default function AchievementsGrid({ user }: AchievementsGridProps) {
   }
 
   return (
-    <div className="bg-surface border border-border p-6 rounded-[var(--radius-card)] shadow-subtle">
+    <div className="bg-background border border-border p-6 rounded-[var(--radius-card)] shadow-subtle">
       <h3 className="text-sm font-bold text-heading uppercase tracking-wider mb-4 flex items-center gap-2">
         <Trophy className="w-4 h-4 text-primary" />
         Achievements

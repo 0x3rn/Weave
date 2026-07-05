@@ -17,7 +17,7 @@ export default function AboutSection({ user }: AboutSectionProps) {
       <h2 className="text-2xl font-bold text-heading mb-6 border-b border-border pb-2">About</h2>
       
       {/* AI Summary Placeholder */}
-      <div className="bg-primary/5 border border-primary/20 p-4 rounded-[var(--radius-card)] mb-8 flex items-start gap-3 relative overflow-hidden">
+      <div className="bg-background border border-border p-4 rounded-[var(--radius-card)] mb-8 flex items-start gap-3 relative overflow-hidden">
         <Bot className="w-5 h-5 text-primary mt-0.5 flex-shrink-0 relative z-10" />
         <div className="relative z-10">
           <div className="flex items-center gap-2 mb-1">

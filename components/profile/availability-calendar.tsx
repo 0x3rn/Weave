@@ -13,7 +13,7 @@ export default function AvailabilityCalendar({ user }: AvailabilityCalendarProps
   const dates = Array.from({ length: 35 }, (_, i) => i - 2); // Start a bit before the 1st
   
   return (
-    <div className="bg-surface border border-border rounded-[var(--radius-card)] shadow-subtle overflow-hidden">
+    <div className="bg-background border border-border rounded-[var(--radius-card)] shadow-subtle overflow-hidden">
       <div className="p-4 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
           <CalendarDays className="w-5 h-5 text-heading" />

@@ -77,24 +77,24 @@ export default async function UserProfilePage({ params }: { params: Promise<{ us
             <PortfolioGrid portfolio={portfolio} isOwner={isOwner} />
             <RecentExchanges exchanges={exchanges} isOwner={isOwner} />
             <ReviewsSection reviews={reviews} isOwner={isOwner} />
-            <SimilarProfessionals user={user} />
-            
-            {/* Footer Actions (Report/Block) */}
-            {!isOwner && (
-              <div className="pt-12 border-t border-border flex items-center justify-center gap-6 text-sm">
-                <button className="flex items-center gap-2 text-muted hover:text-error transition-colors">
-                  <Flag className="w-4 h-4" />
-                  Report User
-                </button>
-                <button className="flex items-center gap-2 text-muted hover:text-error transition-colors">
-                  <ShieldOff className="w-4 h-4" />
-                  Block User
-                </button>
-              </div>
-            )}
+            {!isOwner && <SimilarProfessionals user={user} />}
           </div>
-
         </div>
+
+        {/* Footer Actions (Report/Block) */}
+        {!isOwner && (
+          <div className="mt-16 pt-8 border-t border-border flex items-center justify-center gap-8 text-sm">
+            <button className="flex items-center gap-2 text-muted hover:text-error transition-colors font-medium">
+              <Flag className="w-4 h-4" />
+              Report User
+            </button>
+            <button className="flex items-center gap-2 text-muted hover:text-error transition-colors font-medium">
+              <ShieldOff className="w-4 h-4" />
+              Block User
+            </button>
+          </div>
+        )}
+
       </div>
     </div>
   );

@@ -26,7 +26,7 @@ export default function HeroSection({ user, isOwner }: HeroSectionProps) {
   return (
     <div className="space-y-6">
       {/* Profile Info Card */}
-      <div className="bg-surface border border-border p-6 rounded-[var(--radius-card)] shadow-subtle flex flex-col items-center text-center">
+      <div className="bg-background border border-border p-6 rounded-[var(--radius-card)] shadow-subtle flex flex-col items-center text-center">
         <div className="relative mb-4">
           <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-surface-secondary bg-background flex-shrink-0">
             {user.photoURL || (user as any).photoUrl ? (
@@ -95,17 +95,29 @@ export default function HeroSection({ user, isOwner }: HeroSectionProps) {
 
           {/* Social / Sharing (Coming Soon Placeholders) */}
           <div className="flex items-center gap-2 mt-2">
-             <button className="flex-1 py-2 bg-surface hover:bg-surface-secondary text-muted text-xs font-bold rounded-[var(--radius-button)] transition-colors border border-border flex items-center justify-center gap-2 cursor-not-allowed" title="Coming soon">
-               <UserPlus className="w-3.5 h-3.5" /> Follow
-             </button>
-             <button className="w-10 h-10 bg-surface hover:bg-surface-secondary text-muted rounded-[var(--radius-button)] transition-colors border border-border flex items-center justify-center flex-shrink-0 cursor-not-allowed" title="Share (Coming soon)">
-               <Share2 className="w-4 h-4" />
-             </button>
-             <button className="w-10 h-10 bg-surface hover:bg-surface-secondary text-muted rounded-[var(--radius-button)] transition-colors border border-border flex items-center justify-center flex-shrink-0 cursor-not-allowed" title="QR Code (Coming soon)">
-               <QrCode className="w-4 h-4" />
-             </button>
+             {!isOwner && (
+               <button className="flex-1 py-2 bg-background hover:bg-surface-secondary text-muted text-xs font-bold rounded-[var(--radius-button)] transition-colors border border-border flex items-center justify-center gap-2 cursor-not-allowed" title="Coming soon">
+                 <UserPlus className="w-3.5 h-3.5" /> Follow
+               </button>
+             )}
+             
+             {isOwner ? (
+               <button className="flex-1 py-2 bg-background hover:bg-surface-secondary text-muted text-xs font-bold rounded-[var(--radius-button)] transition-colors border border-border flex items-center justify-center gap-2 cursor-not-allowed" title="Share (Coming soon)">
+                 <Share2 className="w-3.5 h-3.5" /> Share Profile
+               </button>
+             ) : (
+               <button className="w-10 h-10 bg-background hover:bg-surface-secondary text-muted rounded-[var(--radius-button)] transition-colors border border-border flex items-center justify-center flex-shrink-0 cursor-not-allowed" title="Share (Coming soon)">
+                 <Share2 className="w-4 h-4" />
+               </button>
+             )}
+
+             {isOwner && (
+               <button className="w-10 h-10 bg-background hover:bg-surface-secondary text-muted rounded-[var(--radius-button)] transition-colors border border-border flex items-center justify-center flex-shrink-0 cursor-not-allowed" title="QR Code (Coming soon)">
+                 <QrCode className="w-4 h-4" />
+               </button>
+             )}
           </div>
-          <div className="w-full py-2 px-3 bg-surface border border-border rounded-[var(--radius-button)] flex items-center justify-between mt-1 opacity-70">
+          <div className="w-full py-2 px-3 bg-background border border-border rounded-[var(--radius-button)] flex items-center justify-between mt-1 opacity-70">
              <div className="flex items-center gap-2 overflow-hidden">
                <Link2 className="w-3.5 h-3.5 text-muted flex-shrink-0" />
                <span className="text-xs text-muted truncate">weave.network/u/{user.username}</span>
@@ -117,28 +129,28 @@ export default function HeroSection({ user, isOwner }: HeroSectionProps) {
 
       {/* Large Stats Grid */}
       <div className="grid grid-cols-2 gap-4">
-        <div className="bg-surface border border-border p-4 rounded-[var(--radius-card)] flex flex-col items-center justify-center text-center">
+        <div className="bg-background border border-border p-4 rounded-[var(--radius-card)] flex flex-col items-center justify-center text-center">
           <div className="flex items-center gap-1 mb-1">
             <span className="font-bold text-heading text-lg">{stats.rating.toFixed(1)}</span>
           </div>
           <span className="text-xs text-muted">Rating</span>
         </div>
         
-        <div className="bg-surface border border-border p-4 rounded-[var(--radius-card)] flex flex-col items-center justify-center text-center">
+        <div className="bg-background border border-border p-4 rounded-[var(--radius-card)] flex flex-col items-center justify-center text-center">
           <div className="flex items-center gap-1 mb-1">
             <span className="font-bold text-heading text-lg">{stats.exchangesCompleted}</span>
           </div>
           <span className="text-xs text-muted">Exchanges</span>
         </div>
 
-        <div className="bg-surface border border-border p-4 rounded-[var(--radius-card)] flex flex-col items-center justify-center text-center">
+        <div className="bg-background border border-border p-4 rounded-[var(--radius-card)] flex flex-col items-center justify-center text-center">
           <div className="flex items-center gap-1 mb-1">
             <span className="font-bold text-heading text-lg">{stats.skillHoursEarned}</span>
           </div>
           <span className="text-xs text-muted">Hours Earned</span>
         </div>
 
-        <div className="bg-surface border border-border p-4 rounded-[var(--radius-card)] flex flex-col items-center justify-center text-center">
+        <div className="bg-background border border-border p-4 rounded-[var(--radius-card)] flex flex-col items-center justify-center text-center">
           <div className="flex items-center gap-1 mb-1">
             <span className="font-bold text-heading text-lg">{stats.completionRate}%</span>
           </div>

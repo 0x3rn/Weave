@@ -77,7 +77,7 @@ export default function ProfileCompletion({ user, portfolio }: ProfileCompletion
   const nextStep = steps.find(s => !s.completed);
 
   return (
-    <div className="bg-surface border border-border rounded-[var(--radius-card)] p-4 shadow-subtle">
+    <div className="bg-background border border-border rounded-[var(--radius-card)] p-4 shadow-subtle">
       <div className="flex items-center justify-between mb-2">
         <h3 className="font-bold text-heading text-sm">Profile Completion</h3>
         <span className="font-bold text-primary text-sm">{completionPercentage}%</span>

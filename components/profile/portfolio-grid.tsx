@@ -16,6 +16,7 @@ interface PortfolioGridProps {
 export default function PortfolioGrid({ portfolio, isOwner }: PortfolioGridProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [viewProject, setViewProject] = useState<PortfolioItem | null>(null);
 
   const handleDelete = async (id: string, imageURL?: string) => {
     if (!confirm("Are you sure you want to delete this project?")) return;
@@ -48,7 +49,7 @@ export default function PortfolioGrid({ portfolio, isOwner }: PortfolioGridProps
       {portfolio.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {portfolio.map((item) => (
-            <div key={item.id} className="bg-surface border border-border rounded-[var(--radius-card)] overflow-hidden group shadow-subtle flex flex-col relative">
+            <div key={item.id} className="bg-background border border-border rounded-[var(--radius-card)] overflow-hidden group shadow-subtle flex flex-col relative">
               
               {/* Owner Actions */}
               {isOwner && (
@@ -99,13 +100,32 @@ export default function PortfolioGrid({ portfolio, isOwner }: PortfolioGridProps
                 <h3 className="font-bold text-heading text-lg mb-2">{item.title}</h3>
                 <p className="text-sm text-body line-clamp-2 mb-4 flex-1">{item.description}</p>
                 
-                <div className="flex flex-wrap gap-2 mt-auto">
+                <div className="flex flex-wrap gap-2 mb-5">
                   {item.technologies.map(tech => (
                     <span key={tech} className="text-xs font-medium text-muted bg-surface-secondary px-2 py-1 rounded-[var(--radius-badge)] border border-border flex items-center gap-1.5">
                       <SkillIcon skill={tech} className="w-3 h-3 text-muted" />
                       {tech}
                     </span>
                   ))}
+                </div>
+
+                <div className="mt-auto pt-4 border-t border-border flex flex-wrap items-center gap-3">
+                  <button 
+                    onClick={() => setViewProject(item)}
+                    className="flex-1 text-center py-2 bg-surface-secondary hover:bg-border text-heading text-sm font-bold rounded-[var(--radius-button)] transition-colors"
+                  >
+                    View Details
+                  </button>
+                  {item.link && (
+                    <a 
+                      href={item.link} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex-1 text-center py-2 bg-primary text-surface text-sm font-bold rounded-[var(--radius-button)] hover:bg-primary-hover transition-colors"
+                    >
+                      Visit Site
+                    </a>
+                  )}
                 </div>
               </div>
             </div>
@@ -131,12 +151,72 @@ export default function PortfolioGrid({ portfolio, isOwner }: PortfolioGridProps
         </div>
       )}
 
-      {/* Modal */}
+      {/* Add Project Modal */}
       {isOwner && (
         <PortfolioModal 
           isOpen={isModalOpen} 
           onClose={() => setIsModalOpen(false)} 
         />
+      )}
+
+      {/* View Details Modal */}
+      {viewProject && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-surface border border-border rounded-[var(--radius-card)] w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
+            <button 
+              onClick={() => setViewProject(null)}
+              className="absolute top-4 right-4 z-10 bg-background/80 backdrop-blur text-muted hover:text-heading p-2 rounded-full transition-colors"
+            >
+              <Trash2 className="w-5 h-5 hidden" /> {/* Dummy to keep imports clean */}
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+            
+            <div className="w-full aspect-video bg-surface-secondary relative flex items-center justify-center border-b border-border">
+              {viewProject.imageURL ? (
+                <Image 
+                  src={viewProject.imageURL} 
+                  alt={viewProject.title} 
+                  fill 
+                  className="object-contain"
+                />
+              ) : (
+                <ImageIcon className="w-16 h-16 text-muted/50" />
+              )}
+            </div>
+            
+            <div className="p-6 sm:p-8 space-y-6">
+              <div>
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-heading mb-2">{viewProject.title}</h2>
+                <div className="flex flex-wrap gap-2 mb-6">
+                  {viewProject.technologies.map(tech => (
+                    <span key={tech} className="text-xs font-medium text-muted bg-surface-secondary px-2.5 py-1 rounded-[var(--radius-badge)] border border-border flex items-center gap-1.5">
+                      <SkillIcon skill={tech} className="w-3.5 h-3.5 text-muted" />
+                      {tech}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              
+              <div>
+                <h3 className="text-sm font-bold text-heading uppercase tracking-wider mb-2">About Project</h3>
+                <p className="text-body whitespace-pre-wrap leading-relaxed">{viewProject.description}</p>
+              </div>
+              
+              {viewProject.link && (
+                <div className="pt-6 border-t border-border">
+                  <a 
+                    href={viewProject.link} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-2 px-8 py-3 bg-primary text-surface font-bold rounded-[var(--radius-button)] hover:bg-primary-hover transition-colors shadow-subtle w-full sm:w-auto"
+                  >
+                    Visit Live Site <ExternalLink className="w-4 h-4" />
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </section>
   );

@@ -28,7 +28,7 @@ export default function RecentExchanges({ exchanges, isOwner }: RecentExchangesP
               </div>
               
               {/* Card */}
-              <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-surface border border-border p-4 rounded-[var(--radius-card)] shadow-subtle flex flex-col">
+              <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-background border border-border p-4 rounded-[var(--radius-card)] shadow-subtle flex flex-col">
                 <div className="flex items-start justify-between mb-2 gap-4">
                   <h3 className="font-bold text-heading text-base truncate">{exchange.title}</h3>
                   <span className="shrink-0 font-bold text-sm text-primary whitespace-nowrap bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20">
@@ -43,7 +43,7 @@ export default function RecentExchanges({ exchanges, isOwner }: RecentExchangesP
           ))}
         </div>
       ) : (
-        <div className="bg-surface border border-border rounded-[var(--radius-card)] p-8 text-center flex flex-col items-center justify-center">
+        <div className="bg-background border border-border rounded-[var(--radius-card)] p-8 text-center flex flex-col items-center justify-center">
           <div className="w-12 h-12 bg-surface-secondary rounded-full flex items-center justify-center mb-4 border border-border">
             <Search className="w-5 h-5 text-muted" />
           </div>

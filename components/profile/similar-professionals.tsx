@@ -25,7 +25,7 @@ export default function SimilarProfessionals({ user }: SimilarProfessionalsProps
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {similarUsers.map((similar) => (
-          <div key={similar.id} className="bg-surface border border-border p-4 rounded-[var(--radius-card)] shadow-subtle flex items-center gap-3 group">
+          <div key={similar.id} className="bg-background border border-border p-4 rounded-[var(--radius-card)] shadow-subtle flex items-center gap-3 group">
             <div className="w-12 h-12 rounded-full bg-surface-secondary border border-border flex items-center justify-center shrink-0">
               <span className="text-muted text-sm font-bold group-hover:text-primary transition-colors">{similar.initials}</span>
             </div>

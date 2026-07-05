@@ -29,7 +29,7 @@ export default function SkillsSection({ user, isOwner }: SkillsSectionProps) {
         {skillsOffered.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {skillsOffered.map((skill, idx) => (
-              <div key={idx} className="bg-surface border border-border p-3 rounded-[var(--radius-card)] flex flex-col justify-center shadow-subtle group hover:border-primary/50 transition-colors min-w-0 h-full">
+              <div key={idx} className="bg-background border border-border p-3 rounded-[var(--radius-card)] flex flex-col justify-center shadow-subtle group hover:border-primary/50 transition-colors min-w-0 h-full">
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="w-8 h-8 rounded-full bg-surface-secondary flex items-center justify-center flex-shrink-0">
                     <SkillIcon skill={skill.name} className="w-4 h-4" />

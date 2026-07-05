@@ -36,7 +36,7 @@ export default function TrustScoreCard({ user }: TrustScoreCardProps) {
   };
 
   return (
-    <div className="bg-surface border border-border p-6 rounded-[var(--radius-card)] shadow-subtle relative overflow-hidden">
+    <div className="bg-background border border-border p-6 rounded-[var(--radius-card)] shadow-subtle relative overflow-hidden">
 
       <div className="flex items-center gap-2 mb-6 relative z-10">
         <Shield className="w-5 h-5 text-primary" />
