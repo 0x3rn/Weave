@@ -2,6 +2,7 @@
 
 import { User, UserSkill } from "@/types";
 import { Star } from "lucide-react";
+import { SkillIcon } from "./skill-icon";
 
 interface SkillsSectionProps {
   user: User;
@@ -27,8 +28,13 @@ export default function SkillsSection({ user }: SkillsSectionProps) {
         {skillsOffered.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {skillsOffered.map((skill, idx) => (
-              <div key={idx} className="bg-surface border border-border p-3 rounded-[var(--radius-card)] flex flex-col justify-center shadow-subtle">
-                <span className="font-bold text-sm text-heading mb-1 truncate">{skill.name}</span>
+              <div key={idx} className="bg-surface border border-border p-3 rounded-[var(--radius-card)] flex flex-col justify-center shadow-subtle group hover:border-primary/50 transition-colors">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-8 h-8 rounded-full bg-surface-secondary flex items-center justify-center flex-shrink-0">
+                    <SkillIcon skill={skill.name} className="w-4 h-4" />
+                  </div>
+                  <span className="font-bold text-sm text-heading truncate">{skill.name}</span>
+                </div>
                 {(skill.rating || skill.yearsOfExperience) ? (
                   <div className="flex items-center justify-between text-xs text-muted mt-auto">
                     {skill.rating && (

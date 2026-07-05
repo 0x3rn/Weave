@@ -27,21 +27,23 @@ export default function HeroSection({ user, isOwner }: HeroSectionProps) {
     <div className="space-y-6">
       {/* Profile Info Card */}
       <div className="bg-surface border border-border p-6 rounded-[var(--radius-card)] shadow-subtle flex flex-col items-center text-center">
-        <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-surface-secondary mb-4 bg-background flex-shrink-0">
-          {user.photoURL || (user as any).photoUrl ? (
-            <Image 
-              src={user.photoURL || (user as any).photoUrl} 
-              alt={user.fullName} 
-              fill 
-              className="object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-muted bg-surface-secondary">
-              {user.fullName.charAt(0).toUpperCase()}
-            </div>
-          )}
+        <div className="relative mb-4">
+          <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-surface-secondary bg-background flex-shrink-0">
+            {user.photoURL || (user as any).photoUrl ? (
+              <Image 
+                src={user.photoURL || (user as any).photoUrl} 
+                alt={user.fullName} 
+                fill 
+                className="object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-muted bg-surface-secondary">
+                {user.fullName.charAt(0).toUpperCase()}
+              </div>
+            )}
+          </div>
           {user.isVerified && (
-            <div className="absolute bottom-1 right-1 bg-surface rounded-full p-0.5">
+            <div className="absolute bottom-1 right-1 bg-surface rounded-full p-0.5 shadow-sm border border-border z-10">
               <BadgeCheck className="w-6 h-6 text-primary fill-primary/10" />
             </div>
           )}
