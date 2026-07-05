@@ -97,7 +97,7 @@ export default function ProfileCompletion({ user, portfolio }: ProfileCompletion
           </p>
           <Link 
             href={nextStep.href}
-            className="w-full py-1.5 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold rounded-[var(--radius-button)] transition-colors text-center border border-primary/20"
+            className="w-full py-1.5 bg-surface-secondary hover:bg-border text-heading text-xs font-bold rounded-[var(--radius-button)] transition-colors text-center border border-border"
           >
             Complete Now (+{nextStep.weight}%)
           </Link>

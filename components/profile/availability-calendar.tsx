@@ -3,22 +3,21 @@
 import { useState } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight, Lock, Check } from "lucide-react";
 import { User } from "@/types";
-import { useAuth } from "@/components/auth-provider";
 import ExchangeRequestModal from "./exchange-request-modal";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 
 interface AvailabilityCalendarProps {
   user: User;
+  currentUserId?: string | null;
 }
 
-export default function AvailabilityCalendar({ user }: AvailabilityCalendarProps) {
-  const { user: currentUser } = useAuth();
+export default function AvailabilityCalendar({ user, currentUserId }: AvailabilityCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDates, setSelectedDates] = useState<string[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   
-  const isOwner = currentUser?.uid === user.uid;
+  const isOwner = currentUserId === user.uid;
 
   // Calendar generation
   const year = currentDate.getFullYear();
@@ -62,7 +61,7 @@ export default function AvailabilityCalendar({ user }: AvailabilityCalendarProps
   };
 
   const toggleDate = (dayNum: number) => {
-    if (!currentUser) {
+    if (!currentUserId) {
       toast.error("Please sign in to book an exchange.");
       return;
     }
@@ -192,10 +191,10 @@ export default function AvailabilityCalendar({ user }: AvailabilityCalendarProps
         </div>
       )}
       
-      {showModal && currentUser && (
+      {showModal && currentUserId && (
         <ExchangeRequestModal 
           owner={user}
-          senderId={currentUser.uid}
+          senderId={currentUserId}
           selectedDates={selectedDates}
           onClose={() => setShowModal(false)}
           onSuccess={handleSuccess}

@@ -79,20 +79,23 @@ export default function AchievementsGrid({ user }: AchievementsGridProps) {
         Achievements
       </h3>
       
-      <div className="flex flex-wrap gap-2">
+      <div 
+        className="grid grid-rows-2 grid-flow-col lg:flex lg:flex-wrap gap-2 overflow-x-auto lg:overflow-x-visible snap-x snap-mandatory lg:snap-none pb-2 lg:pb-0"
+        style={{ gridAutoColumns: "calc(50% - 4px)" }}
+      >
         {earnedBadges.map((badge) => (
           <div 
             key={badge.id}
-            className="flex items-center gap-2 bg-background border border-border hover:border-primary/50 px-3 py-1.5 rounded-full transition-all cursor-help group relative"
+            className="snap-start flex items-center gap-2 bg-background border border-border hover:border-primary/50 px-3 py-1.5 rounded-full transition-all cursor-help group relative min-w-0"
           >
-            <span className={getTierColor(badge.tier)}>
+            <span className={`flex-shrink-0 ${getTierColor(badge.tier)}`}>
               {iconMap[badge.iconName] || <Medal className="w-4 h-4" />}
             </span>
-            <span className="text-xs font-bold text-heading">{badge.title}</span>
+            <span className="text-xs font-bold text-heading truncate">{badge.title}</span>
             
             {/* Tooltip */}
             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[200px] opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
-              <div className="bg-heading text-surface text-xs p-2 rounded-md shadow-lg text-center">
+              <div className="bg-heading text-surface text-xs p-2 rounded-md shadow-lg text-center whitespace-normal">
                 <p className="font-bold mb-0.5">{badge.title}</p>
                 <p className="text-[10px] text-surface/80">{badge.description}</p>
                 {badge.tier !== "none" && (

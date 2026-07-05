@@ -1,11 +1,11 @@
 "use server";
 
-import { adminDb } from "@/lib/firebase-admin";
+import { db } from "@/lib/firebase-admin";
 import { Notification } from "@/types";
 
 export async function getNotifications(userId: string) {
   try {
-    const snapshot = await adminDb.collection("notifications")
+    const snapshot = await db.collection("notifications")
       .where("userId", "==", userId)
       .orderBy("createdAt", "desc")
       .get();
@@ -22,7 +22,7 @@ export async function getNotifications(userId: string) {
 
 export async function markNotificationAsRead(notificationId: string) {
   try {
-    await adminDb.collection("notifications").doc(notificationId).update({
+    await db.collection("notifications").doc(notificationId).update({
       isRead: true
     });
     return { success: true };
@@ -34,7 +34,7 @@ export async function markNotificationAsRead(notificationId: string) {
 
 export async function getUnreadNotificationsCount(userId: string) {
   try {
-    const snapshot = await adminDb.collection("notifications")
+    const snapshot = await db.collection("notifications")
       .where("userId", "==", userId)
       .where("isRead", "==", false)
       .count()

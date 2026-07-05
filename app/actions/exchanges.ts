@@ -1,11 +1,11 @@
 "use server";
 
-import { adminDb } from "@/lib/firebase-admin";
+import { db } from "@/lib/firebase-admin";
 import { ExchangeRequest, Notification } from "@/types";
 
 export async function createExchangeRequest(data: Omit<ExchangeRequest, "id" | "status" | "createdAt" | "updatedAt">) {
   try {
-    const docRef = adminDb.collection("exchangeRequests").doc();
+    const docRef = db.collection("exchangeRequests").doc();
     
     const request: ExchangeRequest = {
       ...data,
@@ -18,7 +18,7 @@ export async function createExchangeRequest(data: Omit<ExchangeRequest, "id" | "
     await docRef.set(request);
     
     // Create a notification for the receiver
-    const notifRef = adminDb.collection("notifications").doc();
+    const notifRef = db.collection("notifications").doc();
     const notification: Notification = {
       id: notifRef.id,
       userId: data.receiverId,
@@ -41,7 +41,7 @@ export async function createExchangeRequest(data: Omit<ExchangeRequest, "id" | "
 
 export async function updateExchangeRequest(requestId: string, status: string, message?: string, updates?: Partial<ExchangeRequest>) {
   try {
-    const reqRef = adminDb.collection("exchangeRequests").doc(requestId);
+    const reqRef = db.collection("exchangeRequests").doc(requestId);
     const doc = await reqRef.get();
     
     if (!doc.exists) {
@@ -68,7 +68,7 @@ export async function updateExchangeRequest(requestId: string, status: string, m
     if (status === "reviewing") notifMsg = `The provider has countered your request for ${request.skillNeeded}.`;
     if (message) notifMsg += ` Message: ${message}`;
     
-    const notifRef = adminDb.collection("notifications").doc();
+    const notifRef = db.collection("notifications").doc();
     const notification: Notification = {
       id: notifRef.id,
       userId: request.senderId,
@@ -92,7 +92,7 @@ export async function updateExchangeRequest(requestId: string, status: string, m
 export async function getExchangeRequests(userId: string, role: "sender" | "receiver") {
   try {
     const field = role === "sender" ? "senderId" : "receiverId";
-    const snapshot = await adminDb.collection("exchangeRequests")
+    const snapshot = await db.collection("exchangeRequests")
       .where(field, "==", userId)
       .orderBy("createdAt", "desc")
       .get();

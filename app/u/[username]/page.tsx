@@ -59,25 +59,51 @@ export default async function UserProfilePage({ params }: { params: Promise<{ us
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl py-8 md:py-12">
         
         {/* Responsive Grid: Sidebar (Left) + Main Content (Right) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+        <div className="flex flex-col gap-8 lg:grid lg:grid-cols-12 lg:gap-12 lg:items-start">
           
           {/* LEFT SIDEBAR (Hero + Stats + Trust Score + Calendar) */}
-          <div className="lg:col-span-4 space-y-6">
-            <HeroSection user={user} isOwner={isOwner} />
-            {isOwner && <ProfileCompletion user={user} portfolio={portfolio} />}
-            <TrustScoreCard user={user} />
-            <AvailabilityCalendar user={user} />
-            <AchievementsGrid user={user} />
+          <div className="contents lg:block lg:col-span-4 lg:space-y-6">
+            <div className="order-1">
+              <HeroSection user={user} isOwner={isOwner} />
+            </div>
+            {isOwner && (
+              <div className="order-2">
+                <ProfileCompletion user={user} portfolio={portfolio} />
+              </div>
+            )}
+            <div className="order-3">
+              <TrustScoreCard user={user} />
+            </div>
+            <div className="order-9">
+              <AvailabilityCalendar user={user} currentUserId={currentUserId} />
+            </div>
+            <div className="order-8">
+              <AchievementsGrid user={user} />
+            </div>
           </div>
 
           {/* MAIN CONTENT (About + Skills + Portfolio + Reviews) */}
-          <div className="lg:col-span-8 space-y-12">
-            <AboutSection user={user} />
-            <SkillsSection user={user} isOwner={isOwner} />
-            <PortfolioGrid portfolio={portfolio} isOwner={isOwner} />
-            <RecentExchanges exchanges={exchanges} isOwner={isOwner} />
-            <ReviewsSection reviews={reviews} isOwner={isOwner} />
-            {!isOwner && <SimilarProfessionals user={user} />}
+          <div className="contents lg:block lg:col-span-8 lg:space-y-12">
+            <div className="order-4">
+              <AboutSection user={user} />
+            </div>
+            <div className="order-5">
+              <SkillsSection user={user} isOwner={isOwner} />
+            </div>
+            <div className="order-6">
+              <PortfolioGrid portfolio={portfolio} isOwner={isOwner} />
+            </div>
+            <div className="order-10">
+              <RecentExchanges exchanges={exchanges} isOwner={isOwner} />
+            </div>
+            <div className="order-7">
+              <ReviewsSection reviews={reviews} isOwner={isOwner} />
+            </div>
+            {!isOwner && (
+              <div className="order-11">
+                <SimilarProfessionals user={user} />
+              </div>
+            )}
           </div>
         </div>
 

@@ -6,7 +6,7 @@ import { updateExchangeRequest, getExchangeRequests } from "@/app/actions/exchan
 import { markNotificationAsRead } from "@/app/actions/notifications";
 import { Bell, Check, X, Clock, Calendar, MessageSquare, Edit2, Loader2 } from "lucide-react";
 import RequestReviewModal from "./request-review-modal";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 import { formatDistanceToNow } from "date-fns";
 
 interface NotificationsViewProps {
