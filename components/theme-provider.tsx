@@ -7,5 +7,17 @@ export function ThemeProvider({
   children,
   ...props
 }: React.ComponentProps<typeof NextThemesProvider>) {
+  // Suppress the React 19 script tag warning caused by next-themes during hydration
+  if (typeof window !== "undefined" && !(window as any).__themeConsolePatched) {
+    (window as any).__themeConsolePatched = true;
+    const originalConsoleError = console.error;
+    console.error = (...args) => {
+      if (typeof args[0] === "string" && args[0].includes("Encountered a script tag while rendering React component")) {
+        return;
+      }
+      originalConsoleError(...args);
+    };
+  }
+
   return <NextThemesProvider {...props}>{children}</NextThemesProvider>;
 }

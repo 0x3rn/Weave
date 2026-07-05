@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { OnboardingData } from "../onboarding-wizard";
-import { Camera, Loader2, X, Check } from "lucide-react";
+import { Camera, Loader2, X, Check, AlertCircle } from "lucide-react";
 import { uploadFile } from "@/app/actions/upload";
+import { checkUsernameAvailability } from "@/app/actions/user";
 import toast from "react-hot-toast";
 import Cropper from "react-easy-crop";
 import Select from "react-select";
@@ -67,6 +68,10 @@ interface StepProps {
 export default function Step1About({ data, updateData }: StepProps) {
   const [isUploading, setIsUploading] = useState(false);
   
+  // Username Validation State
+  const [usernameError, setUsernameError] = useState<string | null>(null);
+  const [isValidatingUsername, setIsValidatingUsername] = useState(false);
+  
   // Cropper State
   const [imageToCrop, setImageToCrop] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -85,6 +90,30 @@ export default function Step1About({ data, updateData }: StepProps) {
   ];
   const isCustomProfession = data.headline && !predefinedProfessions.includes(data.headline);
   const [professionSelect, setProfessionSelect] = useState(isCustomProfession ? "Other" : data.headline);
+
+  // Debounced username validation
+  useEffect(() => {
+    if (!data.username) {
+      setUsernameError(null);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsValidatingUsername(true);
+      const result = await checkUsernameAvailability(data.username);
+      setIsValidatingUsername(false);
+      
+      if (!result.available && result.error) {
+        setUsernameError(result.error);
+        // Optionally block the parent wizard from proceeding by updating a validation state in parent, 
+        // but for now showing the error is the main requirement.
+      } else {
+        setUsernameError(null);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [data.username]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -238,6 +267,31 @@ export default function Step1About({ data, updateData }: StepProps) {
       )}
 
       <div className="space-y-4">
+        {/* Username */}
+        <div>
+          <label className="block text-sm font-medium text-heading mb-1">Username</label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm font-medium">weave.com/u/</span>
+            <input
+              type="text"
+              value={data.username}
+              onChange={(e) => updateData({ username: e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, "") })}
+              className={`w-full bg-background border rounded-[var(--radius-input)] pl-[105px] pr-10 py-2 text-sm focus:outline-none focus:border-primary text-body ${usernameError ? "border-error focus:border-error" : "border-border"}`}
+              placeholder="username"
+            />
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">
+              {isValidatingUsername && <Loader2 className="w-4 h-4 text-muted animate-spin" />}
+              {!isValidatingUsername && usernameError && <AlertCircle className="w-4 h-4 text-error" />}
+              {!isValidatingUsername && !usernameError && data.username && <Check className="w-4 h-4 text-success" />}
+            </div>
+          </div>
+          {usernameError ? (
+            <p className="text-xs text-error mt-1 font-medium">{usernameError}</p>
+          ) : (
+            <p className="text-xs text-muted mt-1">Letters (a-z), numbers (0-9), and symbols (- or _) only.</p>
+          )}
+        </div>
+
         {/* Full Name */}
         <div>
           <label className="block text-sm font-medium text-heading mb-1">Full Name</label>

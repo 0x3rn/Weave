@@ -15,6 +15,7 @@ import Step7Success from "./steps/step-7-success";
 import { Hand } from "lucide-react";
 
 export type OnboardingData = {
+  username: string;
   photoUrl: string;
   fullName: string;
   headline: string;
@@ -54,6 +55,7 @@ export default function OnboardingWizard({ initialData, userId }: WizardProps) {
   // Parse preferred collaboration out of the single string from invite (if applicable)
   // Just initialize with sensible defaults
   const [data, setData] = useState<OnboardingData>({
+    username: initialData.username || "",
     photoUrl: initialData.photoUrl || "",
     fullName: initialData.fullName || "",
     headline: initialData.profession || "",
