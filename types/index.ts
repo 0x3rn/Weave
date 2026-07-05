@@ -150,3 +150,12 @@ export interface Notification {
   relatedId?: string; // e.g., requestId
   createdAt: string; // ISO string
 }
+
+export interface SkillLedgerEntry {
+  id: string;
+  userId: string;
+  amount: number; // positive or negative
+  reason: string;
+  relatedId?: string; // ID of the exchange or user
+  createdAt: string; // ISO string
+}
