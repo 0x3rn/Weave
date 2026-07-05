@@ -56,10 +56,11 @@ export default function AchievementsGrid({ user }: AchievementsGridProps) {
     if (user.achievements.length > 0 && typeof user.achievements[0] === 'object') {
       earnedIds = (user.achievements as any[]).map(a => a.id);
     } else {
-      earnedIds = user.achievements as string[];
+      earnedIds = user.achievements as unknown as string[];
     }
   } else if (user.achievements && typeof user.achievements === 'object') {
-    earnedIds = Object.keys(user.achievements).filter(k => user.achievements![k]);
+    const achs = user.achievements as Record<string, boolean>;
+    earnedIds = Object.keys(achs).filter(k => achs[k]);
   }
 
   // Map earned IDs to full definitions and filter out invalid ones
