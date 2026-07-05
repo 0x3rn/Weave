@@ -83,7 +83,7 @@ export default function UsersSummaryCards({ summary }: UsersSummaryCardsProps) {
       {cards.map((card, i) => (
         <div 
           key={i} 
-          className="bg-surface border border-border rounded-[var(--radius-card)] p-5 flex flex-col justify-between group hover:border-heading/20 transition-all duration-300"
+          className="bg-surface border border-border rounded-[var(--radius-card)] p-5 flex flex-col justify-between group hover:border-primary/50 transition-all duration-300"
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-medium text-muted">{card.title}</h3>

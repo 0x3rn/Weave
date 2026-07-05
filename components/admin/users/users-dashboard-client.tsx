@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { User } from "@/types";
 import { Search, Download, RefreshCw, Plus } from "lucide-react";
@@ -17,6 +17,7 @@ interface UsersDashboardClientProps {
 export default function UsersDashboardClient({ initialUsers, summary }: UsersDashboardClientProps) {
   const router = useRouter();
   const [users, setUsers] = useState<User[]>(initialUsers);
+  const [isPending, startTransition] = useTransition();
   
   // Search & Filters
   const [search, setSearch] = useState("");
@@ -70,10 +71,11 @@ export default function UsersDashboardClient({ initialUsers, summary }: UsersDas
         </div>
         <div className="flex items-center gap-3">
           <button 
-            onClick={() => router.refresh()}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-[var(--radius-button)] border border-border bg-background hover:bg-surface-secondary text-heading transition-colors"
+            onClick={() => startTransition(() => router.refresh())}
+            disabled={isPending}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-[var(--radius-button)] border border-border bg-background hover:bg-surface-secondary text-heading transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <RefreshCw className="w-4 h-4" /> Refresh
+            <RefreshCw className={`w-4 h-4 ${isPending ? 'animate-spin text-primary' : ''}`} /> Refresh
           </button>
           <button className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-[var(--radius-button)] border border-border bg-background hover:bg-surface-secondary text-heading transition-colors">
             <Download className="w-4 h-4" /> Export CSV

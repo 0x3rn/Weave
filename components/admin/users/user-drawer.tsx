@@ -141,10 +141,10 @@ export default function UserDrawer({ user, isOpen, onClose, onUpdate }: UserDraw
 
         {/* Quick Actions Bar */}
         <div className="px-6 py-3 border-b border-border bg-background flex items-center gap-2 overflow-x-auto">
-          <Link href={`/u/${user.username}`} target="_blank" className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-surface border border-border hover:border-heading transition-colors text-xs font-semibold text-heading">
+          <Link href={`/u/${user.username}`} target="_blank" className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-surface border border-border hover:border-primary transition-colors text-xs font-semibold text-heading">
             <ExternalLink className="w-3.5 h-3.5" /> View Public
           </Link>
-          <button className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-surface border border-border hover:border-heading transition-colors text-xs font-semibold text-heading">
+          <button className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-surface border border-border hover:border-primary transition-colors text-xs font-semibold text-heading">
             <MessageSquare className="w-3.5 h-3.5" /> Message
           </button>
         </div>
@@ -317,7 +317,7 @@ export default function UserDrawer({ user, isOpen, onClose, onUpdate }: UserDraw
                 <div className="space-y-2">
                   <button 
                     onClick={handleVerificationToggle}
-                    className="w-full flex items-center gap-3 p-3 rounded-md bg-background border border-border hover:border-heading transition-colors text-left"
+                    className="w-full flex items-center gap-3 p-3 rounded-md bg-background border border-border hover:border-primary transition-colors text-left"
                   >
                     <UserCheck className="w-4 h-4 text-primary" />
                     <div>
@@ -329,7 +329,7 @@ export default function UserDrawer({ user, isOpen, onClose, onUpdate }: UserDraw
                   {user.status !== "suspended" ? (
                     <button 
                       onClick={() => handleStatusChange("suspended")}
-                      className="w-full flex items-center gap-3 p-3 rounded-md bg-background border border-border hover:border-warning transition-colors text-left"
+                      className="w-full flex items-center gap-3 p-3 rounded-md bg-background border border-border hover:border-primary transition-colors text-left"
                     >
                       <ShieldAlert className="w-4 h-4 text-warning" />
                       <div>

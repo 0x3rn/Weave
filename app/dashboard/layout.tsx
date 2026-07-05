@@ -47,5 +47,5 @@ export default async function DashboardLayout({
     redirect(targetRedirect);
   }
 
-  return <div className="min-h-screen bg-surface-secondary">{children}</div>;
+  return <div className="min-h-screen bg-background">{children}</div>;
 }
