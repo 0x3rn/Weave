@@ -113,8 +113,6 @@ export async function saveProfileSettings(formData: FormData) {
 
     const fullName = formData.get("fullName") as string;
     const headline = formData.get("headline") as string;
-    const country = formData.get("country") as string;
-    const timeZone = formData.get("timeZone") as string;
     const bio = formData.get("bio") as string;
     const availability = formData.get("availability") as string;
     
@@ -149,8 +147,6 @@ export async function saveProfileSettings(formData: FormData) {
     const updates: any = {
       fullName,
       headline,
-      country,
-      timeZone,
       bio,
       availability,
       skillsOffered, // Overwrites UserSkill objects with strings based on MVP decision

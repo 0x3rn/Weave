@@ -4,10 +4,11 @@ import { useState, useRef, useCallback } from "react";
 import { User, UserSkill } from "@/types";
 import { saveProfileSettings } from "@/app/actions/user";
 import { useRouter } from "next/navigation";
-import { Loader2, Upload, Camera, Crop, Check, X } from "lucide-react";
+import { Loader2, Camera, Check, X, Lock } from "lucide-react";
 import Cropper from "react-easy-crop";
 import { getCroppedImg } from "@/lib/crop-image";
 import Image from "next/image";
+import Select from "react-select";
 
 interface EditProfileFormProps {
   user: User;
@@ -28,8 +29,11 @@ export default function EditProfileForm({ user }: EditProfileFormProps) {
   
   // Final image states
   const [croppedFile, setCroppedFile] = useState<File | null>(null);
-  const [previewURL, setPreviewURL] = useState<string | null>(user.photoURL || null);
+  const [previewURL, setPreviewURL] = useState<string | null>(user.photoURL || (user as any).photoUrl || null);
 
+  // Dropdown states
+  const [selectedAvailability, setSelectedAvailability] = useState(user.availability || "");
+  
   // Pre-process skills to comma-separated strings
   const initialSkillsOffered = (user.skillsOffered || []).map(skill => {
     return typeof skill === 'string' ? skill : skill.name;
@@ -238,29 +242,27 @@ export default function EditProfileForm({ user }: EditProfileFormProps) {
                   className="w-full bg-background border border-border rounded-[var(--radius-button)] px-4 py-2.5 text-body focus:outline-none focus:border-primary transition-colors"
                 />
               </div>
-              <div>
-                <label htmlFor="country" className="block text-sm font-bold text-heading mb-2">Country / Region</label>
-                <input 
-                  type="text" 
-                  id="country" 
-                  name="country"
-                  defaultValue={user.country}
-                  maxLength={50}
-                  placeholder="e.g. United States"
-                  className="w-full bg-background border border-border rounded-[var(--radius-button)] px-4 py-2.5 text-body focus:outline-none focus:border-primary transition-colors"
-                />
+              <div className="z-20">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-bold text-heading">Country / Region</label>
+                  <button type="button" onClick={() => alert("Change requests coming soon")} className="text-xs font-bold text-primary hover:text-primary-hover transition-colors">Request Change</button>
+                </div>
+                <div className="w-full bg-surface-secondary border border-border rounded-[var(--radius-button)] px-4 py-2.5 text-body flex items-center justify-between opacity-80 cursor-not-allowed">
+                  <span className="truncate">{user.country || "Not set"}</span>
+                  <Lock className="w-4 h-4 text-muted flex-shrink-0 ml-2" />
+                </div>
+                <p className="text-[10px] text-muted mt-1.5 leading-tight">Country is locked for marketplace security.</p>
               </div>
-              <div>
-                <label htmlFor="timeZone" className="block text-sm font-bold text-heading mb-2">Time Zone</label>
-                <input 
-                  type="text" 
-                  id="timeZone" 
-                  name="timeZone"
-                  defaultValue={user.timeZone}
-                  maxLength={50}
-                  placeholder="e.g. EST (UTC-5)"
-                  className="w-full bg-background border border-border rounded-[var(--radius-button)] px-4 py-2.5 text-body focus:outline-none focus:border-primary transition-colors"
-                />
+              <div className="z-10">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-bold text-heading">Time Zone</label>
+                  <button type="button" onClick={() => alert("Change requests coming soon")} className="text-xs font-bold text-primary hover:text-primary-hover transition-colors">Request Change</button>
+                </div>
+                <div className="w-full bg-surface-secondary border border-border rounded-[var(--radius-button)] px-4 py-2.5 text-body flex items-center justify-between opacity-80 cursor-not-allowed">
+                  <span className="truncate">{user.timeZone || "Not set"}</span>
+                  <Lock className="w-4 h-4 text-muted flex-shrink-0 ml-2" />
+                </div>
+                <p className="text-[10px] text-muted mt-1.5 leading-tight">Timezone is locked for marketplace security.</p>
               </div>
             </div>
           </section>
@@ -282,16 +284,33 @@ export default function EditProfileForm({ user }: EditProfileFormProps) {
               />
             </div>
             
-            <div>
+            <div className="z-0">
               <label htmlFor="availability" className="block text-sm font-bold text-heading mb-2">Availability (Hours/Week)</label>
-              <input 
-                type="text" 
-                id="availability" 
-                name="availability"
-                defaultValue={user.availability}
-                maxLength={30}
-                placeholder="e.g. 10-15 hours/week"
-                className="w-full bg-background border border-border rounded-[var(--radius-button)] px-4 py-2.5 text-body focus:outline-none focus:border-primary transition-colors"
+              <input type="hidden" name="availability" value={selectedAvailability} />
+              <Select
+                instanceId="availability-select"
+                options={[
+                  { value: "Less than 5 hrs/week", label: "Less than 5 hrs/week" },
+                  { value: "5–10 hrs/week", label: "5–10 hrs/week" },
+                  { value: "10–20 hrs/week", label: "10–20 hrs/week" },
+                  { value: "20+ hrs/week", label: "20+ hrs/week" },
+                ]}
+                value={selectedAvailability ? { value: selectedAvailability, label: selectedAvailability } : null}
+                onChange={(option: any) => setSelectedAvailability(option?.value || "")}
+                placeholder="How much time can you dedicate?"
+                isSearchable={false}
+                unstyled
+                classNames={{
+                  control: (state) => `flex min-h-[42px] w-full bg-background border ${state.isFocused ? 'border-primary' : 'border-border'} rounded-[var(--radius-button)] px-4 py-1 focus:outline-none transition-colors cursor-pointer`,
+                  input: () => `text-body`,
+                  singleValue: () => `text-body`,
+                  placeholder: () => `text-muted`,
+                  menu: () => `mt-1 bg-surface border border-border rounded-[var(--radius-input)] shadow-subtle overflow-hidden z-10`,
+                  menuList: () => `p-1`,
+                  option: (state) => `px-4 py-2 cursor-pointer rounded-md transition-colors ${state.isSelected ? 'bg-primary/10 text-primary font-bold' : state.isFocused ? 'bg-background text-body' : 'bg-transparent text-body'}`,
+                  dropdownIndicator: () => `text-muted hover:text-heading cursor-pointer`,
+                  indicatorSeparator: () => `hidden`,
+                }}
               />
             </div>
           </section>
