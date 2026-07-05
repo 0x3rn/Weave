@@ -36,7 +36,7 @@ const NAV_ITEMS = [
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 
-export default function DashboardShell({ children }: { children: React.ReactNode }) {
+export default function DashboardShell({ children, user }: { children: React.ReactNode, user?: any }) {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -96,7 +96,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
         {/* Sidebar Footer */}
         <div className="p-4 border-t border-border shrink-0">
           <div className="p-3 bg-surface-secondary rounded-[var(--radius-card)] border border-border">
-            <p className="text-xs font-semibold text-heading mb-1">Skill Hours: 18</p>
+            <p className="text-xs font-semibold text-heading mb-1">Skill Hours: {user?.skillHours ?? 0}</p>
             <Link href="/wallet" className="text-xs text-primary hover:underline font-medium">View Ledger →</Link>
           </div>
         </div>
@@ -141,8 +141,12 @@ export default function DashboardShell({ children }: { children: React.ReactNode
 
             <ThemeToggle />
             
-            <Link href="/profile" className="w-8 h-8 rounded-full bg-heading flex items-center justify-center text-background font-bold text-sm ml-2">
-              Me
+            <Link href="/profile" className="w-8 h-8 rounded-full bg-heading flex items-center justify-center text-background font-bold text-sm ml-2 overflow-hidden border border-border shrink-0">
+              {user?.photoURL ? (
+                <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                user?.fullName ? user.fullName.charAt(0) : "Me"
+              )}
             </Link>
           </div>
         </header>

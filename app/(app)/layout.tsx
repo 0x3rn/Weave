@@ -17,6 +17,7 @@ export default async function DashboardLayout({
   }
 
   let targetRedirect = "";
+  let userData: any = null;
 
   try {
     // 1. Verify the session cookie cryptographically
@@ -32,7 +33,7 @@ export default async function DashboardLayout({
       // Any valid, authenticated user can access the dashboard.
       
       // 3. Ensure user has completed onboarding
-      const userData = userDoc.data()!;
+      userData = userDoc.data()!;
       if (userData.onboarded !== true) {
         targetRedirect = "/onboarding";
       }
@@ -48,5 +49,5 @@ export default async function DashboardLayout({
     redirect(targetRedirect);
   }
 
-  return <DashboardShell>{children}</DashboardShell>;
+  return <DashboardShell user={userData}>{children}</DashboardShell>;
 }
