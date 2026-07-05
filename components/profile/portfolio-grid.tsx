@@ -1,9 +1,12 @@
 "use client";
 
 import { PortfolioItem } from "@/types";
-import { ExternalLink, Image as ImageIcon } from "lucide-react";
+import { ExternalLink, Image as ImageIcon, Trash2, Loader2 } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
+import { useState } from "react";
+import { deletePortfolioItem } from "@/app/actions/portfolio";
+import PortfolioModal from "./portfolio-modal";
+import { SkillIcon } from "./skill-icon";
 
 interface PortfolioGridProps {
   portfolio: PortfolioItem[];
@@ -11,12 +14,32 @@ interface PortfolioGridProps {
 }
 
 export default function PortfolioGrid({ portfolio, isOwner }: PortfolioGridProps) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleDelete = async (id: string, imageURL?: string) => {
+    if (!confirm("Are you sure you want to delete this project?")) return;
+    
+    try {
+      setDeletingId(id);
+      await deletePortfolioItem(id, imageURL);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to delete project.");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   return (
     <section>
       <div className="flex items-center justify-between mb-6 border-b border-border pb-2">
         <h2 className="text-2xl font-bold text-heading">Portfolio</h2>
         {isOwner && (
-          <button className="text-sm font-bold text-primary hover:text-primary-hover transition-colors">
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="text-sm font-bold text-primary hover:text-primary-hover transition-colors"
+          >
             + Add Project
           </button>
         )}
@@ -25,7 +48,24 @@ export default function PortfolioGrid({ portfolio, isOwner }: PortfolioGridProps
       {portfolio.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {portfolio.map((item) => (
-            <div key={item.id} className="bg-surface border border-border rounded-[var(--radius-card)] overflow-hidden group shadow-subtle flex flex-col">
+            <div key={item.id} className="bg-surface border border-border rounded-[var(--radius-card)] overflow-hidden group shadow-subtle flex flex-col relative">
+              
+              {/* Owner Actions */}
+              {isOwner && (
+                <button 
+                  onClick={() => handleDelete(item.id, item.imageURL)}
+                  disabled={deletingId === item.id}
+                  className="absolute top-2 right-2 z-20 bg-background/80 backdrop-blur text-muted hover:text-error hover:bg-error/10 p-2 rounded-full opacity-0 group-hover:opacity-100 transition-all disabled:opacity-50"
+                  title="Delete Project"
+                >
+                  {deletingId === item.id ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-4 h-4" />
+                  )}
+                </button>
+              )}
+
               {/* Image Container */}
               <div className="relative w-full aspect-video bg-surface-secondary border-b border-border flex items-center justify-center overflow-hidden">
                 {item.imageURL ? (
@@ -61,7 +101,8 @@ export default function PortfolioGrid({ portfolio, isOwner }: PortfolioGridProps
                 
                 <div className="flex flex-wrap gap-2 mt-auto">
                   {item.technologies.map(tech => (
-                    <span key={tech} className="text-xs font-medium text-muted bg-surface-secondary px-2 py-1 rounded-[var(--radius-badge)] border border-border">
+                    <span key={tech} className="text-xs font-medium text-muted bg-surface-secondary px-2 py-1 rounded-[var(--radius-badge)] border border-border flex items-center gap-1.5">
+                      <SkillIcon skill={tech} className="w-3 h-3 text-muted" />
                       {tech}
                     </span>
                   ))}
@@ -80,11 +121,22 @@ export default function PortfolioGrid({ portfolio, isOwner }: PortfolioGridProps
               : "This user hasn't uploaded any portfolio projects yet."}
           </p>
           {isOwner && (
-            <button className="px-6 py-2.5 bg-primary text-surface font-bold text-sm rounded-[var(--radius-button)] hover:bg-primary-hover transition-colors shadow-subtle">
+            <button 
+              onClick={() => setIsModalOpen(true)}
+              className="px-6 py-2.5 bg-primary text-surface font-bold text-sm rounded-[var(--radius-button)] hover:bg-primary-hover transition-colors shadow-subtle"
+            >
               Upload Project
             </button>
           )}
         </div>
+      )}
+
+      {/* Modal */}
+      {isOwner && (
+        <PortfolioModal 
+          isOpen={isModalOpen} 
+          onClose={() => setIsModalOpen(false)} 
+        />
       )}
     </section>
   );
