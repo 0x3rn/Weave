@@ -6,12 +6,15 @@ import { BadgeCheck, MapPin, Globe, Calendar, Clock, Star, Zap, Activity, Messag
 import Image from "next/image";
 import Link from "next/link";
 
+import { usePathname, useRouter } from "next/navigation";
+
 interface HeroSectionProps {
   user: User;
   isOwner: boolean;
+  currentUserId?: string | null;
 }
 
-export default function HeroSection({ user, isOwner }: HeroSectionProps) {
+export default function HeroSection({ user, isOwner, currentUserId }: HeroSectionProps) {
   // Compute joined date fallback
   const joinedDate = user.createdAt ? new Date(user.createdAt) : new Date();
   
@@ -21,6 +24,29 @@ export default function HeroSection({ user, isOwner }: HeroSectionProps) {
     exchangesCompleted: 0,
     skillHoursEarned: 0,
     completionRate: 0,
+  };
+
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const handleActionClick = () => {
+    if (!currentUserId) {
+      router.push(`/login?next=${encodeURIComponent(pathname)}`);
+      return;
+    }
+    // Scroll to calendar if they click Request Exchange
+    const calendarElement = document.getElementById("availability-calendar");
+    if (calendarElement) {
+      calendarElement.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
+  const handleMessageClick = () => {
+    if (!currentUserId) {
+      router.push(`/login?next=${encodeURIComponent(pathname)}`);
+      return;
+    }
+    // TODO: implement messaging logic later
   };
 
   return (
@@ -83,10 +109,10 @@ export default function HeroSection({ user, isOwner }: HeroSectionProps) {
             </Link>
           ) : (
             <>
-              <button className="w-full py-2.5 bg-primary hover:bg-primary-hover text-surface text-sm font-bold rounded-[var(--radius-button)] transition-colors shadow-subtle">
+              <button onClick={handleActionClick} className="w-full py-2.5 bg-primary hover:bg-primary-hover text-surface text-sm font-bold rounded-[var(--radius-button)] transition-colors shadow-subtle">
                 Request Exchange
               </button>
-              <button className="w-full py-2.5 bg-surface-secondary hover:bg-border text-heading text-sm font-bold rounded-[var(--radius-button)] transition-colors border border-border flex items-center justify-center gap-2">
+              <button onClick={handleMessageClick} className="w-full py-2.5 bg-surface-secondary hover:bg-border text-heading text-sm font-bold rounded-[var(--radius-button)] transition-colors border border-border flex items-center justify-center gap-2">
                 <MessageSquare className="w-4 h-4" />
                 Send Message
               </button>

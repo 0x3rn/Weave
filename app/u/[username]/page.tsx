@@ -64,7 +64,7 @@ export default async function UserProfilePage({ params }: { params: Promise<{ us
           {/* LEFT SIDEBAR (Hero + Stats + Trust Score + Calendar) */}
           <div className="contents lg:block lg:col-span-4 lg:space-y-6">
             <div className="order-1">
-              <HeroSection user={user} isOwner={isOwner} />
+              <HeroSection user={user} isOwner={isOwner} currentUserId={currentUserId} />
             </div>
             {isOwner && (
               <div className="order-2">

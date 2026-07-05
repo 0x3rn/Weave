@@ -5,6 +5,7 @@ import { ExchangeRequest, Notification } from "@/types";
 
 export async function createExchangeRequest(data: Omit<ExchangeRequest, "id" | "status" | "createdAt" | "updatedAt">) {
   try {
+    if (!db) throw new Error("Database not initialized");
     const docRef = db.collection("exchangeRequests").doc();
     
     const request: ExchangeRequest = {
@@ -41,6 +42,7 @@ export async function createExchangeRequest(data: Omit<ExchangeRequest, "id" | "
 
 export async function updateExchangeRequest(requestId: string, status: string, message?: string, updates?: Partial<ExchangeRequest>) {
   try {
+    if (!db) throw new Error("Database not initialized");
     const reqRef = db.collection("exchangeRequests").doc(requestId);
     const doc = await reqRef.get();
     
@@ -91,6 +93,7 @@ export async function updateExchangeRequest(requestId: string, status: string, m
 
 export async function getExchangeRequests(userId: string, role: "sender" | "receiver") {
   try {
+    if (!db) throw new Error("Database not initialized");
     const field = role === "sender" ? "senderId" : "receiverId";
     const snapshot = await db.collection("exchangeRequests")
       .where(field, "==", userId)

@@ -5,6 +5,7 @@ import { CalendarDays, ChevronLeft, ChevronRight, Lock, Check } from "lucide-rea
 import { User } from "@/types";
 import ExchangeRequestModal from "./exchange-request-modal";
 import toast from "react-hot-toast";
+import { useRouter, usePathname } from "next/navigation";
 
 interface AvailabilityCalendarProps {
   user: User;
@@ -17,6 +18,9 @@ export default function AvailabilityCalendar({ user, currentUserId }: Availabili
   const [showModal, setShowModal] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   
+  const router = useRouter();
+  const pathname = usePathname();
+
   const isOwner = currentUserId === user.uid;
 
   // Calendar generation
@@ -62,7 +66,7 @@ export default function AvailabilityCalendar({ user, currentUserId }: Availabili
 
   const toggleDate = (dayNum: number) => {
     if (!currentUserId) {
-      toast.error("Please sign in to book an exchange.");
+      router.push(`/login?next=${encodeURIComponent(pathname)}`);
       return;
     }
     if (isOwner) return; // Owner can't book themselves
@@ -121,7 +125,7 @@ export default function AvailabilityCalendar({ user, currentUserId }: Availabili
   const monthName = currentDate.toLocaleString('default', { month: 'long' });
 
   return (
-    <div className="bg-background border border-border rounded-[var(--radius-card)] shadow-subtle overflow-hidden relative flex flex-col">
+    <div id="availability-calendar" className="bg-background border border-border rounded-[var(--radius-card)] shadow-subtle overflow-hidden relative flex flex-col">
       <div className="p-4 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
           <CalendarDays className="w-5 h-5 text-heading" />

@@ -5,6 +5,7 @@ import { Notification } from "@/types";
 
 export async function getNotifications(userId: string) {
   try {
+    if (!db) throw new Error("Database not initialized");
     const snapshot = await db.collection("notifications")
       .where("userId", "==", userId)
       .orderBy("createdAt", "desc")
@@ -22,6 +23,7 @@ export async function getNotifications(userId: string) {
 
 export async function markNotificationAsRead(notificationId: string) {
   try {
+    if (!db) throw new Error("Database not initialized");
     await db.collection("notifications").doc(notificationId).update({
       isRead: true
     });
@@ -34,6 +36,7 @@ export async function markNotificationAsRead(notificationId: string) {
 
 export async function getUnreadNotificationsCount(userId: string) {
   try {
+    if (!db) throw new Error("Database not initialized");
     const snapshot = await db.collection("notifications")
       .where("userId", "==", userId)
       .where("isRead", "==", false)
