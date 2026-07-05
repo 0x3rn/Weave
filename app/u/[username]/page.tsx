@@ -26,9 +26,33 @@ export async function generateMetadata({ params }: { params: Promise<{ username:
     return { title: "User Not Found | Weave" };
   }
 
+  const firstName = user.fullName.split(" ")[0];
+  const ogTitle = `View ${firstName}'s profile on Weave`;
+  const description = user.headline || user.bio || `Check out ${firstName}'s skills and portfolio on Weave.`;
+
   return {
     title: `${user.fullName} (@${user.username}) | Weave`,
-    description: user.headline || user.bio || `View ${user.fullName}'s profile on Weave.`,
+    description: description,
+    openGraph: {
+      title: ogTitle,
+      description: description,
+      type: "profile",
+      url: `https://weave.network/u/${user.username}`,
+      images: user.photoURL || (user as any).photoUrl ? [
+        {
+          url: user.photoURL || (user as any).photoUrl,
+          width: 400,
+          height: 400,
+          alt: `${user.fullName}'s profile picture`,
+        }
+      ] : [],
+    },
+    twitter: {
+      card: "summary",
+      title: ogTitle,
+      description: description,
+      images: user.photoURL || (user as any).photoUrl ? [user.photoURL || (user as any).photoUrl] : [],
+    }
   };
 }
 
@@ -74,10 +98,10 @@ export default async function UserProfilePage({ params }: { params: Promise<{ us
             <div className="order-3">
               <TrustScoreCard user={user} />
             </div>
-            <div className="order-9">
+            <div className="order-6">
               <AvailabilityCalendar user={user} currentUserId={currentUserId} />
             </div>
-            <div className="order-8">
+            <div className="order-9">
               <AchievementsGrid user={user} />
             </div>
           </div>
@@ -90,13 +114,13 @@ export default async function UserProfilePage({ params }: { params: Promise<{ us
             <div className="order-5">
               <SkillsSection user={user} isOwner={isOwner} />
             </div>
-            <div className="order-6">
+            <div className="order-7">
               <PortfolioGrid portfolio={portfolio} isOwner={isOwner} />
             </div>
             <div className="order-10">
               <RecentExchanges exchanges={exchanges} isOwner={isOwner} />
             </div>
-            <div className="order-7">
+            <div className="order-8">
               <ReviewsSection reviews={reviews} isOwner={isOwner} />
             </div>
             {!isOwner && (

@@ -133,7 +133,7 @@ export default function EditProfileForm({ user }: EditProfileFormProps) {
       )}
 
       {isCropping && imageSrc ? (
-        <div className="bg-surface border border-border rounded-[var(--radius-card)] p-6 shadow-subtle flex flex-col items-center">
+        <div className="bg-background border border-border rounded-[var(--radius-card)] p-6 shadow-subtle flex flex-col items-center">
           <h2 className="text-xl font-bold text-heading mb-6 w-full">Crop Profile Picture</h2>
           <div className="relative w-full max-w-md h-[400px] bg-black/10 rounded-xl overflow-hidden mb-6">
             <Cropper
@@ -181,7 +181,7 @@ export default function EditProfileForm({ user }: EditProfileFormProps) {
       ) : (
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Section: Profile Picture */}
-          <section className="bg-surface border border-border rounded-[var(--radius-card)] p-6 shadow-subtle">
+          <section className="bg-background border border-border rounded-[var(--radius-card)] p-6 shadow-subtle">
             <h2 className="text-xl font-bold text-heading mb-6 border-b border-border pb-2">Profile Picture</h2>
             <div className="flex flex-col sm:flex-row items-center gap-6">
               <div 
@@ -221,7 +221,7 @@ export default function EditProfileForm({ user }: EditProfileFormProps) {
           </section>
 
           {/* Section: Basic Info */}
-          <section className="bg-surface border border-border rounded-[var(--radius-card)] p-6 shadow-subtle space-y-5">
+          <section className="bg-background border border-border rounded-[var(--radius-card)] p-6 shadow-subtle space-y-5">
             <h2 className="text-xl font-bold text-heading border-b border-border pb-2">Basic Info</h2>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -275,7 +275,7 @@ export default function EditProfileForm({ user }: EditProfileFormProps) {
           </section>
 
           {/* Section: About */}
-          <section className="bg-surface border border-border rounded-[var(--radius-card)] p-6 shadow-subtle space-y-5">
+          <section className="bg-background border border-border rounded-[var(--radius-card)] p-6 shadow-subtle space-y-5">
             <h2 className="text-xl font-bold text-heading border-b border-border pb-2">About You</h2>
             
             <div>
@@ -323,13 +323,13 @@ export default function EditProfileForm({ user }: EditProfileFormProps) {
           </section>
 
           {/* Section: Schedule & Availability */}
-          <section className="bg-surface border border-border rounded-[var(--radius-card)] p-6 shadow-subtle space-y-5">
+          <section className="bg-background border border-border rounded-[var(--radius-card)] p-6 shadow-subtle space-y-5">
             <h2 className="text-xl font-bold text-heading border-b border-border pb-2">Schedule & Availability</h2>
             <ScheduleSettings user={user} value={schedule} onChange={setSchedule} />
           </section>
 
           {/* Section: Skills */}
-          <section className="bg-surface border border-border rounded-[var(--radius-card)] p-6 shadow-subtle space-y-5">
+          <section className="bg-background border border-border rounded-[var(--radius-card)] p-6 shadow-subtle space-y-5">
             <h2 className="text-xl font-bold text-heading border-b border-border pb-2">Skills</h2>
             
             <div>
