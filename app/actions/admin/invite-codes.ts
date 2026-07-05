@@ -139,7 +139,7 @@ export async function resendInviteEmail(id: string) {
       }
     }
 
-    const signupUrl = `https://weave.network/signup?invite=${data.code}`;
+    const signupUrl = `https://weavenetwork.vercel.app/signup?invite=${data.code}`;
     
     const emailHtml = `
       <div style="font-family: sans-serif; max-w: 600px; margin: 0 auto;">

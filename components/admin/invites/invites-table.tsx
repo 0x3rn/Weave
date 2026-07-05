@@ -173,7 +173,7 @@ export default function InvitesTable({ initialData }: InvitesTableProps) {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center justify-end gap-2 transition-opacity">
                         <button 
                           onClick={() => handleView(item)}
                           className="p-2 text-muted hover:text-primary transition-colors rounded-md hover:bg-background"

@@ -82,8 +82,8 @@ export default async function AdminPage() {
         <div className="bg-surface border border-border p-6 rounded-[var(--radius-card)] shadow-subtle">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-medium text-muted">Total Invite Requests</h3>
-            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-              <Mail className="w-4 h-4 text-primary" />
+            <div className="w-8 h-8 rounded-full bg-heading flex items-center justify-center">
+              <Users className="w-4 h-4 text-background" />
             </div>
           </div>
           <div className="text-3xl font-bold text-heading mb-1">{totalInvites}</div>
@@ -175,38 +175,38 @@ export default async function AdminPage() {
           <div className="flex flex-col gap-3">
             <Link 
               href="/admin/invites" 
-              className="flex items-center gap-3 p-4 rounded-[var(--radius-input)] border border-border bg-background hover:bg-surface-secondary hover:border-primary/50 transition-all group"
+              className="flex items-center gap-3 p-4 rounded-[var(--radius-input)] border border-border bg-background hover:bg-surface-secondary hover:border-heading transition-all group"
             >
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-surface transition-colors">
-                <Mail className="w-5 h-5" />
+              <div className="w-10 h-10 rounded-full bg-surface-secondary border border-border flex items-center justify-center text-heading group-hover:bg-heading group-hover:text-background transition-colors">
+                <UserPlus className="w-5 h-5" />
               </div>
               <div className="flex-1 text-left">
-                <div className="text-sm font-semibold text-heading group-hover:text-primary transition-colors">Review Invite Requests</div>
+                <div className="text-sm font-semibold text-heading group-hover:text-heading transition-colors">Review Invite Requests</div>
                 <div className="text-xs text-muted mt-0.5">{pendingInvites} pending review</div>
               </div>
             </Link>
 
             <Link 
               href="/admin/users" 
-              className="flex items-center gap-3 p-4 rounded-[var(--radius-input)] border border-border bg-background hover:bg-surface-secondary hover:border-primary/50 transition-all group"
+              className="flex items-center gap-3 p-4 rounded-[var(--radius-input)] border border-border bg-background hover:bg-surface-secondary hover:border-heading transition-all group"
             >
-              <div className="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center text-success group-hover:bg-success group-hover:text-surface transition-colors">
-                <UserPlus className="w-5 h-5" />
+              <div className="w-10 h-10 rounded-full bg-surface-secondary border border-border flex items-center justify-center text-heading group-hover:bg-heading group-hover:text-background transition-colors">
+                <Users className="w-5 h-5" />
               </div>
               <div className="flex-1 text-left">
-                <div className="text-sm font-semibold text-heading group-hover:text-success transition-colors">Invite New User</div>
+                <div className="text-sm font-semibold text-heading transition-colors">Manage Users</div>
                 <div className="text-xs text-muted mt-0.5">Bypass waitlist</div>
               </div>
             </Link>
 
             <button 
-              className="flex items-center gap-3 p-4 rounded-[var(--radius-input)] border border-border bg-background hover:bg-surface-secondary hover:border-primary/50 transition-all group w-full"
+              className="flex items-center gap-3 p-4 rounded-[var(--radius-input)] border border-border bg-background hover:bg-surface-secondary hover:border-heading transition-all group w-full"
             >
-              <div className="w-10 h-10 rounded-full bg-warning/10 flex items-center justify-center text-warning group-hover:bg-warning group-hover:text-surface transition-colors">
+              <div className="w-10 h-10 rounded-full bg-surface-secondary border border-border flex items-center justify-center text-heading group-hover:bg-heading group-hover:text-background transition-colors">
                 <Download className="w-5 h-5" />
               </div>
               <div className="flex-1 text-left">
-                <div className="text-sm font-semibold text-heading group-hover:text-warning transition-colors">Export Applications</div>
+                <div className="text-sm font-semibold text-heading transition-colors">Export Applications</div>
                 <div className="text-xs text-muted mt-0.5">Download as CSV</div>
               </div>
             </button>

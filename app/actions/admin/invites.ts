@@ -72,7 +72,7 @@ export async function approveInvite(id: string, data: { startingHours: number, w
     });
 
     // 3. Send approval email with the unique signup link
-    const signupUrl = `https://weave.network/signup?invite=${inviteCodeResult.code}`;
+    const signupUrl = `https://weavenetwork.vercel.app/signup?invite=${inviteCodeResult.code}`;
     
     const emailHtml = `
       <div style="font-family: sans-serif; max-w: 600px; margin: 0 auto;">
