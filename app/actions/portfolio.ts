@@ -45,16 +45,15 @@ export async function addPortfolioItem(formData: FormData) {
     // Convert File to Buffer
     const buffer = Buffer.from(await imageFile.arrayBuffer());
     
+    // Upload the file. We DO NOT call .makePublic() because enterprise buckets 
+    // should use Uniform Bucket-Level Access (IAM) for public read access.
     await fileRef.save(buffer, {
       metadata: {
         contentType: imageFile.type,
       },
     });
 
-    // Make the file publicly accessible
-    await fileRef.makePublic();
-
-    // Construct the public URL (Google Cloud Storage format)
+    // Construct the public URL (Google Cloud Storage standard format)
     imageURL = `https://storage.googleapis.com/${bucket.name}/${filename}`;
   }
 
@@ -117,8 +116,6 @@ export async function deletePortfolioItem(portfolioId: string, imageURL?: string
   if (imageURL && storage) {
     try {
       const bucket = storage.bucket();
-      // Extract the object path from the public URL
-      // URL format: https://storage.googleapis.com/{bucket_name}/{path/to/file}
       const bucketPrefix = `https://storage.googleapis.com/${bucket.name}/`;
       if (imageURL.startsWith(bucketPrefix)) {
         const filePath = imageURL.replace(bucketPrefix, "");
