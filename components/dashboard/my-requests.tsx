@@ -32,13 +32,13 @@ export default function MyRequests({ requests, currentUserId }: { requests: Exch
     <div className="bg-surface border border-border rounded-[var(--radius-card)] shadow-subtle overflow-hidden">
       <div className="p-6 border-b border-border flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-heading flex items-center gap-2">
+          <h2 className="text-lg font-semibold text-heading flex items-center gap-2 tracking-tight">
             <Inbox className="w-5 h-5 text-primary" />
             Exchange Requests
           </h2>
-          <p className="text-sm text-body mt-1">Requests you've sent or received</p>
+          <p className="text-sm text-muted mt-1 font-medium">Requests you've sent or received</p>
         </div>
-        <Link href="/requests" className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
+        <Link href="/requests" className="text-sm font-semibold text-primary hover:underline flex items-center gap-1 transition-colors">
           View All <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
@@ -65,13 +65,13 @@ export default function MyRequests({ requests, currentUserId }: { requests: Exch
                     {request.skillNeeded}
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`inline-flex px-2 py-1 rounded-md text-xs font-medium ${
-                      isSent ? 'bg-background border border-border text-muted' : 'bg-primary/10 text-primary border border-primary/20'
+                    <span className={`inline-flex px-2 py-1 rounded-md text-xs font-medium border ${
+                      isSent ? 'bg-background border-border text-muted' : 'bg-primary/10 border-primary/20 text-primary'
                     }`}>
                       {isSent ? "Sent" : "Received"}
                     </span>
                   </td>
-                  <td className="px-6 py-4 font-mono">
+                  <td className="px-6 py-4 font-mono font-semibold text-heading">
                     {request.hoursNeeded || 1}
                   </td>
                   <td className="px-6 py-4">
@@ -86,7 +86,7 @@ export default function MyRequests({ requests, currentUserId }: { requests: Exch
                   <td className="px-6 py-4 text-right">
                     <Link 
                       href={`/requests/${request.id}`}
-                      className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium bg-background border border-border rounded-[var(--radius-button)] hover:border-primary hover:text-primary transition-all"
+                      className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-semibold bg-background border border-border rounded-[var(--radius-button)] hover:border-primary hover:text-primary transition-all"
                     >
                       View
                     </Link>

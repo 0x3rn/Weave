@@ -12,13 +12,13 @@ export default function ActiveExchanges({ exchanges, currentUserId }: { exchange
     <div className="bg-surface border border-border rounded-[var(--radius-card)] shadow-subtle overflow-hidden">
       <div className="p-6 border-b border-border flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-heading flex items-center gap-2">
+          <h2 className="text-lg font-semibold text-heading flex items-center gap-2 tracking-tight">
             <RefreshCcw className="w-5 h-5 text-primary" />
             Active Exchanges
           </h2>
-          <p className="text-sm text-body mt-1">Exchanges currently in progress</p>
+          <p className="text-sm text-muted mt-1 font-medium">Exchanges currently in progress</p>
         </div>
-        <Link href="/exchanges" className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
+        <Link href="/exchanges" className="text-sm font-semibold text-primary hover:underline flex items-center gap-1 transition-colors">
           View All <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
@@ -45,17 +45,17 @@ export default function ActiveExchanges({ exchanges, currentUserId }: { exchange
                     {exchange.title}
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`inline-flex px-2 py-1 rounded-md text-xs font-medium ${
-                      isProvider ? 'bg-primary/10 text-primary' : 'bg-blue-500/10 text-blue-500'
+                    <span className={`inline-flex px-2 py-1 rounded-md text-xs font-medium border ${
+                      isProvider ? 'bg-primary/10 border-primary/20 text-primary' : 'bg-blue-500/10 border-blue-500/20 text-blue-500'
                     }`}>
                       {isProvider ? "Provider" : "Receiver"}
                     </span>
                   </td>
-                  <td className="px-6 py-4 font-mono font-semibold">
+                  <td className="px-6 py-4 font-mono font-semibold text-heading">
                     {exchange.skillHours}
                   </td>
                   <td className="px-6 py-4">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-600 dark:text-amber-500 border border-amber-500/20 capitalize">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-500 capitalize">
                       <Clock className="w-3 h-3" />
                       {exchange.status.replace("_", " ")}
                     </span>
@@ -66,7 +66,7 @@ export default function ActiveExchanges({ exchanges, currentUserId }: { exchange
                   <td className="px-6 py-4 text-right">
                     <Link 
                       href={`/exchanges/${exchange.id}`}
-                      className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium bg-background border border-border rounded-[var(--radius-button)] hover:border-primary hover:text-primary transition-all"
+                      className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-semibold bg-background border border-border rounded-[var(--radius-button)] hover:border-primary hover:text-primary transition-all"
                     >
                       Workspace
                     </Link>

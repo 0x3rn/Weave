@@ -34,7 +34,7 @@ export default function DashboardClient({ initialData }: { initialData: Dashboar
     activeExchanges.length === 0 && 
     myRequests.length === 0 && 
     ledgerSnapshot.length === 0 &&
-    user.stats.exchangesCompleted === 0;
+    (user.stats?.exchangesCompleted || 0) === 0;
 
   if (isBrandNew) {
     return <EmptyDashboard user={user} />;

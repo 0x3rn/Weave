@@ -17,8 +17,8 @@ export default function TasksReminders({ tasks }: { tasks: any[] }) {
   return (
     <div className="bg-surface border border-border rounded-[var(--radius-card)] shadow-subtle overflow-hidden">
       <div className="p-4 border-b border-border bg-background">
-        <h3 className="font-bold text-heading flex items-center gap-2 text-sm uppercase tracking-wider">
-          <CheckSquare className="w-4 h-4 text-primary" />
+        <h3 className="font-semibold text-heading flex items-center gap-2 text-sm tracking-tight">
+          <CheckSquare className="w-5 h-5 text-primary" />
           Tasks & Reminders
         </h3>
       </div>
@@ -35,7 +35,7 @@ export default function TasksReminders({ tasks }: { tasks: any[] }) {
               {task.actionText && task.actionUrl && (
                 <Link 
                   href={task.actionUrl}
-                  className="inline-block mt-2 text-xs font-semibold text-primary hover:underline"
+                  className="inline-block mt-2 text-xs font-semibold text-primary hover:underline transition-colors"
                 >
                   {task.actionText} →
                 </Link>

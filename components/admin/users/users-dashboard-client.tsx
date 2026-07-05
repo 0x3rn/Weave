@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { User } from "@/types";
 import { Search, Download, RefreshCw, Plus } from "lucide-react";
+import Link from "next/link";
 import UsersSummaryCards from "./users-summary-cards";
 import UsersTable from "./users-table";
 import UserDrawer from "./user-drawer";
@@ -13,6 +15,7 @@ interface UsersDashboardClientProps {
 }
 
 export default function UsersDashboardClient({ initialUsers, summary }: UsersDashboardClientProps) {
+  const router = useRouter();
   const [users, setUsers] = useState<User[]>(initialUsers);
   
   // Search & Filters
@@ -66,15 +69,21 @@ export default function UsersDashboardClient({ initialUsers, summary }: UsersDas
           <p className="text-sm text-body">Manage members, invitations, verification, account health, and community activity.</p>
         </div>
         <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-[var(--radius-button)] border border-border bg-background hover:bg-surface-secondary text-heading transition-colors">
+          <button 
+            onClick={() => router.refresh()}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-[var(--radius-button)] border border-border bg-background hover:bg-surface-secondary text-heading transition-colors"
+          >
             <RefreshCw className="w-4 h-4" /> Refresh
           </button>
           <button className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-[var(--radius-button)] border border-border bg-background hover:bg-surface-secondary text-heading transition-colors">
             <Download className="w-4 h-4" /> Export CSV
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-[var(--radius-button)] bg-primary text-background hover:bg-primary-hover transition-colors">
+          <Link 
+            href="/admin/invites"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-[var(--radius-button)] bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-glow"
+          >
             <Plus className="w-4 h-4" /> Invite Member
-          </button>
+          </Link>
         </div>
       </div>
 

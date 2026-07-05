@@ -15,11 +15,11 @@ export default function PerformanceInsights({ stats }: { stats: UserStats }) {
 
   return (
     <div className="bg-surface border border-border rounded-[var(--radius-card)] shadow-subtle p-6 relative overflow-hidden">
-      <div className="absolute top-0 right-0 p-4 opacity-10">
-        <Activity className="w-24 h-24 text-primary" />
+      <div className="absolute top-0 right-0 p-4 opacity-[0.05] dark:opacity-10 text-primary">
+        <Activity className="w-24 h-24" />
       </div>
       
-      <h3 className="font-bold text-heading mb-6 flex items-center gap-2 uppercase tracking-wider text-xs relative z-10">
+      <h3 className="font-semibold text-heading mb-6 flex items-center gap-2 tracking-tight text-sm relative z-10">
         <TrendingUp className="w-4 h-4 text-primary" />
         Performance Insights
       </h3>

@@ -11,13 +11,13 @@ export default function MarketplaceMatches({ matches }: { matches: User[] }) {
     <div className="bg-surface border border-border rounded-[var(--radius-card)] shadow-subtle overflow-hidden">
       <div className="p-6 border-b border-border flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-heading flex items-center gap-2">
+          <h2 className="text-lg font-semibold text-heading flex items-center gap-2 tracking-tight">
             <Sparkles className="w-5 h-5 text-warning" />
             Recommended For You
           </h2>
-          <p className="text-sm text-body mt-1">Based on the skills you are looking for.</p>
+          <p className="text-sm text-muted mt-1 font-medium">Based on the skills you are looking for.</p>
         </div>
-        <Link href="/marketplace" className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
+        <Link href="/marketplace" className="text-sm font-semibold text-primary hover:underline flex items-center gap-1 transition-colors">
           Browse All <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
@@ -56,13 +56,13 @@ export default function MarketplaceMatches({ matches }: { matches: User[] }) {
             <div className="flex items-center gap-3 shrink-0">
               <Link 
                 href={`/u/${match.username}`}
-                className="px-4 py-2 bg-background border border-border text-heading rounded-[var(--radius-button)] text-sm font-medium hover:border-primary transition-all"
+                className="px-4 py-2 bg-background border border-border text-heading rounded-[var(--radius-button)] text-sm font-semibold hover:border-primary transition-all"
               >
                 View Profile
               </Link>
               <Link 
                 href={`/u/${match.username}?request=true`}
-                className="px-4 py-2 bg-primary/10 text-primary border border-primary/20 rounded-[var(--radius-button)] text-sm font-medium hover:bg-primary hover:text-primary-foreground transition-all flex items-center gap-2"
+                className="px-4 py-2 bg-primary/10 text-primary border border-primary/20 rounded-[var(--radius-button)] text-sm font-semibold hover:bg-primary hover:text-background transition-all flex items-center gap-2"
               >
                 <UserPlus className="w-4 h-4" />
                 Request

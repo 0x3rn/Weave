@@ -18,15 +18,15 @@ export default function QuickActions() {
 
   return (
     <div className="bg-surface border border-border rounded-[var(--radius-card)] shadow-subtle p-6">
-      <h3 className="font-bold text-heading mb-4 uppercase text-xs tracking-wider">Quick Actions</h3>
+      <h3 className="font-semibold text-heading mb-4 text-sm tracking-tight">Quick Actions</h3>
       <div className="flex flex-col gap-2">
         {actions.map((action, i) => (
           <Link 
             key={i} 
             href={action.href}
-            className={`flex items-center gap-3 px-4 py-2.5 rounded-[var(--radius-button)] text-sm font-medium transition-all ${
+            className={`flex items-center gap-3 px-4 py-2.5 rounded-[var(--radius-button)] text-sm font-semibold transition-all ${
               action.primary 
-                ? 'bg-primary text-primary-foreground shadow-glow hover:bg-primary/90' 
+                ? 'bg-primary text-background shadow-subtle hover:bg-primary-hover hover:shadow-[0_0_15px_rgba(46,125,50,0.3)] dark:hover:shadow-[0_0_15px_rgba(88,199,109,0.3)]' 
                 : 'bg-background border border-border text-heading hover:border-primary hover:text-primary'
             }`}
           >

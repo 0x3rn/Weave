@@ -38,6 +38,16 @@ export async function getDashboardData() {
     // Override user object with computed values for the dashboard
     user.profileCompletion = profileCompletion;
     user.trustScore = trustScore;
+    user.stats = user.stats || {
+      rating: 0,
+      reviewsCount: 0,
+      exchangesCompleted: 0,
+      skillHoursEarned: 0,
+      skillHoursSpent: 0,
+      completionRate: 0,
+      responseTimeHours: 0,
+      repeatCollaborations: 0,
+    };
 
     // 2. Fetch Active Exchanges (where user is participant and status is pending or in_progress)
     // Firestore requires an index for array-contains with multiple where clauses, 
