@@ -1,4 +1,5 @@
 import { auth } from "@/lib/firebase-admin-auth";
+import { db } from "@/lib/firebase-admin";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
@@ -21,6 +22,19 @@ export async function POST(request: Request) {
 
     // Create the session cookie
     const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn });
+
+    // Verify token to get UID and update lastActive
+    try {
+      const decodedToken = await auth.verifyIdToken(idToken);
+      if (db) {
+        await db.collection("users").doc(decodedToken.uid).update({
+          lastActive: new Date().toISOString()
+        });
+      }
+    } catch (e) {
+      console.error("Failed to update lastActive:", e);
+      // We don't fail the login if this non-critical update fails
+    }
 
     // Configure the cookie options
     const options = {

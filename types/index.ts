@@ -1,4 +1,4 @@
-export type UserRole = "Freelancer" | "Client" | "Admin";
+export type UserRole = "Freelancer" | "Client" | "Moderator" | "Admin" | "Member";
 
 export interface UserStats {
   rating: number;
@@ -55,6 +55,12 @@ export interface User {
   isVerified: boolean;
   
   profileCompletion: number; // 0-100
+
+  // Admin / Operational fields
+  skillHours?: number; // Current balance
+  role?: UserRole;
+  status?: "active" | "suspended" | "banned";
+  adminNotes?: string;
 }
 
 export interface PortfolioItem {
