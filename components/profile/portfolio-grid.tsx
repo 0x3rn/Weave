@@ -103,7 +103,7 @@ export default function PortfolioGrid({ portfolio, isOwner }: PortfolioGridProps
                 <div className="flex flex-wrap gap-2 mb-5">
                   {item.technologies.map(tech => (
                     <span key={tech} className="text-xs font-medium text-muted bg-surface-secondary px-2 py-1 rounded-[var(--radius-badge)] border border-border flex items-center gap-1.5">
-                      <SkillIcon skill={tech} className="w-3 h-3 text-muted" />
+                      <SkillIcon skill={tech} className="w-3 h-3" />
                       {tech}
                     </span>
                   ))}
@@ -190,7 +190,7 @@ export default function PortfolioGrid({ portfolio, isOwner }: PortfolioGridProps
                 <div className="flex flex-wrap gap-2 mb-6">
                   {viewProject.technologies.map(tech => (
                     <span key={tech} className="text-xs font-medium text-muted bg-surface-secondary px-2.5 py-1 rounded-[var(--radius-badge)] border border-border flex items-center gap-1.5">
-                      <SkillIcon skill={tech} className="w-3.5 h-3.5 text-muted" />
+                      <SkillIcon skill={tech} className="w-3.5 h-3.5" />
                       {tech}
                     </span>
                   ))}
