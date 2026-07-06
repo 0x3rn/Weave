@@ -196,5 +196,13 @@ export const ACHIEVEMENTS: Record<string, AchievementDefinition> = {
     category: "Community",
     tier: "bronze",
     iconName: "cake"
+  },
+  early_bird: {
+    id: "early_bird",
+    title: "Early Bird",
+    description: "User participated in the Weave beta testing phase.",
+    category: "Community",
+    tier: "platinum",
+    iconName: "rocket"
   }
 };

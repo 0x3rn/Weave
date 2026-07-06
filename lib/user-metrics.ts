@@ -55,3 +55,63 @@ export function calculateTrustScore(user: User, dynamicProfileCompletion?: numbe
   const finalScore = score - deductions;
   return Math.max(0, Math.min(100, finalScore));
 }
+
+export function calculateEarnedAchievements(user: User, portfolio?: PortfolioItem[]): string[] {
+  const earnedIds: string[] = [];
+  const dynamicProfileCompletion = calculateProfileCompletion(user, portfolio);
+
+  const stats = user.stats || {
+    exchangesCompleted: 0,
+    rating: 0,
+    reviewsCount: 0,
+    skillHoursEarned: 0,
+    skillHoursSpent: 0,
+    responseTimeHours: 0,
+    repeatCollaborations: 0,
+    disputesLost: 0,
+    reportsAgainst: 0
+  };
+
+  // Getting Started
+  earnedIds.push("welcome_aboard");
+  if (dynamicProfileCompletion >= 100) earnedIds.push("profile_complete");
+  if (stats.exchangesCompleted > 0) earnedIds.push("first_exchange");
+
+  // Collaboration
+  if (stats.exchangesCompleted >= 5) earnedIds.push("collaborator");
+  if (stats.exchangesCompleted >= 25) earnedIds.push("power_collaborator");
+  if (stats.exchangesCompleted >= 50) earnedIds.push("exchange_expert");
+  if (stats.exchangesCompleted >= 100) earnedIds.push("exchange_master");
+
+  // Reputation
+  if (stats.rating >= 4.8 && stats.reviewsCount >= 20) earnedIds.push("top_rated");
+  if (stats.responseTimeHours > 0 && stats.responseTimeHours <= 2) earnedIds.push("fast_responder");
+  if (stats.exchangesCompleted >= 100 && (stats.disputesLost || 0) === 0) earnedIds.push("dispute_free");
+
+  // Economy
+  if (stats.skillHoursEarned >= 50) earnedIds.push("hour_earner");
+  if (stats.skillHoursEarned >= 250) earnedIds.push("time_investor");
+  if (stats.skillHoursEarned >= 100 && stats.skillHoursSpent >= 100) earnedIds.push("balanced_contributor");
+
+  // Expertise
+  const skillsOfferedCount = user.skillsOffered ? user.skillsOffered.length : 0;
+  if (skillsOfferedCount >= 5) earnedIds.push("multi_talented");
+
+  // Community
+  if (user.isVerified) earnedIds.push("verified");
+
+  // Time-based
+  const userCreatedAt = new Date(user.createdAt);
+  const now = new Date();
+  const monthsDiff = (now.getFullYear() - userCreatedAt.getFullYear()) * 12 + (now.getMonth() - userCreatedAt.getMonth());
+  if (monthsDiff >= 6) earnedIds.push("six_month_member");
+  if (monthsDiff >= 12) earnedIds.push("one_year_member");
+
+  // Early Bird (Beta Tester)
+  const betaCutoffDate = new Date("2026-08-31T23:59:59Z");
+  if (userCreatedAt <= betaCutoffDate) {
+    earnedIds.push("early_bird");
+  }
+
+  return earnedIds;
+}

@@ -1,11 +1,12 @@
 "use client";
 
+import { calculateEarnedAchievements } from "@/lib/user-metrics";
 import { User, PortfolioItem } from "@/types";
 import { ACHIEVEMENTS, AchievementTier } from "@/lib/constants/achievements";
 import { 
   Sprout, Sparkles, Target, Handshake, Medal, Crown, Star, 
   Shield, Zap, Bird, Clock, Hourglass, Scale, Palette, Puzzle, 
-  BadgeCheck, HeartHandshake, Megaphone, CalendarDays, Cake, Trophy, UserCheck
+  BadgeCheck, HeartHandshake, Megaphone, CalendarDays, Cake, Trophy, UserCheck, Rocket
 } from "lucide-react";
 
 interface AchievementsGridProps {
@@ -44,74 +45,12 @@ const iconMap: Record<string, React.ReactNode> = {
   "heart-handshake": <HeartHandshake className="w-4 h-4" />,
   "megaphone": <Megaphone className="w-4 h-4" />,
   "calendar-days": <CalendarDays className="w-4 h-4" />,
-  "cake": <Cake className="w-4 h-4" />
+  "cake": <Cake className="w-4 h-4" />,
+  "rocket": <Rocket className="w-4 h-4" />
 };
 
 export default function AchievementsGrid({ user, portfolio = [] }: AchievementsGridProps) {
-  // Dynamically calculate profile completion to check for "Profile Complete" badge
-  const calculateProfileCompletion = () => {
-    let complete = 0;
-    if (user.photoURL || (user as any).photoUrl) complete += 15;
-    if (user.headline) complete += 10;
-    if (user.bio && user.bio.length > 10) complete += 20;
-    if (user.country && user.timeZone) complete += 10;
-    if (user.skillsOffered && user.skillsOffered.length > 0) complete += 15;
-    if (user.skillsLookingFor && user.skillsLookingFor.length > 0) complete += 10;
-    if (portfolio && portfolio.length > 0) complete += 20;
-    return complete;
-  };
-
-  const dynamicProfileCompletion = calculateProfileCompletion();
-  const stats = user.stats || {
-    rating: 0,
-    reviewsCount: 0,
-    exchangesCompleted: 0,
-    skillHoursEarned: 0,
-    skillHoursSpent: 0,
-    responseTimeHours: 0,
-    repeatCollaborations: 0,
-    disputesLost: 0,
-    reportsAgainst: 0
-  };
-
-  // Calculate dynamic achievements based strictly on real-time data
-  const earnedIds: string[] = [];
-
-  // Getting Started
-  earnedIds.push("welcome_aboard"); // everyone who is signed up gets this
-  if (dynamicProfileCompletion >= 100) earnedIds.push("profile_complete");
-  if (stats.exchangesCompleted > 0) earnedIds.push("first_exchange"); // First match and exchange can be synonymous for MVP
-
-  // Collaboration
-  if (stats.exchangesCompleted >= 5) earnedIds.push("collaborator");
-  if (stats.exchangesCompleted >= 25) earnedIds.push("power_collaborator");
-  if (stats.exchangesCompleted >= 50) earnedIds.push("exchange_expert");
-  if (stats.exchangesCompleted >= 100) earnedIds.push("exchange_master");
-
-  // Reputation
-  if (stats.rating >= 4.8 && stats.reviewsCount >= 20) earnedIds.push("top_rated");
-  if (stats.responseTimeHours > 0 && stats.responseTimeHours <= 2) earnedIds.push("fast_responder");
-  // If they have 100+ exchanges and 0 lost disputes, they are dispute free
-  if (stats.exchangesCompleted >= 100 && (stats.disputesLost || 0) === 0) earnedIds.push("dispute_free");
-
-  // Economy
-  if (stats.skillHoursEarned >= 50) earnedIds.push("hour_earner");
-  if (stats.skillHoursEarned >= 250) earnedIds.push("time_investor");
-  if (stats.skillHoursEarned >= 100 && stats.skillHoursSpent >= 100) earnedIds.push("balanced_contributor");
-
-  // Expertise
-  const skillsOfferedCount = user.skillsOffered ? user.skillsOffered.length : 0;
-  if (skillsOfferedCount >= 5) earnedIds.push("multi_talented");
-
-  // Community
-  if (user.isVerified) earnedIds.push("verified");
-
-  // Time-based
-  const userCreatedAt = new Date(user.createdAt);
-  const now = new Date();
-  const monthsDiff = (now.getFullYear() - userCreatedAt.getFullYear()) * 12 + (now.getMonth() - userCreatedAt.getMonth());
-  if (monthsDiff >= 6) earnedIds.push("six_month_member");
-  if (monthsDiff >= 12) earnedIds.push("one_year_member");
+  const earnedIds = calculateEarnedAchievements(user, portfolio);
 
   // Map earned IDs to full definitions and filter out invalid ones
   const earnedBadges = earnedIds
@@ -130,33 +69,21 @@ export default function AchievementsGrid({ user, portfolio = [] }: AchievementsG
       </h3>
       
       <div 
-        className="grid grid-rows-2 grid-flow-col lg:flex lg:flex-wrap gap-2 overflow-x-auto lg:overflow-x-visible snap-x snap-mandatory lg:snap-none pb-2 lg:pb-0"
-        style={{ gridAutoColumns: "calc(50% - 4px)" }}
+        className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent snap-x"
+        style={{ WebkitOverflowScrolling: 'touch' }}
       >
         {earnedBadges.map((badge) => (
           <div 
             key={badge.id}
-            className="snap-start flex items-center gap-2 bg-background border border-border hover:border-primary/50 px-3 py-1.5 rounded-full transition-all cursor-help group relative min-w-0"
+            className="flex-shrink-0 snap-start flex flex-col items-center gap-2 w-24 p-3 rounded-[var(--radius-button)] bg-surface border border-border hover:border-primary/30 transition-colors group cursor-help relative"
+            title={`${badge.title} - ${badge.description}`}
           >
-            <span className={`flex-shrink-0 ${getTierColor(badge.tier)}`}>
-              {iconMap[badge.iconName] || <Medal className="w-4 h-4" />}
-            </span>
-            <span className="text-xs font-bold text-heading truncate">{badge.title}</span>
-            
-            {/* Tooltip */}
-            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[200px] opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
-              <div className="bg-heading text-surface text-xs p-2 rounded-md shadow-lg text-center whitespace-normal">
-                <p className="font-bold mb-0.5">{badge.title}</p>
-                <p className="text-[10px] text-surface/80">{badge.description}</p>
-                {badge.tier !== "none" && (
-                  <p className={`text-[9px] uppercase tracking-wider mt-1 font-bold ${getTierColor(badge.tier)}`}>
-                    {badge.tier} Tier
-                  </p>
-                )}
-              </div>
-              {/* Arrow */}
-              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-heading" />
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center bg-background border border-border group-hover:border-primary/50 group-hover:shadow-[0_0_10px_rgba(88,199,109,0.2)] transition-all ${getTierColor(badge.tier)}`}>
+              {iconMap[badge.iconName] || <Trophy className="w-4 h-4" />}
             </div>
+            <span className="text-[10px] font-bold text-center text-heading leading-tight break-words w-full">
+              {badge.title}
+            </span>
           </div>
         ))}
       </div>
