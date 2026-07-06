@@ -47,7 +47,7 @@ export default async function ProfilePage() {
   // If they don't have a username, render a client component to set one
   if (!userData || !userData.username) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="min-h-full bg-background flex items-center justify-center p-4">
         <SetUsernameClient />
       </div>
     );
@@ -64,7 +64,7 @@ export default async function ProfilePage() {
   ]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-full bg-background">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl py-8 md:py-12">
         
         {/* Top Action Bar */}

@@ -102,7 +102,7 @@ export default function HeroSection({ user, isOwner, currentUserId }: HeroSectio
         <div className="w-full mt-6 flex flex-col gap-3">
           {isOwner ? (
             <Link 
-              href="/profile/edit" 
+              href="/profile" 
               className="w-full py-2.5 bg-surface-secondary hover:bg-border text-heading text-sm font-bold rounded-[var(--radius-button)] transition-colors border border-border"
             >
               Edit Profile

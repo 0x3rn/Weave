@@ -59,7 +59,7 @@ export default function QuickStats({ user, pendingRequestsCount, activeExchanges
       subtext: user.profileCompletion < 100 ? "Needs updating" : "Fully complete",
       icon: <CheckCircle2 className={`w-5 h-5 ${user.profileCompletion === 100 ? 'text-success' : 'text-primary'}`} />,
       color: user.profileCompletion === 100 ? "bg-success/10 border-success/20" : "bg-primary/10 border-primary/20",
-      href: "/profile/edit"
+      href: "/profile"
     }
   ];
 

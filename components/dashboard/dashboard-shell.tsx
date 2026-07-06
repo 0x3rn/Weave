@@ -43,7 +43,7 @@ export default function DashboardShell({ children, user }: { children: React.Rea
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
+    <div className="flex h-[100dvh] bg-background overflow-hidden">
       
       {/* MOBILE OVERLAY */}
       {isMobileMenuOpen && (
@@ -55,7 +55,7 @@ export default function DashboardShell({ children, user }: { children: React.Rea
 
       {/* SIDEBAR */}
       <aside 
-        className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-surface border-r border-border flex flex-col transition-transform duration-300 ease-in-out ${
+        className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-background border-r border-border flex flex-col transition-transform duration-300 ease-in-out ${
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
@@ -106,7 +106,7 @@ export default function DashboardShell({ children, user }: { children: React.Rea
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         
         {/* TOPBAR */}
-        <header className="h-16 bg-surface border-b border-border flex items-center justify-between px-4 lg:px-8 shrink-0 z-10">
+        <header className="h-16 bg-background border-b border-border flex items-center justify-between px-4 lg:px-8 shrink-0 z-10">
           <div className="flex items-center gap-4">
             <button 
               className="lg:hidden text-muted hover:text-heading"

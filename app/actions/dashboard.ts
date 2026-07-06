@@ -118,7 +118,7 @@ export async function getDashboardData() {
         id: "complete_profile",
         title: `Complete your profile (${profileCompletion}% done)`,
         actionText: "Edit Profile",
-        actionUrl: "/profile/edit",
+        actionUrl: "/profile",
         isUrgent: profileCompletion < 50
       });
     }

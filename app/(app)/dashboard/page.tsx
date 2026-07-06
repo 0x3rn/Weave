@@ -17,7 +17,7 @@ export default async function DashboardPage() {
     }
     // For other errors, we might want to render a subtle error state or error boundary
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 text-center">
+      <div className="min-h-full bg-background flex flex-col items-center justify-center p-4 text-center">
         <h1 className="text-2xl font-bold text-heading mb-2">Failed to load dashboard</h1>
         <p className="text-body max-w-md">{error.message || "An unexpected error occurred."}</p>
       </div>

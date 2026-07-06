@@ -10,7 +10,7 @@ export default function QuickActions() {
     { label: "Create Exchange", icon: <Plus className="w-4 h-4" />, href: "/marketplace/create", primary: true },
     { label: "Browse Marketplace", icon: <Search className="w-4 h-4" />, href: "/marketplace" },
     { label: "Invite Someone", icon: <UserPlus className="w-4 h-4" />, href: "/invites" },
-    { label: "Edit Profile", icon: <Edit3 className="w-4 h-4" />, href: "/profile/edit" },
+    { label: "Edit Profile", icon: <Edit3 className="w-4 h-4" />, href: "/profile" },
     { label: "Become Verified", icon: <Shield className="w-4 h-4" />, href: "/verification" },
     { label: "View Ledger", icon: <Wallet className="w-4 h-4" />, href: "/wallet" },
     { label: "Support", icon: <LifeBuoy className="w-4 h-4" />, href: "/support" }

@@ -11,7 +11,7 @@ export default function EmptyDashboard({ user }: { user: User }) {
       title: "Complete Profile",
       description: "Add your skills, bio, and portfolio.",
       icon: <UserCheck className="w-5 h-5" />,
-      href: "/profile/edit",
+      href: "/profile",
       done: user.profileCompletion === 100,
     },
     {
@@ -52,7 +52,7 @@ export default function EmptyDashboard({ user }: { user: User }) {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-full bg-background">
       <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-in fade-in duration-500">
         
         <WelcomeHeader user={user} activeExchangesCount={0} matchesCount={0} />
@@ -69,7 +69,7 @@ export default function EmptyDashboard({ user }: { user: User }) {
             You're all set! Here are a few things to get started on building your professional momentum and earning Trust points.
           </p>
 
-          <div className="mt-10 bg-surface border border-border rounded-[var(--radius-card)] p-6 md:p-8 text-left shadow-subtle">
+          <div className="mt-10 bg-background border border-border rounded-[var(--radius-card)] p-6 md:p-8 text-left shadow-subtle">
             <h3 className="font-semibold text-heading tracking-tight mb-6 flex items-center gap-2">
               <span className="w-2 h-2 bg-primary rounded-full"></span>
               Getting Started Checklist
@@ -82,7 +82,7 @@ export default function EmptyDashboard({ user }: { user: User }) {
                   className={`flex items-start gap-4 p-4 rounded-[var(--radius-card)] border transition-all ${
                     step.done 
                       ? 'bg-success/5 border-success/20 opacity-70' 
-                      : 'bg-surface hover:bg-primary/5 border-border hover:border-primary/50 group'
+                      : 'bg-background hover:bg-primary/5 border-border hover:border-primary/50 group'
                   }`}
                 >
                   <div className={`mt-0.5 shrink-0 ${step.done ? 'text-success' : 'text-primary'}`}>
