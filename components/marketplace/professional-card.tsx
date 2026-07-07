@@ -5,6 +5,7 @@ import { SkillIcon } from "@/components/profile/skill-icon";
 interface ProfessionalCardProps {
   professional: {
     id: string;
+    username: string;
     name: string;
     avatar: string | null;
     headline: string;

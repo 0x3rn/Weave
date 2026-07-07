@@ -61,7 +61,7 @@ export async function getMarketplaceData(filters: Partial<MarketplaceFilters> = 
           ...r,
           requesterName: uData.fullName || uData.displayName || uData.username || r.requesterName,
           requesterAvatar: uData.photoURL || uData.photoUrl || r.requesterAvatar || null,
-          requesterTrustScore: uData.trustScore !== undefined ? uData.trustScore : calculateTrustScore(uData),
+          requesterTrustScore: uData.trustScore !== undefined ? uData.trustScore : calculateTrustScore(uData as any),
           requesterVerification: uData.isVerified || false
         };
       }
@@ -86,7 +86,7 @@ export async function getMarketplaceData(filters: Partial<MarketplaceFilters> = 
     let professionals: any[] = [];
     usersSnapshot.forEach((doc: any) => {
       const data = doc.data();
-      const trustScore = data.trustScore !== undefined ? data.trustScore : calculateTrustScore(data);
+      const trustScore = data.trustScore !== undefined ? data.trustScore : calculateTrustScore(data as any);
       
       professionals.push({
         id: doc.id,
@@ -156,7 +156,7 @@ export async function getMarketplaceRequest(id: string) {
       const uData = userDoc.data()!;
       requestData.requesterName = uData.fullName || uData.displayName || uData.username || requestData.requesterName;
       requestData.requesterAvatar = uData.photoURL || uData.photoUrl || requestData.requesterAvatar || null;
-      requestData.requesterTrustScore = uData.trustScore !== undefined ? uData.trustScore : calculateTrustScore(uData);
+      requestData.requesterTrustScore = uData.trustScore !== undefined ? uData.trustScore : calculateTrustScore(uData as any);
       requestData.requesterVerification = uData.isVerified || false;
     }
     
