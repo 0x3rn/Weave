@@ -71,6 +71,7 @@ export async function addPortfolioItem(formData: FormData) {
   };
 
   await portfolioRef.set(portfolioData);
+  await db.collection("users").doc(userId).update({ hasPortfolio: true, updatedAt: new Date().toISOString() });
 
   // Get the user's username to revalidate their profile page
   const userDoc = await db.collection("users").doc(userId).get();

@@ -135,3 +135,48 @@ export async function getUserReviews(userId: string): Promise<Review[]> {
     return [];
   }
 }
+
+/**
+ * Fetch similar professionals based on a user's profession
+ */
+export async function getSimilarProfessionals(userId: string, profession: string, limitCount: number = 3) {
+  if (!db) return [];
+  
+  try {
+    let similar: any[] = [];
+    
+    if (profession) {
+      const snapshot = await db.collection("users")
+        .where("profession", "==", profession)
+        .limit(limitCount + 1)
+        .get();
+        
+      snapshot.forEach(doc => {
+        if (doc.id !== userId && similar.length < limitCount) {
+          similar.push({ id: doc.id, ...doc.data() });
+        }
+      });
+    }
+    
+    // Fallback if not enough similar users
+    if (similar.length < limitCount) {
+      const fallback = await db.collection("users").limit(limitCount + 2).get();
+      fallback.forEach(doc => {
+        if (doc.id !== userId && similar.length < limitCount && !similar.find(s => s.id === doc.id)) {
+          similar.push({ id: doc.id, ...doc.data() });
+        }
+      });
+    }
+    
+    return similar.map(u => ({
+      id: u.id,
+      username: u.username || u.id,
+      name: u.fullName || u.displayName || u.username || "Unknown",
+      role: u.profession || "Professional",
+      photoURL: u.photoURL || u.photoUrl || null
+    }));
+  } catch (e) {
+    console.error("Error fetching similar professionals:", e);
+    return [];
+  }
+}

@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getUserByUsername, getUserPortfolio, getUserExchanges, getUserReviews } from "@/app/actions/profile";
+import { getUserByUsername, getUserPortfolio, getUserExchanges, getUserReviews, getSimilarProfessionals } from "@/app/actions/profile";
 import { getCurrentUserId } from "@/app/actions/user";
 import { User, PortfolioItem, Exchange, Review } from "@/types";
 import HeroSection from "@/components/profile/hero-section";
@@ -72,10 +72,11 @@ export default async function UserProfilePage({ params }: { params: Promise<{ us
   const isOwner = currentUserId === user.uid;
 
   // 3. Fetch Related Data in Parallel
-  const [portfolio, exchanges, reviews] = await Promise.all([
+  const [portfolio, exchanges, reviews, similarUsers] = await Promise.all([
     getUserPortfolio(user.uid),
     getUserExchanges(user.uid),
     getUserReviews(user.uid),
+    getSimilarProfessionals(user.uid, user.profession || "")
   ]);
 
   return (
@@ -123,9 +124,9 @@ export default async function UserProfilePage({ params }: { params: Promise<{ us
             <div className="order-8">
               <ReviewsSection reviews={reviews} isOwner={isOwner} />
             </div>
-            {!isOwner && (
+            {!isOwner && similarUsers.length > 0 && (
               <div className="order-11">
-                <SimilarProfessionals user={user} />
+                <SimilarProfessionals similarUsers={similarUsers} />
               </div>
             )}
           </div>

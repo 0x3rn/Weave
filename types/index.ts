@@ -53,6 +53,7 @@ export interface User {
   trustScore: number; // 0-100
   achievements?: Record<string, boolean> | UserAchievement[]; // Support both for migration
   isVerified: boolean;
+  hasPortfolio?: boolean;
   
   profileCompletion: number; // 0-100
 
@@ -137,6 +138,61 @@ export interface ExchangeRequest {
   updatedAt: string; // ISO string
 }
 
+export type MarketplaceRequestStatus = "open" | "in_progress" | "completed" | "cancelled";
+
+export interface MarketplaceRequest {
+  id: string;
+  title: string;
+  requesterId: string;
+  requesterName: string;
+  requesterAvatar?: string;
+  requesterTrustScore: number;
+  requesterVerification: boolean;
+  description: string;
+  deliverables: string[];
+  category: string;
+  skillsRequired: string[];
+  estimatedHours: string; // e.g. "5-7 Hours" or "10+"
+  exchangeType: string; // "One-time", "Ongoing", etc.
+  timeline: string; // e.g. "Within 2 weeks"
+  preferredExperience: string; // "Intermediate"
+  preferredTimeZone?: string;
+  attachments: { name: string, url: string }[];
+  status: MarketplaceRequestStatus;
+  applicantsCount: number;
+  createdAt: string; // ISO string
+  updatedAt: string; // ISO string
+}
+
+export type MarketplaceApplicationStatus = "pending" | "accepted" | "rejected";
+
+export interface MarketplaceApplication {
+  id: string;
+  requestId: string;
+  applicantId: string;
+  pitch: string;
+  portfolioLinks: string[];
+  availability: string;
+  estimatedHours: number;
+  status: MarketplaceApplicationStatus;
+  createdAt: string; // ISO string
+}
+
+export interface MarketplaceFilters {
+  category?: string[];
+  skills?: string[];
+  exchangeType?: string;
+  estimatedHours?: string;
+  availability?: string;
+  verifiedOnly?: boolean;
+  minTrustScore?: number;
+  minRating?: string;
+  experience?: string;
+  language?: string[];
+  timeZone?: string;
+  sort?: string;
+}
+
 export type NotificationType = "exchange_request" | "request_update" | "system";
 
 export interface Notification {
@@ -158,4 +214,36 @@ export interface SkillLedgerEntry {
   reason: string;
   relatedId?: string; // ID of the exchange or user
   createdAt: string; // ISO string
+}
+
+export type TransactionType = 
+  | "Earned"
+  | "Spent"
+  | "Reserved"
+  | "Released"
+  | "Refunded"
+  | "Adjustment"
+  | "Bonus"
+  | "Welcome Credit"
+  | "Dispute Resolution"
+  | "Admin Correction"
+  | "Transfer Reversal";
+
+export type TransactionStatus = "Completed" | "Pending" | "Active" | "Failed" | "Disputed";
+
+export interface LedgerTransaction {
+  id: string;
+  userId: string;
+  date: string; // ISO string
+  type: TransactionType;
+  description: string;
+  exchangeId?: string;
+  amount: number; // positive or negative
+  balanceAfter: number;
+  balanceBefore?: number;
+  status: TransactionStatus;
+  linkedUserId?: string;
+  linkedUserName?: string;
+  linkedUserAvatar?: string;
+  notes?: string;
 }
