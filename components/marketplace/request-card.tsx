@@ -18,7 +18,7 @@ export function RequestCard({ request, isSavedInitial = false, onToggleSave }: R
   const [isSaved, setIsSaved] = useState(isSavedInitial);
 
   return (
-    <div className="bg-surface border border-border rounded-[var(--radius-card)] p-6 shadow-subtle hover:shadow-md transition-all group flex flex-col h-full">
+    <div className="bg-background border border-border rounded-[var(--radius-card)] p-6 shadow-subtle hover:shadow-md transition-all group flex flex-col h-full">
       <div className="flex items-start justify-between gap-4 mb-4">
         <div>
           <Link href={`/marketplace/${request.id}`} className="hover:underline">

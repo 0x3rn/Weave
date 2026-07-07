@@ -112,7 +112,7 @@ export function MarketplaceClient({ initialRequests, initialProfessionals, stats
           <Link href="/marketplace/create" className="px-6 py-3 bg-primary hover:bg-primary-hover text-background font-bold rounded-[var(--radius-button)] shadow-[0_0_20px_rgba(88,199,109,0.3)] transition-all flex items-center gap-2">
             <Plus className="w-5 h-5" /> Post Request
           </Link>
-          <button onClick={() => setActiveTab("Professionals")} className="px-6 py-3 bg-surface hover:bg-surface-secondary border border-border text-heading font-bold rounded-[var(--radius-button)] shadow-subtle transition-all">
+          <button onClick={() => setActiveTab("Professionals")} className="px-6 py-3 bg-background hover:bg-surface-secondary border border-border text-heading font-bold rounded-[var(--radius-button)] shadow-subtle transition-all">
             Browse Professionals
           </button>
         </div>
@@ -182,7 +182,7 @@ export function MarketplaceClient({ initialRequests, initialProfessionals, stats
         <div className="lg:col-span-9 xl:col-span-9">
           
           {/* Tabs */}
-          <div className="flex overflow-x-auto scrollbar-none gap-2 mb-8 bg-surface p-2 border border-border rounded-xl shadow-subtle">
+          <div className="flex overflow-x-auto scrollbar-none gap-2 mb-8 bg-background p-2 border border-border rounded-xl shadow-subtle">
             {TABS.map(tab => (
               <button 
                 key={tab.id} 

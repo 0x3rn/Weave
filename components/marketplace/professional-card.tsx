@@ -29,7 +29,7 @@ export function ProfessionalCard({ professional, isSavedInitial = false, onToggl
   const [isSaved, setIsSaved] = useState(isSavedInitial);
 
   return (
-    <div className="bg-surface border border-border rounded-[var(--radius-card)] p-6 shadow-subtle hover:shadow-md transition-all group flex flex-col h-full">
+    <div className="bg-background border border-border rounded-[var(--radius-card)] p-6 shadow-subtle hover:shadow-md transition-all group flex flex-col h-full">
       <div className="flex items-start justify-between gap-4 mb-4">
         <div className="flex items-center gap-4">
           <div className="relative shrink-0">
