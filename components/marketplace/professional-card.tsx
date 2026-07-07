@@ -1,6 +1,11 @@
-import { BadgeCheck, Bookmark, Star, Users, MapPin } from "lucide-react";
+"use client";
+
+import { useState } from "react";
+import { BadgeCheck, Bookmark, BookmarkMinus, Star, Users, MapPin } from "lucide-react";
 import Link from "next/link";
+import { toast } from "react-hot-toast";
 import { SkillIcon } from "@/components/profile/skill-icon";
+import { toggleSavedItem } from "@/app/actions/saved";
 
 interface ProfessionalCardProps {
   professional: {
@@ -16,9 +21,13 @@ interface ProfessionalCardProps {
     topSkills: string[];
     availability: string;
   };
+  isSavedInitial?: boolean;
+  onToggleSave?: (id: string, isSaved: boolean) => void;
 }
 
-export function ProfessionalCard({ professional }: ProfessionalCardProps) {
+export function ProfessionalCard({ professional, isSavedInitial = false, onToggleSave }: ProfessionalCardProps) {
+  const [isSaved, setIsSaved] = useState(isSavedInitial);
+
   return (
     <div className="bg-surface border border-border rounded-[var(--radius-card)] p-6 shadow-subtle hover:shadow-md transition-all group flex flex-col h-full">
       <div className="flex items-start justify-between gap-4 mb-4">
@@ -47,8 +56,32 @@ export function ProfessionalCard({ professional }: ProfessionalCardProps) {
             <p className="text-sm text-body line-clamp-1">{professional.headline}</p>
           </div>
         </div>
-        <button className="text-muted hover:text-primary transition-colors p-1">
-          <Bookmark className="w-5 h-5" />
+        <button 
+          onClick={async (e) => {
+            e.preventDefault();
+            const newVal = !isSaved;
+            setIsSaved(newVal); // Optimistic UI update
+            if (onToggleSave) onToggleSave(professional.id, newVal);
+            
+            if (newVal) {
+              toast.success(`${professional.name.split(" ")[0]} saved to your list`, { position: "bottom-right" });
+            } else {
+              toast(`${professional.name.split(" ")[0]} removed from your list`, { 
+                position: "bottom-right", 
+                icon: <BookmarkMinus className="w-4 h-4 text-muted" /> 
+              });
+            }
+
+            const result = await toggleSavedItem(professional.id, "professional");
+            if (!result.success) {
+              setIsSaved(!newVal); // Revert on failure
+              if (onToggleSave) onToggleSave(professional.id, !newVal);
+              toast.error("Failed to update saved items", { position: "bottom-right" });
+            }
+          }}
+          className={`transition-colors p-1 ${isSaved ? "text-primary" : "text-muted hover:text-primary"}`}
+        >
+          <Bookmark className={`w-5 h-5 ${isSaved ? "fill-primary text-primary" : ""}`} />
         </button>
       </div>
 

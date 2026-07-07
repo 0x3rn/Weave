@@ -17,12 +17,16 @@ interface MarketplaceClientProps {
     newToday: number;
     recommendedMatches: number;
   };
+  initialSavedItems?: { id: string; type: string }[];
 }
 
-export function MarketplaceClient({ initialRequests, initialProfessionals, stats }: MarketplaceClientProps) {
+export function MarketplaceClient({ initialRequests, initialProfessionals, stats, initialSavedItems = [] }: MarketplaceClientProps) {
   const [activeTab, setActiveTab] = useState("Recommended");
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState<Partial<MarketplaceFiltersType>>({});
+  const [savedItemIds, setSavedItemIds] = useState<string[]>(initialSavedItems.map(s => s.id));
+  const [rawRequests, setRawRequests] = useState(initialRequests);
+  const [rawProfessionals, setRawProfessionals] = useState(initialProfessionals);
   const [requests, setRequests] = useState(initialRequests);
   const [professionals, setProfessionals] = useState(initialProfessionals);
   const [isSearching, setIsSearching] = useState(false);
@@ -35,21 +39,40 @@ export function MarketplaceClient({ initialRequests, initialProfessionals, stats
     setFilters({});
   };
 
-  // Re-fetch when filters change
+  const handleToggleSave = (id: string, isSaved: boolean) => {
+    if (isSaved) {
+      setSavedItemIds(prev => [...prev, id]);
+    } else {
+      setSavedItemIds(prev => prev.filter(item => item !== id));
+    }
+  };
+
+  // Client-side filtering for near-instant updates
   useEffect(() => {
-    const fetchFilteredData = async () => {
-      setIsSearching(true);
-      const result = await getMarketplaceData(filters, searchQuery);
-      if (result.success) {
-        setRequests(result.requests || []);
-        setProfessionals(result.professionals || []);
-      }
-      setIsSearching(false);
-    };
+    let currentRequests = [...rawRequests];
+    let currentProfessionals = [...rawProfessionals];
+
+    if (filters.category && filters.category.length > 0) {
+      currentRequests = currentRequests.filter(r => filters.category!.includes(r.category));
+    }
     
-    // Add a small debounce if needed, but since it's just state we can fetch directly
-    fetchFilteredData();
-  }, [filters]);
+    if (filters.verifiedOnly) {
+      currentRequests = currentRequests.filter(r => r.requesterVerification === true);
+    }
+    
+    if (filters.minTrustScore) {
+      currentRequests = currentRequests.filter(r => (r.requesterTrustScore || 0) >= filters.minTrustScore!);
+      currentProfessionals = currentProfessionals.filter(p => (p.trustScore || 0) >= filters.minTrustScore!);
+    }
+
+    if (filters.minRating && filters.minRating !== "Any" && filters.minRating !== "") {
+      const minR = parseFloat(filters.minRating);
+      currentProfessionals = currentProfessionals.filter(p => (p.rating || 0) >= minR);
+    }
+
+    setRequests(currentRequests);
+    setProfessionals(currentProfessionals);
+  }, [filters, rawRequests, rawProfessionals]);
 
   const TABS = [
     { id: "Recommended", icon: Sparkles },
@@ -62,11 +85,11 @@ export function MarketplaceClient({ initialRequests, initialProfessionals, stats
     e.preventDefault();
     setIsSearching(true);
     
-    const result = await getMarketplaceData(filters, searchQuery);
+    const result = await getMarketplaceData({}, searchQuery); // Always fetch unfiltered base on search
     
     if (result.success) {
-      setRequests(result.requests || []);
-      setProfessionals(result.professionals || []);
+      setRawRequests(result.requests || []);
+      setRawProfessionals(result.professionals || []);
     }
     
     setIsSearching(false);
@@ -175,7 +198,9 @@ export function MarketplaceClient({ initialRequests, initialProfessionals, stats
           <MarketplaceFeed 
             activeTab={activeTab} 
             requests={requests} 
-            professionals={professionals} 
+            professionals={professionals}
+            savedItemIds={savedItemIds}
+            onToggleSave={handleToggleSave}
           />
           
         </div>

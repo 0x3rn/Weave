@@ -1,5 +1,6 @@
 import { MarketplaceClient } from "@/components/marketplace/marketplace-client";
 import { getMarketplaceData } from "@/app/actions/marketplace";
+import { getSavedItemIds } from "@/app/actions/saved";
 
 export const metadata = {
   title: "Marketplace - Weave",
@@ -7,7 +8,10 @@ export const metadata = {
 };
 
 export default async function MarketplacePage() {
-  const result = await getMarketplaceData();
+  const [result, savedItems] = await Promise.all([
+    getMarketplaceData(),
+    getSavedItemIds()
+  ]);
   
   if (!result.success) {
     return (
@@ -28,7 +32,8 @@ export default async function MarketplacePage() {
         professionalsAvailable: 0,
         newToday: 0,
         recommendedMatches: 0
-      }} 
+      }}
+      initialSavedItems={savedItems}
     />
   );
 }

@@ -1,13 +1,22 @@
+"use client";
+
+import { useState } from "react";
 import { MarketplaceRequest } from "@/types";
-import { BadgeCheck, Clock, Users, Bookmark, ExternalLink } from "lucide-react";
+import { BadgeCheck, Clock, Users, Bookmark, BookmarkMinus, ExternalLink } from "lucide-react";
 import Link from "next/link";
+import { toast } from "react-hot-toast";
 import { SkillIcon } from "@/components/profile/skill-icon";
+import { toggleSavedItem } from "@/app/actions/saved";
 
 interface RequestCardProps {
   request: MarketplaceRequest;
+  isSavedInitial?: boolean;
+  onToggleSave?: (id: string, isSaved: boolean) => void;
 }
 
-export function RequestCard({ request }: RequestCardProps) {
+export function RequestCard({ request, isSavedInitial = false, onToggleSave }: RequestCardProps) {
+  const [isSaved, setIsSaved] = useState(isSavedInitial);
+
   return (
     <div className="bg-surface border border-border rounded-[var(--radius-card)] p-6 shadow-subtle hover:shadow-md transition-all group flex flex-col h-full">
       <div className="flex items-start justify-between gap-4 mb-4">
@@ -38,8 +47,32 @@ export function RequestCard({ request }: RequestCardProps) {
             </div>
           </div>
         </div>
-        <button className="text-muted hover:text-primary transition-colors p-1">
-          <Bookmark className="w-5 h-5" />
+        <button 
+          onClick={async (e) => {
+            e.preventDefault();
+            const newVal = !isSaved;
+            setIsSaved(newVal); // Optimistic UI update
+            if (onToggleSave) onToggleSave(request.id, newVal);
+            
+            if (newVal) {
+              toast.success(`Request saved to your list`, { position: "bottom-right" });
+            } else {
+              toast(`Request removed from your list`, { 
+                position: "bottom-right", 
+                icon: <BookmarkMinus className="w-4 h-4 text-muted" /> 
+              });
+            }
+
+            const result = await toggleSavedItem(request.id, "request");
+            if (!result.success) {
+              setIsSaved(!newVal); // Revert on failure
+              if (onToggleSave) onToggleSave(request.id, !newVal);
+              toast.error("Failed to update saved items", { position: "bottom-right" });
+            }
+          }}
+          className={`transition-colors p-1 ${isSaved ? "text-primary" : "text-muted hover:text-primary"}`}
+        >
+          <Bookmark className={`w-5 h-5 ${isSaved ? "fill-primary text-primary" : ""}`} />
         </button>
       </div>
 
