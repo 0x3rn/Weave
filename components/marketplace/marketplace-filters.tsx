@@ -25,7 +25,7 @@ export function MarketplaceFilters({ filters, onChange, onClear }: MarketplaceFi
   const CATEGORIES = ["Development", "Design", "Marketing", "Writing", "Video", "Product", "Business", "Data", "AI", "Other"];
 
   return (
-    <div className="bg-surface border border-border rounded-[var(--radius-card)] shadow-subtle overflow-hidden">
+    <div className="bg-background border border-border rounded-[var(--radius-card)] shadow-subtle overflow-hidden">
       <div className="p-4 border-b border-border bg-surface-secondary flex items-center justify-between">
         <h3 className="font-bold text-heading flex items-center gap-2">
           <Filter className="w-4 h-4" /> Filters

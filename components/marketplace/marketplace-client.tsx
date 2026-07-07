@@ -126,7 +126,7 @@ export function MarketplaceClient({ initialRequests, initialProfessionals, stats
           { label: "New Today", value: stats.newToday, desc: "Requests posted in last 24h" },
           { label: "Recommended Matches", value: stats.recommendedMatches, desc: "Based on your profile" },
         ].map((stat, idx) => (
-          <div key={idx} className="bg-surface border border-border rounded-[var(--radius-card)] p-5 shadow-subtle flex flex-col justify-between">
+          <div key={idx} className="bg-background border border-border rounded-[var(--radius-card)] p-5 shadow-subtle flex flex-col justify-between">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-bold text-muted uppercase tracking-wider">{stat.label}</h3>
               <div className="text-3xl font-black text-primary">{stat.value}</div>
@@ -145,7 +145,7 @@ export function MarketplaceClient({ initialRequests, initialProfessionals, stats
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by skill, project, technology, profession, or keyword..." 
-            className="w-full h-16 pl-16 pr-32 bg-surface border-2 border-border focus:border-primary rounded-[var(--radius-card)] text-lg text-heading placeholder:text-muted/60 shadow-subtle transition-all outline-none"
+            className="w-full h-16 pl-16 pr-32 bg-background border-2 border-border focus:border-primary rounded-[var(--radius-card)] text-lg text-heading placeholder:text-muted/60 shadow-subtle transition-all outline-none"
           />
           <button 
             type="submit" 
