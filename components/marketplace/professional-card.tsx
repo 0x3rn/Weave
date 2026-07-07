@@ -123,7 +123,7 @@ export function ProfessionalCard({ professional, isSavedInitial = false, onToggl
         <div className="flex gap-2 pt-4">
           <Link 
             href={`/u/${professional.username}`}
-            className="flex-1 py-2 bg-surface hover:bg-surface-secondary border border-border text-heading text-sm font-bold text-center rounded-[var(--radius-button)] transition-colors shadow-subtle"
+            className="flex-1 py-2 bg-surface hover:bg-background border border-border text-heading text-sm font-bold text-center rounded-[var(--radius-button)] transition-colors shadow-subtle"
           >
             View Profile
           </Link>
