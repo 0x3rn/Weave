@@ -12,7 +12,7 @@ export default async function OnboardingLayout({
   const sessionCookie = cookieStore.get("session")?.value;
 
   if (!sessionCookie || !auth || !db) {
-    redirect("/login");
+    redirect("/api/auth/logout");
   }
 
   let targetRedirect = "";
@@ -25,7 +25,7 @@ export default async function OnboardingLayout({
     const userDoc = await db.collection("users").doc(decodedClaims.uid).get();
     
     if (!userDoc.exists) {
-      targetRedirect = "/login";
+      targetRedirect = "/api/auth/logout";
     } else {
       const userData = userDoc.data()!;
       
@@ -36,8 +36,9 @@ export default async function OnboardingLayout({
     }
 
   } catch (error) {
+    // If the session cookie is invalid, expired, or tampered with
     console.error("Onboarding route protection error:", error);
-    targetRedirect = "/login";
+    targetRedirect = "/api/auth/logout";
   }
 
   if (targetRedirect) {

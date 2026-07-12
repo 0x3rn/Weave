@@ -59,7 +59,7 @@ export default async function AchievementsPage() {
   const userId = await getCurrentUserId();
   
   if (!userId) {
-    redirect("/login");
+    redirect("/api/auth/logout");
   }
 
   if (!db) {

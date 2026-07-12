@@ -13,7 +13,7 @@ export default async function WalletPage() {
     return <LedgerClient initialData={data} />;
   } catch (error: any) {
     if (error.message === "Unauthorized") {
-      redirect("/login");
+      redirect("/api/auth/logout");
     }
     
     return (

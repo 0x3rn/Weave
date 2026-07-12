@@ -29,7 +29,7 @@ export default async function ProfilePage() {
   const userId = await getCurrentUserId();
   
   if (!userId) {
-    redirect("/login");
+    redirect("/api/auth/logout");
   }
 
   if (!db) {

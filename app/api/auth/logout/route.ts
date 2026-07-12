@@ -24,3 +24,17 @@ export async function POST() {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
+
+export async function GET(request: Request) {
+  try {
+    const cookieStore = await cookies();
+    cookieStore.delete("session");
+    
+    const url = new URL(request.url);
+    const redirectTo = url.searchParams.get("redirect") || "/login";
+    
+    return NextResponse.redirect(new URL(redirectTo, request.url));
+  } catch (error) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+}

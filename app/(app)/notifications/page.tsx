@@ -13,7 +13,7 @@ export default async function NotificationsPage() {
   const userId = await getCurrentUserId();
   
   if (!userId) {
-    redirect("/login");
+    redirect("/api/auth/logout");
   }
   
   const [notifResult, sentReqs, receivedReqs] = await Promise.all([

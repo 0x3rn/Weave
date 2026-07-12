@@ -13,7 +13,7 @@ export default async function DashboardPage() {
     return <DashboardClient initialData={data} />;
   } catch (error: any) {
     if (error.message === "Unauthorized") {
-      redirect("/login");
+      redirect("/api/auth/logout");
     }
     // For other errors, we might want to render a subtle error state or error boundary
     return (
