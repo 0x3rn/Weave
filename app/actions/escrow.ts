@@ -136,7 +136,7 @@ export async function processDeposit(escrowId: string) {
       if (escrow.participants[userId].depositStatus === "received") throw new Error("Deposit already received");
 
       // Verify user has enough hours to reserve
-      const userRef = db.collection("users").doc(userId);
+      const userRef = db!.collection("users").doc(userId);
       const userDoc = await transaction.get(userRef);
       const user = userDoc.data() as User;
       const hoursToReserve = escrow.participants[userId].skillHoursReserved;
@@ -341,8 +341,8 @@ export async function releaseEscrow(escrowId: string) {
       // In Mutual: Requester gives N to Provider, Provider gives N to Requester (net 0)
       // In Single: Requester gives N to Provider.
       
-      const reqUserRef = db.collection("users").doc(requester.userId);
-      const provUserRef = db.collection("users").doc(provider.userId);
+      const reqUserRef = db!.collection("users").doc(requester.userId);
+      const provUserRef = db!.collection("users").doc(provider.userId);
       
       const reqUserDoc = await transaction.get(reqUserRef);
       const provUserDoc = await transaction.get(provUserRef);
@@ -360,7 +360,7 @@ export async function releaseEscrow(escrowId: string) {
       });
 
       // Update exchange status
-      const exchangeRef = db.collection("exchanges").doc(escrow.exchangeId);
+      const exchangeRef = db!.collection("exchanges").doc(escrow.exchangeId);
       transaction.update(exchangeRef, {
         status: "completed",
         completedAt: new Date().toISOString()
@@ -383,6 +383,47 @@ export async function releaseEscrow(escrowId: string) {
         timeline: events,
         updatedAt: new Date().toISOString()
       });
+    });
+
+    revalidatePath(`/dashboard/escrow/${escrowId}`);
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function openDispute(escrowId: string, reason: string, details: string) {
+  try {
+    const userId = await getCurrentUserId();
+    if (!userId) return { success: false, error: "Unauthorized" };
+    if (!db) return { success: false, error: "Database not initialized" };
+
+    const escrowRef = db.collection("escrows").doc(escrowId);
+    const escrowDoc = await escrowRef.get();
+    if (!escrowDoc.exists) return { success: false, error: "Escrow not found" };
+    
+    const escrow = escrowDoc.data() as Escrow;
+    
+    await escrowRef.update({
+      status: "disputed",
+      dispute: {
+        reason,
+        details,
+        openedAt: new Date().toISOString(),
+        status: "investigating",
+        evidenceUrls: []
+      },
+      timeline: [
+        ...escrow.timeline,
+        {
+          id: randomUUID(),
+          type: "disputed",
+          message: `Dispute opened: ${reason}`,
+          timestamp: new Date().toISOString(),
+          actorId: userId
+        }
+      ],
+      updatedAt: new Date().toISOString()
     });
 
     revalidatePath(`/dashboard/escrow/${escrowId}`);

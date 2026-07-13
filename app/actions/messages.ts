@@ -78,7 +78,7 @@ export async function sendMessage(conversationId: string, content: string, type:
       if (!conv.participants.includes(userId)) throw new Error("Not a participant");
 
       const messageId = randomUUID();
-      const messageRef = db.collection("messages").doc(messageId);
+      const messageRef = db!.collection("messages").doc(messageId);
       
       const newMessage: Partial<Message> = {
         conversationId,
