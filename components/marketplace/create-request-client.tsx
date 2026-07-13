@@ -13,7 +13,7 @@ const CATEGORIES = [
 
 const EXPERIENCES = ["Beginner", "Intermediate", "Expert", "Any"];
 
-export default function CreateRequestClient() {
+export default function CreateRequestClient({ userBalance = 0 }: { userBalance?: number }) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -74,6 +74,14 @@ export default function CreateRequestClient() {
     if (!formData.title || !formData.description || !formData.estimatedHours) {
       setError("Please fill out all required fields.");
       return;
+    }
+
+    if (!isMutual) {
+      const maxEstimatedHours = Math.max(...(formData.estimatedHours.match(/\d+/g) || [0]).map(Number));
+      if (maxEstimatedHours > userBalance) {
+        setError(`Your estimated hours (${maxEstimatedHours}) exceed your current Skill Hours balance (${userBalance}).`);
+        return;
+      }
     }
 
     setIsSubmitting(true);

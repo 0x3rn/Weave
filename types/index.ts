@@ -62,6 +62,21 @@ export interface User {
   role?: UserRole;
   status?: "active" | "suspended" | "banned";
   adminNotes?: string;
+
+  notificationPreferences?: NotificationPreferences;
+}
+
+export interface NotificationPreferences {
+  exchangeActivity: boolean;
+  marketplace: boolean;
+  messages: boolean;
+  reviews: boolean;
+  community: boolean;
+  security: boolean; // Cannot be disabled in UI
+  deliveryMethod: {
+    inApp: boolean;
+    email: boolean;
+  };
 }
 
 export interface PortfolioItem {
@@ -264,16 +279,24 @@ export interface MarketplaceFilters {
   sort?: string;
 }
 
-export type NotificationType = "exchange_request" | "request_update" | "system";
+export type NotificationType = "exchange_request" | "request_update" | "system" | "application_received" | "application_accepted" | "exchange_started" | "milestone_completed" | "file_uploaded" | "revision_requested" | "review_waiting" | "exchange_completed" | "new_match" | "saved_request_updated" | "request_expiring" | "new_professional" | "hours_earned" | "hours_reserved" | "hours_released" | "admin_adjustment" | "new_review" | "skill_endorsement" | "trust_score_increased" | "achievement_unlocked" | "verification_approved" | "profile_incomplete" | "subscription_renewed" | "payment_failed" | "security_alert" | "community_update";
+
+export type NotificationCategory = "Exchanges" | "Marketplace" | "Messages" | "Ledger" | "Reviews" | "Trust Score" | "Achievements" | "Account" | "Billing" | "Community" | "Security" | "System";
+
+export type NotificationPriority = "Critical" | "High" | "Normal" | "Low";
 
 export interface Notification {
   id: string;
   userId: string;
   type: NotificationType;
+  category?: NotificationCategory;
+  priority?: NotificationPriority;
   title: string;
   message: string;
   isRead: boolean;
+  isArchived?: boolean;
   link?: string;
+  actionLabel?: string; // Optional label for CTA button
   relatedId?: string; // e.g., requestId
   createdAt: string; // ISO string
 }

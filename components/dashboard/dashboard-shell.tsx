@@ -21,6 +21,7 @@ import {
   Plus
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import NotificationDropdown from "@/components/notifications/notification-dropdown";
 
 const NAV_ITEMS = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -130,10 +131,7 @@ export default function DashboardShell({ children, user }: { children: React.Rea
 
             <div className="h-6 w-px bg-border hidden sm:block mx-1"></div>
 
-            <Link href="/notifications" className="p-2 text-muted hover:text-heading transition-colors relative">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full"></span>
-            </Link>
+            <NotificationDropdown />
 
             <Link href="/messages" className="p-2 text-muted hover:text-heading transition-colors relative">
               <MessageSquare className="w-5 h-5" />

@@ -18,6 +18,8 @@ import {
 export function SkillIcon({ skill, className = "w-5 h-5" }: { skill: string, className?: string }) {
   const name = skill.toLowerCase().replace(/[^a-z0-9]/g, "");
   
+  if (name.includes("stripe")) return <SiStripe className={`${className} text-[#008CDD]`} />;
+  
   switch(name) {
     case "nextjs": 
     case "next": return <SiNextdotjs className={className} />;
@@ -58,7 +60,6 @@ export function SkillIcon({ skill, className = "w-5 h-5" }: { skill: string, cla
     case "prisma": return <SiPrisma className={`${className} text-[#2D3748]`} />;
     case "framer":
     case "framermotion": return <SiFramer className={`${className} text-[#0055FF]`} />;
-    case "stripe": return <SiStripe className={`${className} text-[#008CDD]`} />;
     case "flutter": return <SiFlutter className={`${className} text-[#02569B]`} />;
     case "rust": return <SiRust className={`${className} text-black dark:text-white`} />;
     case "swift": return <SiSwift className={`${className} text-[#F05138]`} />;

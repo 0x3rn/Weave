@@ -17,7 +17,7 @@ export default async function NotificationsPage() {
   }
   
   const [notifResult, sentReqs, receivedReqs] = await Promise.all([
-    getNotifications(userId),
+    getNotifications(),
     getExchangeRequests(userId, "sender"),
     getExchangeRequests(userId, "receiver")
   ]);

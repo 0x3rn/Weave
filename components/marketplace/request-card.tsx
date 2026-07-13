@@ -24,9 +24,13 @@ export function RequestCard({ request, isSavedInitial = false, onToggleSave }: R
           <Link href={`/marketplace/${request.id}`} className="hover:underline">
             <div className="flex flex-col gap-1">
               <h3 className="font-bold text-heading text-lg leading-tight line-clamp-2">{request.title}</h3>
-              {request.isMutual && (
+              {request.isMutual ? (
                 <span className="inline-flex w-fit items-center px-2 py-0.5 rounded text-[10px] font-bold bg-primary/10 text-primary uppercase tracking-wider">
                   Mutual Exchange
+                </span>
+              ) : (
+                <span className="inline-flex w-fit items-center px-2 py-0.5 rounded text-[10px] font-bold bg-surface-secondary border border-border text-muted uppercase tracking-wider">
+                  Standard Exchange
                 </span>
               )}
             </div>

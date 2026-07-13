@@ -52,8 +52,19 @@ export default async function RequestDetailsPage({ params }: { params: Promise<{
         <div className="p-8 border-b border-border bg-gradient-to-br from-surface to-surface-secondary">
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary font-bold text-xs uppercase tracking-wider mb-4 border border-primary/20">
-                {req.category}
+              <div className="flex flex-wrap items-center gap-2 mb-4">
+                <div className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary font-bold text-xs uppercase tracking-wider border border-primary/20">
+                  {req.category}
+                </div>
+                {req.isMutual ? (
+                  <div className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary font-bold text-xs uppercase tracking-wider border border-primary/20">
+                    Mutual Exchange
+                  </div>
+                ) : (
+                  <div className="inline-flex items-center px-3 py-1 rounded-full bg-surface-secondary text-muted font-bold text-xs uppercase tracking-wider border border-border">
+                    Standard Exchange
+                  </div>
+                )}
               </div>
               <h1 className="text-3xl font-black text-heading leading-tight mb-4">{req.title}</h1>
               

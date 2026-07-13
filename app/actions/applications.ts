@@ -86,8 +86,10 @@ export async function submitApplication(
     });
 
     // 5. Create a notification for the requester
-    const requesterRef = db.collection("users").doc(requestData.requesterId);
-    await requesterRef.collection("notifications").add({
+    const notifRef = db.collection("notifications").doc();
+    await notifRef.set({
+      id: notifRef.id,
+      userId: requestData.requesterId,
       type: "request_update",
       title: "New Application Received",
       message: `Someone applied to your request: ${requestData.title}`,
