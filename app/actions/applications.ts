@@ -217,3 +217,19 @@ export async function updateApplicationStatus(applicationId: string, newStatus: 
     return { success: false, error: error.message || "Failed to update status" };
   }
 }
+
+export async function getUserApplicationRequestIds() {
+  try {
+    const userId = await getCurrentUserId();
+    if (!userId || !db) return [];
+
+    const snapshot = await db.collection("marketplace_applications")
+      .where("applicantId", "==", userId)
+      .get();
+      
+    return snapshot.docs.map(doc => doc.data().requestId as string);
+  } catch (error) {
+    console.error("Error fetching user applications:", error);
+    return [];
+  }
+}

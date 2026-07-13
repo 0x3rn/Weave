@@ -11,10 +11,11 @@ import { toggleSavedItem } from "@/app/actions/saved";
 interface RequestCardProps {
   request: MarketplaceRequest;
   isSavedInitial?: boolean;
+  isApplied?: boolean;
   onToggleSave?: (id: string, isSaved: boolean) => void;
 }
 
-export function RequestCard({ request, isSavedInitial = false, onToggleSave }: RequestCardProps) {
+export function RequestCard({ request, isSavedInitial = false, isApplied = false, onToggleSave }: RequestCardProps) {
   const [isSaved, setIsSaved] = useState(isSavedInitial);
 
   return (
@@ -136,9 +137,13 @@ export function RequestCard({ request, isSavedInitial = false, onToggleSave }: R
           <div className="flex gap-2">
             <Link 
               href={`/marketplace/${request.id}`}
-              className="px-4 py-2 bg-primary hover:bg-primary-hover text-background text-sm font-bold rounded-[var(--radius-button)] transition-colors shadow-[0_0_15px_rgba(88,199,109,0.3)]"
+              className={`px-4 py-2 text-sm font-bold rounded-[var(--radius-button)] transition-colors ${
+                isApplied 
+                  ? "bg-surface-secondary border border-border text-heading hover:bg-border" 
+                  : "bg-primary hover:bg-primary-hover text-background shadow-[0_0_15px_rgba(88,199,109,0.3)]"
+              }`}
             >
-              Apply
+              {isApplied ? "View Proposal" : "Apply"}
             </Link>
           </div>
         </div>

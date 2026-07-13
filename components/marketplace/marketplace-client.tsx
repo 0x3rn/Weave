@@ -18,9 +18,10 @@ interface MarketplaceClientProps {
     recommendedMatches: number;
   };
   initialSavedItems?: { id: string; type: string }[];
+  appliedRequestIds?: string[];
 }
 
-export function MarketplaceClient({ initialRequests, initialProfessionals, stats, initialSavedItems = [] }: MarketplaceClientProps) {
+export function MarketplaceClient({ initialRequests, initialProfessionals, stats, initialSavedItems = [], appliedRequestIds = [] }: MarketplaceClientProps) {
   const [activeTab, setActiveTab] = useState("Recommended");
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState<Partial<MarketplaceFiltersType>>({});
@@ -206,8 +207,9 @@ export function MarketplaceClient({ initialRequests, initialProfessionals, stats
           <MarketplaceFeed 
             activeTab={activeTab} 
             requests={requests} 
-            professionals={professionals}
+            professionals={professionals} 
             savedItemIds={savedItemIds}
+            appliedRequestIds={appliedRequestIds}
             onToggleSave={handleToggleSave}
           />
           

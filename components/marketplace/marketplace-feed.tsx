@@ -8,10 +8,11 @@ interface MarketplaceFeedProps {
   requests: MarketplaceRequest[];
   professionals: any[];
   savedItemIds?: string[];
+  appliedRequestIds?: string[];
   onToggleSave?: (id: string, isSaved: boolean) => void;
 }
 
-export function MarketplaceFeed({ activeTab, requests, professionals, savedItemIds = [], onToggleSave }: MarketplaceFeedProps) {
+export function MarketplaceFeed({ activeTab, requests, professionals, savedItemIds = [], appliedRequestIds = [], onToggleSave }: MarketplaceFeedProps) {
   
   if (activeTab === "Requests") {
     if (requests.length === 0) {
@@ -32,7 +33,13 @@ export function MarketplaceFeed({ activeTab, requests, professionals, savedItemI
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {requests.map(req => (
-          <RequestCard key={req.id} request={req} isSavedInitial={savedItemIds.includes(req.id)} onToggleSave={onToggleSave} />
+          <RequestCard 
+            key={req.id} 
+            request={req} 
+            isSavedInitial={savedItemIds.includes(req.id)} 
+            isApplied={appliedRequestIds.includes(req.id)}
+            onToggleSave={onToggleSave} 
+          />
         ))}
       </div>
     );

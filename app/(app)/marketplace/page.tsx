@@ -1,6 +1,7 @@
 import { MarketplaceClient } from "@/components/marketplace/marketplace-client";
 import { getMarketplaceData } from "@/app/actions/marketplace";
 import { getSavedItemIds } from "@/app/actions/saved";
+import { getUserApplicationRequestIds } from "@/app/actions/applications";
 
 export const metadata = {
   title: "Marketplace - Weave",
@@ -8,9 +9,10 @@ export const metadata = {
 };
 
 export default async function MarketplacePage() {
-  const [result, savedItems] = await Promise.all([
+  const [result, savedItems, appliedRequestIds] = await Promise.all([
     getMarketplaceData(),
-    getSavedItemIds()
+    getSavedItemIds(),
+    getUserApplicationRequestIds()
   ]);
   
   if (!result.success) {
@@ -34,6 +36,7 @@ export default async function MarketplacePage() {
         recommendedMatches: 0
       }}
       initialSavedItems={savedItems}
+      appliedRequestIds={appliedRequestIds}
     />
   );
 }
