@@ -87,7 +87,7 @@ export function MarketplaceFeed({ activeTab, requests, professionals, savedItemI
             <h3 className="font-bold text-heading text-xl mb-6">Saved Requests</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {savedRequests.map(req => (
-                <RequestCard key={req.id} request={req} isSavedInitial={true} onToggleSave={onToggleSave} />
+                <RequestCard key={req.id} request={req} isSavedInitial={true} isApplied={appliedRequestIds.includes(req.id)} onToggleSave={onToggleSave} />
               ))}
             </div>
           </div>
@@ -116,7 +116,7 @@ export function MarketplaceFeed({ activeTab, requests, professionals, savedItemI
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {requests.slice(0, 2).map(req => (
-            <RequestCard key={req.id} request={req} isSavedInitial={savedItemIds.includes(req.id)} onToggleSave={onToggleSave} />
+            <RequestCard key={req.id} request={req} isSavedInitial={savedItemIds.includes(req.id)} isApplied={appliedRequestIds.includes(req.id)} onToggleSave={onToggleSave} />
           ))}
         </div>
       </div>

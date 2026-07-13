@@ -23,9 +23,9 @@ export default async function NotificationSettingsPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-      <div className="mb-8 border-b border-border pb-6">
-        <h1 className="text-3xl font-black text-heading mb-2">Notification Preferences</h1>
+    <div className="p-8">
+      <div className="border-b border-border pb-6 mb-8">
+        <h2 className="text-2xl font-black text-heading mb-2">Notifications</h2>
         <p className="text-muted">Control how and when you want to be notified about activity on Weave.</p>
       </div>
 

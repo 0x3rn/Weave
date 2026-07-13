@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+
 export default function SettingsPage() {
-  return <div>Placeholder for /settings</div>;
+  redirect("/settings/account");
 }
