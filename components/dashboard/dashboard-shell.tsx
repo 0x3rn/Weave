@@ -18,13 +18,15 @@ import {
   Menu,
   X,
   Search,
-  Plus
+  Plus,
+  ShieldCheck
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import NotificationDropdown from "@/components/notifications/notification-dropdown";
 
 const NAV_ITEMS = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Escrow", href: "/dashboard/escrow", icon: ShieldCheck },
   { name: "Marketplace", href: "/marketplace", icon: Store },
   { name: "My Exchanges", href: "/exchanges", icon: ArrowRightLeft },
   { name: "Ledger", href: "/wallet", icon: History },

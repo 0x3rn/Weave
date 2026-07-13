@@ -145,9 +145,10 @@ export interface Exchange {
   revisionsUsed?: number;
   
   // Escrow tracking
-  escrowStatus?: "pending" | "reserved" | "released" | "refunded";
-  providerEscrowStatus?: "pending" | "reserved" | "released" | "refunded"; // For mutual exchanges
-  requesterEscrowStatus?: "pending" | "reserved" | "released" | "refunded"; // For mutual exchanges
+  escrowId?: string; // Links to the Dual Escrow Contract
+  escrowStatus?: "pending" | "reserved" | "released" | "refunded"; // Deprecated
+  providerEscrowStatus?: "pending" | "reserved" | "released" | "refunded"; // Deprecated
+  requesterEscrowStatus?: "pending" | "reserved" | "released" | "refunded"; // Deprecated
   
   // Progress
   progress?: number; // 0-100
@@ -156,6 +157,67 @@ export interface Exchange {
   completedAt?: string | null;
   createdAt: string; // ISO string
   updatedAt?: string; // ISO string
+}
+
+export interface Conversation {
+  id: string; // Typically matches exchangeId
+  type: "exchange" | "application" | "support";
+  contextId: string; // exchangeId or applicationId
+  participants: string[]; // array of userIds
+  lastMessage?: string;
+  lastMessageAt?: string; // ISO string
+  unreadCount: Record<string, number>; // Map of userId -> count
+  createdAt: string; // ISO string
+  updatedAt: string; // ISO string
+}
+
+export interface Message {
+  id: string;
+  conversationId: string;
+  senderId: string; // userId or "system"
+  type: "text" | "file" | "system_event" | "rich_card";
+  content: string; // Markdown supported
+  metadata?: any; // e.g. file URL, size, milestoneId
+  readBy: string[]; // array of userIds
+  createdAt: string; // ISO string
+}
+
+export type EscrowStatus = "pending_deposits" | "locked" | "revision_required" | "disputed" | "released" | "cancelled" | "refunded";
+
+export interface EscrowParticipant {
+  userId: string;
+  role: "requester" | "provider";
+  skillHoursReserved: number;
+  securityDepositAmount: number;
+  depositStatus: "pending" | "received" | "returned" | "forfeited";
+  deliverablesStatus: "pending" | "submitted" | "approved" | "revision_requested";
+  approvalStatus: "pending" | "approved";
+  commitments: string[]; // List of deliverables expected
+}
+
+export interface EscrowEvent {
+  id: string;
+  type: "created" | "deposit_received" | "hours_reserved" | "deliverables_submitted" | "revision_requested" | "approved" | "disputed" | "released" | "cancelled";
+  message: string;
+  timestamp: string; // ISO string
+  actorId?: string; // System or userId
+}
+
+export interface Escrow {
+  id: string;
+  exchangeId: string;
+  status: EscrowStatus;
+  participants: Record<string, EscrowParticipant>; // Keyed by userId
+  timeline: EscrowEvent[];
+  dispute?: {
+    reason: string;
+    evidenceUrls: string[];
+    openedAt: string;
+    status: "investigating" | "resolved";
+    resolutionNotes?: string;
+  };
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Review {
