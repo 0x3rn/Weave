@@ -40,6 +40,7 @@ export default async function ApplyPage({
   }
 
   // Check if already applied
+  if (!db) return notFound();
   const existingApp = await db.collection("marketplace_applications")
     .where("requestId", "==", id)
     .where("applicantId", "==", userId)

@@ -16,7 +16,7 @@ export async function submitReview(
     if (!userId) return { success: false, error: "Unauthorized" };
     if (!db) return { success: false, error: "Database not initialized" };
 
-    const exchangeRef = db.collection("exchanges").doc(exchangeId);
+    const exchangeRef = db!.collection("exchanges").doc(exchangeId);
     const exchangeDoc = await exchangeRef.get();
 
     if (!exchangeDoc.exists) {
@@ -28,7 +28,7 @@ export async function submitReview(
     }
 
     // Check if review already exists
-    const existingReviewQuery = await db.collection("reviews")
+    const existingReviewQuery = await db!.collection("reviews")
       .where("exchangeId", "==", exchangeId)
       .where("reviewerId", "==", userId)
       .get();
@@ -41,7 +41,7 @@ export async function submitReview(
 
     await db.runTransaction(async (t) => {
       // 1. Create the Review
-      const reviewRef = db.collection("reviews").doc();
+      const reviewRef = db!.collection("reviews").doc();
       const review: Omit<Review, "id"> = {
         exchangeId,
         reviewerId: userId,
@@ -54,7 +54,7 @@ export async function submitReview(
       t.set(reviewRef, review);
 
       // 2. Update Target User's Trust Score
-      const targetUserRef = db.collection("users").doc(targetUserId);
+      const targetUserRef = db!.collection("users").doc(targetUserId);
       const targetUserDoc = await t.get(targetUserRef);
       
       if (targetUserDoc.exists) {
@@ -71,23 +71,13 @@ export async function submitReview(
 
         let newTrustScore = Math.min(100, Math.max(0, (targetData.trustScore || 50) + scoreDelta));
         
-        const currentStats = targetData.stats || {
-          skillHoursEarned: 0,
-          skillHoursSpent: 0,
-          exchangesCompleted: 0,
-          trustScoreChange30Days: 0,
-          reviewsCount30Days: 0,
-        };
-
         t.update(targetUserRef, {
           trustScore: newTrustScore,
-          "stats.trustScoreChange30Days": (currentStats.trustScoreChange30Days || 0) + scoreDelta,
-          "stats.reviewsCount30Days": (currentStats.reviewsCount30Days || 0) + 1
         });
       }
 
       // 3. Notify Target User
-      const notifRef = db.collection("users").doc(targetUserId).collection("notifications").doc();
+      const notifRef = db!.collection("users").doc(targetUserId).collection("notifications").doc();
       t.set(notifRef, {
         type: "system",
         title: "New Review Received",
@@ -110,7 +100,7 @@ export async function hasUserReviewed(exchangeId: string) {
     const userId = await getCurrentUserId();
     if (!userId || !db) return { success: false, hasReviewed: false };
 
-    const query = await db.collection("reviews")
+    const query = await db!.collection("reviews")
       .where("exchangeId", "==", exchangeId)
       .where("reviewerId", "==", userId)
       .limit(1)

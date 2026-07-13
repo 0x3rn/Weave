@@ -58,7 +58,7 @@ export async function getDashboardData() {
       .get();
       
     const allExchanges = exchangesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Exchange));
-    const activeExchanges = allExchanges.filter(ex => ex.status === "in_progress" || ex.status === "pending");
+    const activeExchanges = allExchanges.filter(ex => ex.status === "in_progress" || ex.status === "pending_proposal");
 
     // 3. Fetch My Requests (Sent or Received)
     const requestsSentSnap = await db.collection("exchange_requests").where("senderId", "==", uid).get();

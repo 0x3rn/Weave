@@ -31,7 +31,7 @@ export default function ApplicationsClient({ request, initialApplications }: App
   const handleUpdateStatus = async (appId: string, newStatus: string) => {
     setProcessingId(appId);
     try {
-      const result = await updateApplicationStatus(appId, newStatus);
+      const result = await updateApplicationStatus(appId, newStatus) as any;
       if (result.success) {
         setApplications(apps => 
           apps.map(app => app.id === appId ? { ...app, status: newStatus as any } : app)

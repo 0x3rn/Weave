@@ -83,7 +83,7 @@ export async function submitDeliverable(
 
       // 4. Notify the other party
       const targetUserId = userId === exchangeData.providerId ? exchangeData.requesterId : exchangeData.providerId;
-      const notifRef = db.collection("users").doc(targetUserId).collection("notifications").doc();
+      const notifRef = db!.collection("users").doc(targetUserId).collection("notifications").doc();
       t.set(notifRef, {
         type: "request_update",
         title: "Work Submitted",

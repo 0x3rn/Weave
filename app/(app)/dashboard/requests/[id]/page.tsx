@@ -39,7 +39,8 @@ export default async function RequestApplicationsPage({
     );
   }
 
-  const { applications, request } = result;
+  const applications = result.applications as any[];
+  const request = result.request as any;
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">

@@ -7,7 +7,7 @@ import { getCurrentUserId } from "./user";
 export async function createExchangeRequest(data: Omit<ExchangeRequest, "id" | "status" | "createdAt" | "updatedAt">) {
   try {
     if (!db) throw new Error("Database not initialized");
-    const docRef = db.collection("exchangeRequests").doc();
+    const docRef = db!.collection("exchangeRequests").doc();
     
     const request: ExchangeRequest = {
       ...data,
@@ -20,7 +20,7 @@ export async function createExchangeRequest(data: Omit<ExchangeRequest, "id" | "
     await docRef.set(request);
     
     // Create a notification for the receiver
-    const notifRef = db.collection("notifications").doc();
+    const notifRef = db!.collection("notifications").doc();
     const notification: Notification = {
       id: notifRef.id,
       userId: data.receiverId,
@@ -44,7 +44,7 @@ export async function createExchangeRequest(data: Omit<ExchangeRequest, "id" | "
 export async function updateExchangeRequest(requestId: string, status: string, message?: string, updates?: Partial<ExchangeRequest>) {
   try {
     if (!db) throw new Error("Database not initialized");
-    const reqRef = db.collection("exchangeRequests").doc(requestId);
+    const reqRef = db!.collection("exchangeRequests").doc(requestId);
     const doc = await reqRef.get();
     
     if (!doc.exists) {
@@ -71,7 +71,7 @@ export async function updateExchangeRequest(requestId: string, status: string, m
     if (status === "reviewing") notifMsg = `The provider has countered your request for ${request.skillNeeded}.`;
     if (message) notifMsg += ` Message: ${message}`;
     
-    const notifRef = db.collection("notifications").doc();
+    const notifRef = db!.collection("notifications").doc();
     const notification: Notification = {
       id: notifRef.id,
       userId: request.senderId,
@@ -96,7 +96,7 @@ export async function getExchangeRequests(userId: string, role: "sender" | "rece
   try {
     if (!db) throw new Error("Database not initialized");
     const field = role === "sender" ? "senderId" : "receiverId";
-    const snapshot = await db.collection("exchangeRequests")
+    const snapshot = await db!.collection("exchangeRequests")
       .where(field, "==", userId)
       .orderBy("createdAt", "desc")
       .get();
@@ -122,7 +122,7 @@ export async function createExchangeFromApplication(applicationId: string) {
       return { success: false, error: "Database not initialized" };
     }
 
-    const appRef = db.collection("marketplace_applications").doc(applicationId);
+    const appRef = db!.collection("marketplace_applications").doc(applicationId);
     const appDoc = await appRef.get();
     
     if (!appDoc.exists) {
@@ -132,7 +132,7 @@ export async function createExchangeFromApplication(applicationId: string) {
     const appData = appDoc.data() as MarketplaceApplication;
 
     // Verify ownership of the associated request
-    const requestRef = db.collection("marketplace_requests").doc(appData.requestId);
+    const requestRef = db!.collection("marketplace_requests").doc(appData.requestId);
     const requestDoc = await requestRef.get();
     
     if (!requestDoc.exists) {
@@ -149,8 +149,8 @@ export async function createExchangeFromApplication(applicationId: string) {
     }
 
     const requiredHours = appData.estimatedHours;
-    const providerRef = db.collection("users").doc(appData.applicantId);
-    const requesterRef = db.collection("users").doc(userId);
+    const providerRef = db!.collection("users").doc(appData.applicantId);
+    const requesterRef = db!.collection("users").doc(userId);
 
     const isMutual = !!appData.isMutualProposal;
     const mutualHours = appData.offeredHours || requiredHours;
@@ -192,7 +192,7 @@ export async function createExchangeFromApplication(applicationId: string) {
       }
 
       // 2. Create the Exchange
-      const exchangeRef = db.collection("exchanges").doc();
+      const exchangeRef = db!.collection("exchanges").doc();
       newExchangeId = exchangeRef.id;
       
       const now = new Date().toISOString();
@@ -221,7 +221,7 @@ export async function createExchangeFromApplication(applicationId: string) {
       t.set(exchangeRef, exchange);
 
       // 3. Create Ledger Transaction (Requester)
-      const ledgerRefReq = db.collection("transactions").doc();
+      const ledgerRefReq = db!.collection("transactions").doc();
       t.set(ledgerRefReq, {
         userId: userId,
         date: now,
@@ -240,7 +240,7 @@ export async function createExchangeFromApplication(applicationId: string) {
 
       // 3b. Create Ledger Transaction (Provider, if mutual)
       if (isMutual) {
-        const ledgerRefProv = db.collection("transactions").doc();
+        const ledgerRefProv = db!.collection("transactions").doc();
         t.set(ledgerRefProv, {
           userId: appData.applicantId,
           date: now,
@@ -300,7 +300,7 @@ export async function getExchange(exchangeId: string) {
       return { success: false, error: "Database not initialized" };
     }
 
-    const exchangeDoc = await db.collection("exchanges").doc(exchangeId).get();
+    const exchangeDoc = await db!.collection("exchanges").doc(exchangeId).get();
     if (!exchangeDoc.exists) {
       return { success: false, error: "Exchange not found" };
     }
@@ -313,8 +313,8 @@ export async function getExchange(exchangeId: string) {
     }
 
     // Fetch user details for display
-    const requesterDoc = await db.collection("users").doc(data.requesterId).get();
-    const providerDoc = await db.collection("users").doc(data.providerId).get();
+    const requesterDoc = await db!.collection("users").doc(data.requesterId).get();
+    const providerDoc = await db!.collection("users").doc(data.providerId).get();
 
     const requesterData = requesterDoc.data();
     const providerData = providerDoc.data();
@@ -347,7 +347,7 @@ export async function requestRevision(exchangeId: string, message: string) {
     if (!userId) return { success: false, error: "Unauthorized" };
     if (!db) return { success: false, error: "Database not initialized" };
 
-    const exchangeRef = db.collection("exchanges").doc(exchangeId);
+    const exchangeRef = db!.collection("exchanges").doc(exchangeId);
     
     await db.runTransaction(async (t) => {
       const exchangeDoc = await t.get(exchangeRef);
@@ -376,7 +376,7 @@ export async function requestRevision(exchangeId: string, message: string) {
         timestamp: now
       });
 
-      const notifRef = db.collection("users").doc(data.providerId).collection("notifications").doc();
+      const notifRef = db!.collection("users").doc(data.providerId).collection("notifications").doc();
       t.set(notifRef, {
         type: "request_update",
         title: "Revisions Requested",
@@ -401,7 +401,7 @@ export async function acceptDelivery(exchangeId: string) {
     if (!userId) return { success: false, error: "Unauthorized" };
     if (!db) return { success: false, error: "Database not initialized" };
 
-    const exchangeRef = db.collection("exchanges").doc(exchangeId);
+    const exchangeRef = db!.collection("exchanges").doc(exchangeId);
     
     await db.runTransaction(async (t) => {
       const exchangeDoc = await t.get(exchangeRef);
@@ -453,8 +453,8 @@ export async function acceptDelivery(exchangeId: string) {
       // If we reach here, either it's a standard exchange (requester accepted), 
       // or it's a mutual exchange and both have accepted.
       
-      const providerRef = db.collection("users").doc(data.providerId);
-      const requesterRef = db.collection("users").doc(data.requesterId);
+      const providerRef = db!.collection("users").doc(data.providerId);
+      const requesterRef = db!.collection("users").doc(data.requesterId);
       
       const providerDoc = await t.get(providerRef);
       const requesterDoc = await t.get(requesterRef);
@@ -476,7 +476,7 @@ export async function acceptDelivery(exchangeId: string) {
       // We should really look at the LedgerTransactions to see what was escrowed.
       // For now, let's look up the escrow transactions.
       
-      const transactionsRef = db.collection("transactions");
+      const transactionsRef = db!.collection("transactions");
       const escrowsQuery = await transactionsRef
         .where("exchangeId", "==", exchangeId)
         .where("type", "==", "Reserved")
@@ -577,7 +577,7 @@ export async function acceptDelivery(exchangeId: string) {
 
       // 5. Update Marketplace Request Status
       if (data.requestId) {
-        t.update(db.collection("marketplace_requests").doc(data.requestId), {
+        t.update(db!.collection("marketplace_requests").doc(data.requestId), {
           status: "completed",
           updatedAt: now
         });
