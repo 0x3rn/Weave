@@ -5,7 +5,8 @@ import { db as webDb } from "@/lib/firebase";
 import { MarketplaceRequest, MarketplaceFilters, MarketplaceApplication } from "@/types";
 import { documentMatches, score, field, and, or } from "firebase/firestore/pipelines";
 import { execute } from "firebase/firestore/pipelines";
-import { calculateTrustScore } from "@/lib/user-metrics"; // if execution requires it, wait, the guide just chains it. Actually, `pipeline.d.ts` shows `await execute(db.pipeline()...)`
+import { calculateTrustScore } from "@/lib/user-metrics";
+import { getCurrentUserId } from "./user"; // if execution requires it, wait, the guide just chains it. Actually, `pipeline.d.ts` shows `await execute(db.pipeline()...)`
 
 export async function getMarketplaceData(filters: Partial<MarketplaceFilters> = {}, searchQuery: string = "") {
   if (!adminDb) {
@@ -169,3 +170,113 @@ export async function getMarketplaceRequest(id: string) {
     return { success: false, error: error.message };
   }
 }
+
+export async function createMarketplaceRequest(data: Partial<MarketplaceRequest>) {
+  try {
+    const userId = await getCurrentUserId();
+    if (!userId) return { success: false, error: "Unauthorized" };
+    if (!adminDb) return { success: false, error: "Database not initialized" };
+
+    const userDoc = await adminDb.collection("users").doc(userId).get();
+    if (!userDoc.exists) return { success: false, error: "User not found" };
+
+    const userData = userDoc.data();
+    const now = new Date().toISOString();
+
+    const request: Omit<MarketplaceRequest, "id"> = {
+      title: data.title || "Untitled Request",
+      requesterId: userId,
+      requesterName: userData?.fullName || userData?.username || "Unknown",
+      requesterAvatar: userData?.photoURL || "",
+      requesterTrustScore: userData?.trustScore || 50,
+      requesterVerification: userData?.isVerified || false,
+      description: data.description || "",
+      deliverables: data.deliverables || [],
+      category: data.category || "Other",
+      skillsRequired: data.skillsRequired || [],
+      estimatedHours: data.estimatedHours || "TBD",
+      exchangeType: data.exchangeType || "One-time",
+      timeline: data.timeline || "Flexible",
+      preferredExperience: data.preferredExperience || "Any",
+      preferredTimeZone: data.preferredTimeZone || userData?.timeZone,
+      attachments: data.attachments || [],
+      status: "open",
+      applicantsCount: 0,
+      createdAt: now,
+      updatedAt: now,
+      ...(data.isMutual && {
+        isMutual: true,
+        offeredSkills: data.offeredSkills || [],
+        offeredDeliverables: data.offeredDeliverables || [],
+        offeredHours: data.offeredHours || "TBD",
+      })
+    };
+
+    const docRef = await adminDb.collection("marketplace_requests").add(request);
+
+    // Optional: Log activity
+    const activityRef = adminDb.collection("users").doc(userId).collection("activity").doc();
+    await activityRef.set({
+      type: "created",
+      description: `Posted a new request: ${request.title}`,
+      timestamp: now,
+      link: `/marketplace/${docRef.id}`
+    });
+
+    return { success: true, id: docRef.id };
+  } catch (error: any) {
+    console.error("Error creating request:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+
+export async function updateMarketplaceRequest(id: string, data: Partial<MarketplaceRequest>) {
+  try {
+    const userId = await getCurrentUserId();
+    if (!userId) return { success: false, error: "Unauthorized" };
+    if (!adminDb) return { success: false, error: "Database not initialized" };
+
+    const docRef = adminDb.collection("marketplace_requests").doc(id);
+    const docSnap = await docRef.get();
+    
+    if (!docSnap.exists) return { success: false, error: "Request not found" };
+    
+    const request = docSnap.data() as MarketplaceRequest;
+    
+    if (request.requesterId !== userId) {
+      return { success: false, error: "Unauthorized to edit this request" };
+    }
+    
+    if (request.applicantsCount > 0) {
+      return { success: false, error: "Cannot edit a request that already has applicants" };
+    }
+    
+    const now = new Date().toISOString();
+    
+    await docRef.update({
+      title: data.title !== undefined ? data.title : request.title,
+      description: data.description !== undefined ? data.description : request.description,
+      category: data.category !== undefined ? data.category : request.category,
+      skillsRequired: data.skillsRequired !== undefined ? data.skillsRequired : request.skillsRequired,
+      estimatedHours: data.estimatedHours !== undefined ? data.estimatedHours : request.estimatedHours,
+      exchangeType: data.exchangeType !== undefined ? data.exchangeType : request.exchangeType,
+      timeline: data.timeline !== undefined ? data.timeline : request.timeline,
+      preferredExperience: data.preferredExperience !== undefined ? data.preferredExperience : request.preferredExperience,
+      deliverables: data.deliverables !== undefined ? data.deliverables : request.deliverables,
+      ...(data.isMutual !== undefined && {
+        isMutual: data.isMutual,
+        offeredSkills: data.offeredSkills !== undefined ? data.offeredSkills : request.offeredSkills,
+        offeredDeliverables: data.offeredDeliverables !== undefined ? data.offeredDeliverables : request.offeredDeliverables,
+        offeredHours: data.offeredHours !== undefined ? data.offeredHours : request.offeredHours,
+      }),
+      updatedAt: now
+    });
+    
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error updating request:", error);
+    return { success: false, error: error.message };
+  }
+}
+

@@ -22,7 +22,14 @@ export function RequestCard({ request, isSavedInitial = false, onToggleSave }: R
       <div className="flex items-start justify-between gap-4 mb-4">
         <div>
           <Link href={`/marketplace/${request.id}`} className="hover:underline">
-            <h3 className="font-bold text-heading text-lg leading-tight line-clamp-2">{request.title}</h3>
+            <div className="flex flex-col gap-1">
+              <h3 className="font-bold text-heading text-lg leading-tight line-clamp-2">{request.title}</h3>
+              {request.isMutual && (
+                <span className="inline-flex w-fit items-center px-2 py-0.5 rounded text-[10px] font-bold bg-primary/10 text-primary uppercase tracking-wider">
+                  Mutual Exchange
+                </span>
+              )}
+            </div>
           </Link>
           <div className="flex items-center gap-2 mt-3">
             <div className="w-8 h-8 rounded-full bg-surface-secondary border border-border flex items-center justify-center shrink-0 overflow-hidden">
@@ -81,28 +88,44 @@ export function RequestCard({ request, isSavedInitial = false, onToggleSave }: R
       </p>
 
       <div className="space-y-4 mt-auto">
-        <div>
-          <span className="block text-[10px] uppercase tracking-wider font-bold text-muted mb-2">Skills Needed</span>
-          <div className="flex flex-wrap gap-2">
-            {request.skillsRequired.map((skill, idx) => (
-              <span key={idx} className="px-2 py-1 bg-surface-secondary border border-border text-xs font-medium text-heading rounded-md flex items-center gap-1.5">
-                <SkillIcon skill={skill} className="w-3.5 h-3.5" />
-                {skill}
-              </span>
-            ))}
+        <div className="space-y-4">
+          <div>
+            <span className="block text-[10px] uppercase tracking-wider font-bold text-muted mb-2">I Need</span>
+            <div className="flex flex-wrap gap-2">
+              {request.skillsRequired.map((skill, idx) => (
+                <span key={idx} className="px-2 py-1 bg-surface-secondary border border-border text-xs font-medium text-heading rounded-md flex items-center gap-1.5">
+                  <SkillIcon skill={skill} className="w-3.5 h-3.5" />
+                  {skill}
+                </span>
+              ))}
+            </div>
           </div>
+
+          {request.isMutual && request.offeredSkills && (
+            <div>
+              <span className="block text-[10px] uppercase tracking-wider font-bold text-primary mb-2">I Can Offer</span>
+              <div className="flex flex-wrap gap-2">
+                {request.offeredSkills.map((skill, idx) => (
+                  <span key={idx} className="px-2 py-1 bg-primary/5 border border-primary/20 text-xs font-medium text-heading rounded-md flex items-center gap-1.5">
+                    <SkillIcon skill={skill} className="w-3.5 h-3.5 text-primary" />
+                    {skill}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
         
         <div className="grid grid-cols-2 gap-2 text-xs bg-background p-3 rounded-[var(--radius-card)] border border-border">
           <div className="flex items-center gap-1.5 text-heading font-medium">
-            <Clock className="w-4 h-4 text-muted" /> {request.estimatedHours}
+            <Clock className="w-4 h-4 text-muted shrink-0" /> Est. {request.estimatedHours} Hrs
           </div>
           <div className="flex items-center gap-1.5 text-heading font-medium text-right justify-end">
             {request.timeline}
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-4 border-t border-border">
+        <div className="flex items-center justify-between pt-5 mt-2 border-t border-border">
           <span className="text-xs font-bold text-muted uppercase tracking-wider flex items-center gap-1.5">
             <Users className="w-4 h-4" /> {request.applicantsCount} Interested
           </span>

@@ -30,7 +30,7 @@ export function MarketplaceFeed({ activeTab, requests, professionals, savedItemI
     }
     
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {requests.map(req => (
           <RequestCard key={req.id} request={req} isSavedInitial={savedItemIds.includes(req.id)} onToggleSave={onToggleSave} />
         ))}
@@ -78,7 +78,7 @@ export function MarketplaceFeed({ activeTab, requests, professionals, savedItemI
         {savedRequests.length > 0 && (
           <div>
             <h3 className="font-bold text-heading text-xl mb-6">Saved Requests</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {savedRequests.map(req => (
                 <RequestCard key={req.id} request={req} isSavedInitial={true} onToggleSave={onToggleSave} />
               ))}
@@ -107,8 +107,8 @@ export function MarketplaceFeed({ activeTab, requests, professionals, savedItemI
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
           <h3 className="font-bold text-heading text-xl">Recommended Requests</h3>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {requests.slice(0, 3).map(req => (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {requests.slice(0, 2).map(req => (
             <RequestCard key={req.id} request={req} isSavedInitial={savedItemIds.includes(req.id)} onToggleSave={onToggleSave} />
           ))}
         </div>

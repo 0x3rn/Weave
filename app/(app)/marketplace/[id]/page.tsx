@@ -3,9 +3,12 @@ import { BadgeCheck, Clock, MapPin, CheckCircle, ChevronLeft, Calendar } from "l
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SkillIcon } from "@/components/profile/skill-icon";
+import { getCurrentUserId } from "@/app/actions/user";
+import { db } from "@/lib/firebase-admin";
 
-export async function generateMetadata({ params }: { params: { id: string } }) {
-  const result = await getMarketplaceRequest(params.id);
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const result = await getMarketplaceRequest(id);
   if (!result.success || !result.request) {
     return { title: "Request Not Found - Weave" };
   }
@@ -15,14 +18,28 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
   };
 }
 
-export default async function RequestDetailsPage({ params }: { params: { id: string } }) {
-  const result = await getMarketplaceRequest(params.id);
+export default async function RequestDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const result = await getMarketplaceRequest(id);
   
   if (!result.success || !result.request) {
     notFound();
   }
   
   const req = result.request;
+  const userId = await getCurrentUserId();
+  
+  let hasApplied = false;
+  if (userId && db) {
+    const existingApp = await db.collection("marketplace_applications")
+      .where("requestId", "==", req.id)
+      .where("applicantId", "==", userId)
+      .limit(1)
+      .get();
+    hasApplied = !existingApp.empty;
+  }
+  
+  const isOwner = userId === req.requesterId;
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -96,28 +113,43 @@ export default async function RequestDetailsPage({ params }: { params: { id: str
                 </ul>
               </section>
 
-              <section className="bg-surface-secondary border border-border p-6 rounded-xl">
-                <h2 className="text-xl font-bold text-heading mb-4">Apply for this Request</h2>
-                <form className="space-y-4">
+              <section className="bg-surface-secondary border border-border p-6 rounded-xl text-center">
+                {isOwner ? (
                   <div>
-                    <label className="block text-sm font-bold text-heading mb-2">Why are you a good fit?</label>
-                    <textarea 
-                      className="w-full min-h-[120px] p-4 bg-background border border-border rounded-lg text-body focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all resize-y"
-                      placeholder="Describe your relevant experience and how you plan to approach this..."
-                    ></textarea>
+                    <h2 className="text-xl font-bold text-heading mb-2">Your Request</h2>
+                    <p className="text-muted mb-4">You can manage applications for this request from your dashboard.</p>
+                    <div className="flex flex-col gap-3">
+                      <Link href={`/dashboard/requests/${req.id}`} className="inline-block w-full py-3 bg-secondary hover:bg-secondary/80 text-heading font-bold rounded-lg transition-colors">
+                        View Applications
+                      </Link>
+                      {req.applicantsCount === 0 && (
+                        <Link href={`/marketplace/${req.id}/edit`} className="inline-block w-full py-3 bg-background border border-border hover:bg-surface-secondary text-heading font-bold rounded-lg transition-colors">
+                          Edit Request
+                        </Link>
+                      )}
+                    </div>
                   </div>
+                ) : hasApplied ? (
                   <div>
-                    <label className="block text-sm font-bold text-heading mb-2">Estimated Skill Hours required</label>
-                    <input 
-                      type="number"
-                      className="w-full p-3 bg-background border border-border rounded-lg text-body focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
-                      placeholder="e.g. 5"
-                    />
+                    <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <CheckCircle className="w-6 h-6 text-primary" />
+                    </div>
+                    <h2 className="text-xl font-bold text-heading mb-2">Application Submitted</h2>
+                    <p className="text-muted mb-4">You have already applied for this exchange. The requester will be in touch if it's a match.</p>
                   </div>
-                  <button type="button" className="w-full py-3 bg-primary hover:bg-primary-hover text-background font-bold rounded-lg transition-colors shadow-[0_0_15px_rgba(88,199,109,0.3)]">
-                    Submit Application
-                  </button>
-                </form>
+                ) : req.status !== "open" ? (
+                  <div>
+                    <h2 className="text-xl font-bold text-heading mb-2">Request Closed</h2>
+                    <p className="text-muted">This request is no longer accepting applications.</p>
+                  </div>
+                ) : (
+                  <div>
+                    <h2 className="text-xl font-bold text-heading mb-4">Interested in this project?</h2>
+                    <Link href={`/marketplace/${req.id}/apply`} className="inline-flex justify-center items-center w-full py-3 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-lg transition-colors shadow-[0_0_15px_rgba(88,199,109,0.3)]">
+                      Apply for Exchange
+                    </Link>
+                  </div>
+                )}
               </section>
             </div>
 

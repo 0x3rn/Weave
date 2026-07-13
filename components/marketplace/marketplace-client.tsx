@@ -56,6 +56,14 @@ export function MarketplaceClient({ initialRequests, initialProfessionals, stats
       currentRequests = currentRequests.filter(r => filters.category!.includes(r.category));
     }
     
+    if (filters.exchangeType && filters.exchangeType !== "All") {
+      if (filters.exchangeType === "Mutual") {
+        currentRequests = currentRequests.filter(r => !!r.isMutual);
+      } else if (filters.exchangeType === "Standard") {
+        currentRequests = currentRequests.filter(r => !r.isMutual);
+      }
+    }
+
     if (filters.verifiedOnly) {
       currentRequests = currentRequests.filter(r => r.requesterVerification === true);
     }

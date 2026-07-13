@@ -35,6 +35,26 @@ export function MarketplaceFilters({ filters, onChange, onClear }: MarketplaceFi
 
       <div className="divide-y divide-border">
         
+        {/* Exchange Type */}
+        <div className="p-5">
+          <h4 className="font-bold text-heading text-sm mb-3">Exchange Type</h4>
+          <div className="flex gap-2">
+            {[
+              { label: "All", val: "All" },
+              { label: "Mutual", val: "Mutual" },
+              { label: "Standard", val: "Standard" }
+            ].map(type => (
+              <button 
+                key={type.label} 
+                onClick={() => onChange("exchangeType", type.val)}
+                className={`flex flex-1 items-center justify-center gap-0.5 py-1.5 border rounded-md text-xs font-bold transition-colors ${filters.exchangeType === type.val || (!filters.exchangeType && type.val === "All") ? "border-primary text-primary bg-primary/5" : "border-border text-heading bg-background hover:border-primary hover:text-primary"}`}
+              >
+                {type.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Verification & Trust */}
         <div className="p-5">
           <label className="flex items-center gap-3 cursor-pointer group">

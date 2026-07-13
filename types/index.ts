@@ -75,17 +75,72 @@ export interface PortfolioItem {
   createdAt: string; // ISO string
 }
 
-export type ExchangeStatus = "pending" | "in_progress" | "completed" | "disputed" | "cancelled";
+export type ExchangeStatus = "pending_proposal" | "negotiating" | "in_progress" | "in_review" | "revision_requested" | "completed" | "disputed" | "cancelled";
+
+export interface ExchangeMilestone {
+  id: string;
+  title: string;
+  description?: string;
+  dueDate?: string; // ISO string
+  status: "pending" | "in_progress" | "completed";
+}
+
+export interface ExchangeDeliverable {
+  id: string;
+  version: number;
+  files: { name: string; url: string; type: string; size: number }[];
+  comments?: string;
+  submittedBy?: string; // userId of the submitter (for mutual exchanges)
+  uploadedAt: string; // ISO string
+}
+
+export interface ExchangeActivity {
+  id: string;
+  type: "created" | "proposal_accepted" | "files_uploaded" | "milestone_completed" | "revision_requested" | "completed" | "cancelled";
+  description: string;
+  timestamp: string; // ISO string
+  actorId?: string;
+}
 
 export interface Exchange {
   id: string;
+  requestId?: string;
+  applicationId?: string;
   title: string;
+  requesterId: string;
   providerId: string;
-  receiverId: string;
   skillHours: number;
   status: ExchangeStatus;
+  
+  // Proposal / Workspace data
+  deliverables?: string[]; // Standard exchange deliverables
+  
+  // Mutual Exchange data
+  isMutual?: boolean;
+  providerDeliverables?: string[];
+  requesterDeliverables?: string[];
+  providerSubmittedAt?: string | null;
+  requesterSubmittedAt?: string | null;
+  providerAcceptedAt?: string | null;
+  requesterAcceptedAt?: string | null;
+
+  timelineDays?: number;
+  deadline?: string; // ISO string
+  revisionsIncluded?: number;
+  revisionsUsed?: number;
+  
+  // Escrow tracking
+  escrowStatus?: "pending" | "reserved" | "released" | "refunded";
+  providerEscrowStatus?: "pending" | "reserved" | "released" | "refunded"; // For mutual exchanges
+  requesterEscrowStatus?: "pending" | "reserved" | "released" | "refunded"; // For mutual exchanges
+  
+  // Progress
+  progress?: number; // 0-100
+  milestones?: ExchangeMilestone[];
+
   completedAt?: string | null;
   createdAt: string; // ISO string
+  updatedAt?: string; // ISO string
 }
 
 export interface Review {
@@ -153,6 +208,13 @@ export interface MarketplaceRequest {
   category: string;
   skillsRequired: string[];
   estimatedHours: string; // e.g. "5-7 Hours" or "10+"
+  
+  // Mutual Exchange fields
+  isMutual?: boolean;
+  offeredSkills?: string[];
+  offeredDeliverables?: string[];
+  offeredHours?: string;
+  
   exchangeType: string; // "One-time", "Ongoing", etc.
   timeline: string; // e.g. "Within 2 weeks"
   preferredExperience: string; // "Intermediate"
@@ -164,18 +226,27 @@ export interface MarketplaceRequest {
   updatedAt: string; // ISO string
 }
 
-export type MarketplaceApplicationStatus = "pending" | "accepted" | "rejected";
+export type MarketplaceApplicationStatus = "pending" | "shortlisted" | "accepted" | "rejected";
 
 export interface MarketplaceApplication {
   id: string;
   requestId: string;
   applicantId: string;
-  pitch: string;
+  coverMessage: string;
   portfolioLinks: string[];
   availability: string;
   estimatedHours: number;
+  
+  // Mutual Exchange fields
+  isMutualProposal?: boolean;
+  offeredDeliverables?: string[];
+  offeredHours?: number;
+  
+  estimatedCompletionDate?: string; // ISO string
+  agreedToTerms: boolean;
   status: MarketplaceApplicationStatus;
   createdAt: string; // ISO string
+  updatedAt?: string; // ISO string
 }
 
 export interface MarketplaceFilters {
@@ -247,3 +318,4 @@ export interface LedgerTransaction {
   linkedUserAvatar?: string;
   notes?: string;
 }
+export interface ExchangeMessage { id: string; exchangeId: string; senderId: string; text: string; createdAt: string; isRead?: boolean; }
