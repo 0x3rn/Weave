@@ -113,6 +113,46 @@ export default async function RequestDetailsPage({ params }: { params: Promise<{
                 </ul>
               </section>
 
+              {req.isMutual && (
+                <section className="bg-primary/5 border border-primary/20 rounded-xl p-8">
+                  <h2 className="text-xl font-black text-heading mb-4 flex items-center gap-2">
+                    <span className="text-primary">What I Can Offer</span>
+                  </h2>
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-sm font-bold text-heading mb-2">Skills I Provide</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {(req.offeredSkills || []).map((skill, idx) => (
+                          <span key={idx} className="px-3 py-1.5 bg-background border border-border text-sm font-medium text-heading rounded-md flex items-center gap-1.5 shadow-sm">
+                            <SkillIcon skill={skill} className="w-4 h-4 text-primary" />
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <h3 className="text-sm font-bold text-heading mb-1">My Estimated Effort</h3>
+                        <p className="text-body font-medium">{req.offeredHours} Hours</p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="text-sm font-bold text-heading mb-2">What I Will Deliver</h3>
+                      <ul className="space-y-2">
+                        {(req.offeredDeliverables || []).map((item, idx) => (
+                          <li key={idx} className="flex items-start gap-2 text-body text-sm">
+                            <CheckCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </section>
+              )}
+
               <section className="bg-surface-secondary border border-border p-6 rounded-xl text-center">
                 {isOwner ? (
                   <div>
@@ -171,7 +211,7 @@ export default async function RequestDetailsPage({ params }: { params: Promise<{
                 <div className="space-y-4 bg-surface-secondary p-5 rounded-xl border border-border">
                   <div>
                     <div className="text-xs text-muted mb-1">Estimated Effort</div>
-                    <div className="font-semibold text-heading">{req.estimatedHours}</div>
+                    <div className="font-semibold text-heading">{req.estimatedHours} Hours</div>
                   </div>
                   <div>
                     <div className="text-xs text-muted mb-1">Experience Level</div>

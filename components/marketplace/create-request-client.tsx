@@ -145,7 +145,7 @@ export default function CreateRequestClient() {
             <div className="flex flex-col sm:flex-row gap-4">
               <label className={`flex-1 border p-4 rounded-xl cursor-pointer transition-all ${!isMutual ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border bg-surface hover:border-primary/50'}`}>
                 <div className="flex items-center gap-3 mb-2">
-                  <input type="radio" checked={!isMutual} onChange={() => setIsMutual(false)} className="w-4 h-4 text-primary" />
+                  <input type="radio" checked={!isMutual} onChange={() => setIsMutual(false)} className="w-4 h-4 accent-primary" />
                   <span className="font-bold text-heading">Standard Exchange</span>
                 </div>
                 <p className="text-sm text-muted ml-7">I will pay Skill Hours to the person who completes my project.</p>
@@ -153,7 +153,7 @@ export default function CreateRequestClient() {
               
               <label className={`flex-1 border p-4 rounded-xl cursor-pointer transition-all ${isMutual ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border bg-surface hover:border-primary/50'}`}>
                 <div className="flex items-center gap-3 mb-2">
-                  <input type="radio" checked={isMutual} onChange={() => setIsMutual(true)} className="w-4 h-4 text-primary" />
+                  <input type="radio" checked={isMutual} onChange={() => setIsMutual(true)} className="w-4 h-4 accent-primary" />
                   <span className="font-bold text-heading">Mutual Exchange</span>
                 </div>
                 <p className="text-sm text-muted ml-7">I will offer my own skills/work in return instead of just spending Skill Hours.</p>
@@ -328,7 +328,6 @@ export default function CreateRequestClient() {
             <div className="space-y-6 pt-8 mt-8 border-t-2 border-dashed border-border">
               <div className="bg-primary/5 border border-primary/20 rounded-xl p-6">
                 <h2 className="text-xl font-black text-heading mb-2 flex items-center gap-2">
-                  <span className="bg-primary text-primary-foreground w-6 h-6 rounded-full flex items-center justify-center text-sm">2</span> 
                   What I Can Offer
                 </h2>
                 <p className="text-sm text-muted mb-6">Since this is a mutual exchange, describe what you are bringing to the table for the other person.</p>
