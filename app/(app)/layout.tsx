@@ -36,6 +36,25 @@ export default async function DashboardLayout({
       userData = userDoc.data()!;
       if (userData.onboarded !== true) {
         targetRedirect = "/onboarding";
+      } else {
+        // 4. Verify the specific device session if deviceId is present
+        const deviceId = cookieStore.get("deviceId")?.value;
+        if (deviceId) {
+          const deviceDoc = await db.collection("users").doc(decodedClaims.uid).collection("devices").doc(deviceId).get();
+          if (!deviceDoc.exists) {
+            // Device was revoked or deleted
+            targetRedirect = "/api/auth/logout";
+          } else {
+            // Update lastActive if it's older than 24 hours (optimization to save writes)
+            const deviceData = deviceDoc.data()!;
+            const lastActive = new Date(deviceData.lastActive || 0);
+            const now = new Date();
+            if (now.getTime() - lastActive.getTime() > 24 * 60 * 60 * 1000) {
+              // Fire and forget
+              deviceDoc.ref.update({ lastActive: now.toISOString() }).catch(() => {});
+            }
+          }
+        }
       }
     }
 

@@ -159,7 +159,7 @@ export function MarketplaceClient({ initialRequests, initialProfessionals, stats
           <button 
             type="submit" 
             disabled={isSearching}
-            className="absolute right-3 px-6 py-2.5 bg-primary border border-border hover:bg-surface-secondary text-heading font-bold rounded-[var(--radius-button)] transition-colors shadow-subtle disabled:opacity-50"
+            className="absolute right-3 px-6 py-2.5 bg-primary border border-border hover:bg-primary-hover text-surface font-bold rounded-[var(--radius-button)] transition-colors shadow-subtle disabled:opacity-50"
           >
             {isSearching ? "Searching..." : "Search"}
           </button>
