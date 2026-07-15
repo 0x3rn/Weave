@@ -85,11 +85,11 @@ export default function DashboardShell({ children, user }: { children: React.Rea
                 onClick={closeMobileMenu}
                 className={`flex items-center gap-3 px-3 py-2 rounded-[var(--radius-input)] text-sm font-medium transition-colors ${
                   isActive 
-                    ? "bg-heading text-background" 
+                    ? "bg-primary/10 text-primary font-bold" 
                     : "text-muted hover:bg-surface-secondary hover:text-heading"
                 }`}
               >
-                <Icon className={`w-4 h-4 ${isActive ? "text-background" : "text-muted"}`} />
+                <Icon className={`w-4 h-4 ${isActive ? "text-primary" : "text-muted"}`} />
                 {item.name}
               </Link>
             );
