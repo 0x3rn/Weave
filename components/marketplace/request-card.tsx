@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { MarketplaceRequest } from "@/types";
-import { BadgeCheck, Clock, Users, Bookmark, BookmarkMinus, ExternalLink } from "lucide-react";
+import { BadgeCheck, Clock, Users, Bookmark, BookmarkMinus, ExternalLink, Award } from "lucide-react";
 import Link from "next/link";
 import { toast } from "react-hot-toast";
 import { SkillIcon } from "@/components/profile/skill-icon";
@@ -17,23 +17,42 @@ interface RequestCardProps {
 
 export function RequestCard({ request, isSavedInitial = false, isApplied = false, onToggleSave }: RequestCardProps) {
   const [isSaved, setIsSaved] = useState(isSavedInitial);
+  
+  // Determine if this is a "new" request (posted within last 48h)
+  const isNew = Date.now() - new Date(request.createdAt).getTime() < 48 * 60 * 60 * 1000;
+  // Determine if this is a "featured" request (high applicants / high trust — visually distinct)
+  const isFeatured = (request.applicantsCount || 0) >= 10;
 
   return (
-    <div className="bg-background border border-border rounded-[var(--radius-card)] p-6 shadow-subtle hover:shadow-md transition-all group flex flex-col h-full">
+    <div className={`bg-background rounded-[var(--radius-card)] p-6 shadow-subtle hover:shadow-md transition-all group flex flex-col h-full ${isFeatured ? 'border-[3px] border-primary/25 shadow-[0_0_25px_rgba(88,199,109,0.08)]' : 'border border-border'}`}>
       <div className="flex items-start justify-between gap-4 mb-4">
         <div>
           <Link href={`/marketplace/${request.id}`} className="hover:underline">
             <div className="flex flex-col gap-1">
-              <h3 className="font-bold text-heading text-lg leading-tight line-clamp-2">{request.title}</h3>
-              {request.isMutual ? (
-                <span className="inline-flex w-fit items-center px-2 py-0.5 rounded text-[10px] font-bold bg-primary/10 text-primary uppercase tracking-wider">
-                  Mutual Exchange
-                </span>
-              ) : (
-                <span className="inline-flex w-fit items-center px-2 py-0.5 rounded text-[10px] font-bold bg-surface-secondary border border-border text-muted uppercase tracking-wider">
-                  Standard Exchange
-                </span>
-              )}
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-bold text-heading text-lg leading-tight line-clamp-2">{request.title}</h3>
+                {isNew && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-primary/10 text-primary uppercase tracking-wider shrink-0">
+                    New
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {request.isMutual ? (
+                  <span className="inline-flex w-fit items-center px-2 py-0.5 rounded text-[10px] font-bold bg-primary/10 text-primary uppercase tracking-wider">
+                    Mutual Exchange
+                  </span>
+                ) : (
+                  <span className="inline-flex w-fit items-center px-2 py-0.5 rounded text-[10px] font-bold bg-surface-secondary border border-border text-muted uppercase tracking-wider">
+                    Standard Exchange
+                  </span>
+                )}
+                {isFeatured && (
+                  <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-[10px] font-bold bg-primary/10 text-primary uppercase tracking-wider">
+                    <Award className="w-3 h-3" /> Featured
+                  </span>
+                )}
+              </div>
             </div>
           </Link>
           <div className="flex items-center gap-2 mt-3">

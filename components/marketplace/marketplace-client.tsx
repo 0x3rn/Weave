@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { MarketplaceRequest, MarketplaceFilters as MarketplaceFiltersType } from "@/types";
 import { MarketplaceFilters } from "./marketplace-filters";
 import { MarketplaceFeed } from "./marketplace-feed";
-import { Search, Plus, Sparkles, LayoutGrid, Users, Bookmark, Briefcase } from "lucide-react";
+import { Search, Plus, Star, LayoutGrid, Users, Bookmark, Briefcase } from "lucide-react";
 import Link from "next/link";
 import { getMarketplaceData } from "@/app/actions/marketplace";
 
@@ -84,7 +84,7 @@ export function MarketplaceClient({ initialRequests, initialProfessionals, stats
   }, [filters, rawRequests, rawProfessionals]);
 
   const TABS = [
-    { id: "Recommended", icon: Sparkles },
+    { id: "Recommended", icon: Star },
     { id: "Requests", icon: Briefcase },
     { id: "Professionals", icon: Users },
     { id: "Saved", icon: Bookmark },
@@ -108,8 +108,12 @@ export function MarketplaceClient({ initialRequests, initialProfessionals, stats
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-12">
-        <div className="max-w-2xl">
+      <div className="relative overflow-hidden rounded-[var(--radius-card)] border border-border bg-gradient-to-br from-surface via-background to-surface-secondary p-8 sm:p-12 mb-12 shadow-subtle">
+        <div className="pointer-events-none absolute -top-24 -right-24 w-72 h-72 rounded-full bg-primary/5 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-24 -left-24 w-72 h-72 rounded-full bg-primary/5 blur-3xl" />
+        
+        <div className="relative flex flex-col md:flex-row md:items-start justify-between gap-6">
+          <div className="max-w-2xl">
           <h1 className="text-4xl sm:text-5xl font-bold text-heading tracking-tight mb-4">
             Marketplace
           </h1>
@@ -124,6 +128,7 @@ export function MarketplaceClient({ initialRequests, initialProfessionals, stats
           <button onClick={() => setActiveTab("Professionals")} className="px-6 py-3 bg-background hover:bg-surface-secondary border border-border text-heading font-bold rounded-[var(--radius-button)] shadow-subtle transition-all">
             Browse Professionals
           </button>
+        </div>
         </div>
       </div>
 

@@ -2,8 +2,13 @@
 
 import { db } from "@/lib/firebase-admin";
 import { getCurrentUserId } from "./user";
+import { USE_DEMO_MARKETPLACE, DEMO_SAVED_ITEMS } from "@/lib/demo-marketplace-data";
 
 export async function toggleSavedItem(targetId: string, type: "professional" | "request") {
+  if (USE_DEMO_MARKETPLACE) {
+    return { success: true, saved: true };
+  }
+  
   const userId = await getCurrentUserId();
   if (!userId || !db) return { success: false, error: "Unauthorized" };
 
@@ -24,6 +29,10 @@ export async function toggleSavedItem(targetId: string, type: "professional" | "
 }
 
 export async function getSavedItemIds() {
+  if (USE_DEMO_MARKETPLACE) {
+    return DEMO_SAVED_ITEMS;
+  }
+  
   const userId = await getCurrentUserId();
   if (!userId || !db) return [];
 

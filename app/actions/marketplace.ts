@@ -7,8 +7,13 @@ import { documentMatches, score, field, and, or } from "firebase/firestore/pipel
 import { execute } from "firebase/firestore/pipelines";
 import { calculateTrustScore } from "@/lib/user-metrics";
 import { getCurrentUserId } from "./user"; // if execution requires it, wait, the guide just chains it. Actually, `pipeline.d.ts` shows `await execute(db.pipeline()...)`
+import { USE_DEMO_MARKETPLACE, getDemoMarketplaceData, getDemoMarketplaceRequest } from "@/lib/demo-marketplace-data";
 
 export async function getMarketplaceData(filters: Partial<MarketplaceFilters> = {}, searchQuery: string = "") {
+  if (USE_DEMO_MARKETPLACE) {
+    return getDemoMarketplaceData(filters, searchQuery);
+  }
+  
   if (!adminDb) {
     return { success: false, error: "Database not initialized" };
   }
@@ -137,7 +142,11 @@ export async function getMarketplaceData(filters: Partial<MarketplaceFilters> = 
   }
 }
 
-export async function getMarketplaceRequest(id: string) {
+export async function getMarketplaceRequest(id: string): Promise<{ success: boolean; request?: MarketplaceRequest; error?: string }> {
+  if (USE_DEMO_MARKETPLACE) {
+    return getDemoMarketplaceRequest(id);
+  }
+  
   if (!adminDb) {
     return { success: false, error: "Database not initialized" };
   }

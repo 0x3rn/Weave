@@ -4,6 +4,7 @@ import { db } from "@/lib/firebase-admin";
 import { getCurrentUserId } from "./user";
 import { MarketplaceApplication, MarketplaceRequest } from "@/types";
 import { createExchangeFromApplication } from "./exchanges";
+import { USE_DEMO_MARKETPLACE, DEMO_APPLIED_REQUEST_IDS } from "@/lib/demo-marketplace-data";
 
 export async function submitApplication(
   requestId: string,
@@ -219,6 +220,10 @@ export async function updateApplicationStatus(applicationId: string, newStatus: 
 }
 
 export async function getUserApplicationRequestIds() {
+  if (USE_DEMO_MARKETPLACE) {
+    return DEMO_APPLIED_REQUEST_IDS;
+  }
+  
   try {
     const userId = await getCurrentUserId();
     if (!userId || !db) return [];
