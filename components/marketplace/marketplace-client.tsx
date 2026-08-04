@@ -122,7 +122,7 @@ export function MarketplaceClient({ initialRequests, initialProfessionals, stats
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <Link href="/marketplace/create" className="px-6 py-3 bg-primary hover:bg-primary-hover text-background font-bold rounded-[var(--radius-button)] shadow-[0_0_20px_rgba(88,199,109,0.3)] transition-all flex items-center gap-2">
+          <Link href="/marketplace/create" className="px-6 py-3 bg-primary hover:bg-primary-hover text-background font-bold rounded-[var(--radius-button)] transition-all flex items-center gap-2">
             <Plus className="w-5 h-5" /> Post Request
           </Link>
           <button onClick={() => setActiveTab("Professionals")} className="px-6 py-3 bg-background hover:bg-surface-secondary border border-border text-heading font-bold rounded-[var(--radius-button)] shadow-subtle transition-all">
@@ -164,7 +164,7 @@ export function MarketplaceClient({ initialRequests, initialProfessionals, stats
           <button 
             type="submit" 
             disabled={isSearching}
-            className="absolute right-3 px-6 py-2.5 bg-primary border border-border hover:bg-primary-hover text-surface font-bold rounded-[var(--radius-button)] transition-colors shadow-subtle disabled:opacity-50"
+            className="absolute right-3 top-1/2 -translate-y-1/2 px-6 h-11 bg-primary hover:bg-primary-hover text-surface font-bold rounded-[var(--radius-input)] transition-colors disabled:opacity-50"
           >
             {isSearching ? "Searching..." : "Search"}
           </button>

@@ -408,7 +408,7 @@ export default function EditRequestClient({ request }: { request: MarketplaceReq
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-8 py-3 bg-primary text-primary-foreground font-bold rounded-[var(--radius-button)] hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(88,199,109,0.3)] min-w-[150px]"
+              className="px-8 py-3 bg-primary text-primary-foreground font-bold rounded-[var(--radius-button)] hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 min-w-[150px]"
             >
               {isSubmitting ? (
                 <><Loader2 className="w-5 h-5 animate-spin" /> Saving...</>

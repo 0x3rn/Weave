@@ -127,7 +127,7 @@ export function ProfessionalCard({ professional, isSavedInitial = false, onToggl
           >
             View Profile
           </Link>
-          <button className="flex-1 py-2 bg-primary hover:bg-primary-hover text-background text-sm font-bold rounded-[var(--radius-button)] transition-colors shadow-[0_0_15px_rgba(88,199,109,0.3)]">
+          <button className="flex-1 py-2 bg-primary hover:bg-primary-hover text-background text-sm font-bold rounded-[var(--radius-button)] transition-colors">
             Request
           </button>
         </div>
