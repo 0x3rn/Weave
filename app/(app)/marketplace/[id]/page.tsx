@@ -196,7 +196,7 @@ export default async function RequestDetailsPage({ params }: { params: Promise<{
                 ) : (
                   <div>
                     <h2 className="text-xl font-bold text-heading mb-4">Interested in this project?</h2>
-                    <Link href={`/marketplace/${req.id}/apply`} className="inline-flex justify-center items-center w-full py-3 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-lg transition-colors shadow-[0_0_15px_rgba(88,199,109,0.3)]">
+                    <Link href={`/marketplace/${req.id}/apply`} className="inline-flex justify-center items-center w-full py-3 bg-primary hover:bg-primary/90 text-background font-bold rounded-lg transition-colors">
                       Apply for Exchange
                     </Link>
                   </div>
