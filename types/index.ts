@@ -124,7 +124,10 @@ export interface Exchange {
   title: string;
   requesterId: string;
   providerId: string;
+  participants?: string[];
   skillHours: number;
+  requesterEscrowHours?: number;
+  providerEscrowHours?: number;
   status: ExchangeStatus;
   
   // Proposal / Workspace data
@@ -208,6 +211,7 @@ export interface Escrow {
   exchangeId: string;
   status: EscrowStatus;
   participants: Record<string, EscrowParticipant>; // Keyed by userId
+  participantIds?: string[];
   timeline: EscrowEvent[];
   dispute?: {
     reason: string;

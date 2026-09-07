@@ -18,7 +18,7 @@ export default function EscrowDashboardClient({ initialEscrows, exchangeMap, cur
   let fundsHeld = 0;
   let hoursReserved = 0;
   let pendingReleases = 0;
-  let activeCount = activeEscrows.length;
+  const activeCount = activeEscrows.length;
   let disputesCount = 0;
   let depositsMissing = 0;
 

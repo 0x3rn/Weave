@@ -3,8 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import { Conversation, Message, User, Exchange } from "@/types";
 import { db } from "@/lib/firebase";
-import { collection, query, where, orderBy, onSnapshot, doc, getDoc } from "firebase/firestore";
-import { markConversationRead } from "@/app/actions/messages";
+import { collection, query, where, orderBy, onSnapshot } from "firebase/firestore";
+import { getConversationContext, markConversationRead } from "@/app/actions/messages";
 import { ArrowLeft, Phone, Video, MoreVertical, ShieldCheck, CheckCircle2 } from "lucide-react";
 import MessageBubble from "./message-bubble";
 import Composer from "./composer";
@@ -34,17 +34,13 @@ export default function ChatArea({ conversation, currentUserId, onBack }: Props)
   useEffect(() => {
     // Fetch Partner and Exchange context
     const fetchContext = async () => {
-      if (partnerId) {
-        const userDoc = await getDoc(doc(db, "users", partnerId));
-        if (userDoc.exists()) setPartner(userDoc.data() as User);
-      }
-      if (conversation.type === "exchange" && conversation.contextId) {
-        const exDoc = await getDoc(doc(db, "exchanges", conversation.contextId));
-        if (exDoc.exists()) setExchange(exDoc.data() as Exchange);
-      }
+      const result = await getConversationContext(conversation.id);
+      if (!result.success) return;
+      setPartner(result.partner as User | null);
+      setExchange(result.exchange || null);
     };
     fetchContext();
-  }, [partnerId, conversation]);
+  }, [conversation.id]);
 
   useEffect(() => {
     // Real-time listener for messages

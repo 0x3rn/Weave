@@ -24,7 +24,7 @@ export async function getMarketplaceData(filters: Partial<MarketplaceFilters> = 
     // Using Industry Standard Firestore Pipelines for advanced search and filtering
     if (searchQuery) {
       // Execute pipeline with native full-text search
-      let pipeline = webDb.pipeline().collection("marketplace_requests")
+      const pipeline = webDb.pipeline().collection("marketplace_requests")
         .search({
           query: documentMatches(searchQuery),
           sort: score().descending()

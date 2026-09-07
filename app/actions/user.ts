@@ -9,7 +9,7 @@ import { revalidatePath } from "next/cache";
  * Secures the current session and returns the decoded claims (including uid).
  * Throws an error if not authenticated.
  */
-async function requireAuth() {
+export async function requireAuth() {
   const cookieStore = await cookies();
   const sessionCookie = cookieStore.get("session")?.value;
   
@@ -38,16 +38,37 @@ export async function getCurrentUserId(): Promise<string | null> {
 export async function updateUserProfile(data: any) {
   try {
     const claims = await requireAuth();
-    
-    // Safety check: ensure we don't accidentally overwrite protected fields
-    const safeData = { ...data };
-    delete safeData.isAdmin;
-    delete safeData.skillHours;
-    delete safeData.email; // Email should not be changed here
-    delete safeData.createdAt;
+    if (!data || typeof data !== "object" || Array.isArray(data)) return { error: "Invalid profile data" };
+
+    const allowedFields = new Set([
+      "username", "displayName", "fullName", "photoURL", "photoUrl", "phone", "country", "timeZone", "language",
+      "profession", "headline", "bio", "languages", "experienceLevel", "yearsOfExperience", "availability",
+      "skillsOffered", "skillsLookingFor", "preferredCollaboration", "portfolioWebsite", "github", "linkedIn", "behance",
+      "dribbble", "youtube", "twitter", "otherLink", "portfolioFiles", "visibility", "notifications", "communication",
+      "privacy", "preferences", "notificationPreferences", "onboarded"
+    ]);
+    const safeData: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (!allowedFields.has(key)) continue;
+      if (typeof value === "string") {
+        if (value.length > 5000) return { error: "Profile field is too long" };
+        safeData[key] = value.trim();
+      } else if (typeof value === "boolean") {
+        safeData[key] = value;
+      } else if (Array.isArray(value) && value.length <= 50 && value.every(item => typeof item === "string" && item.length <= 500)) {
+        safeData[key] = value.map(item => item.trim());
+      } else if (key === "privacy" || key === "preferences" || key === "notificationPreferences") {
+        if (!value || typeof value !== "object" || Array.isArray(value)) return { error: "Invalid preference data" };
+        safeData[key] = value;
+      } else {
+        return { error: "Invalid profile data" };
+      }
+    }
+
+    if (Object.keys(safeData).length === 0) return { error: "No editable profile fields provided" };
 
     // Check username uniqueness if provided
-    if (safeData.username) {
+    if (typeof safeData.username === "string" && safeData.username) {
       const usernameCheck = await db!.collection("users")
         .where("username", "==", safeData.username)
         .limit(1)
@@ -58,9 +79,14 @@ export async function updateUserProfile(data: any) {
       }
       
       // Ensure it only contains lowercase alphanumeric characters, underscores, and hyphens
-      if (!/^[a-z0-9_-]+$/.test(safeData.username)) {
+      if (!/^[a-z0-9_-]{3,32}$/.test(safeData.username)) {
         return { error: "Username can only contain letters (a-z), numbers (0-9), and symbols (- or _)." };
       }
+    }
+
+    const photoUrl = safeData.photoURL ?? safeData.photoUrl;
+    if (typeof photoUrl === "string" && photoUrl && !photoUrl.startsWith("https://storage.googleapis.com/")) {
+      return { error: "Invalid profile image URL" };
     }
 
     await db!.collection("users").doc(claims.uid).update(safeData);
@@ -128,6 +154,9 @@ export async function saveProfileSettings(formData: FormData) {
     let photoURL: string | undefined = undefined;
 
     if (imageFile && imageFile.size > 0 && storage) {
+      if (imageFile.size > 5 * 1024 * 1024 || !["image/jpeg", "image/png", "image/webp"].includes(imageFile.type)) {
+        return { success: false, error: "Profile images must be JPEG, PNG, or WebP and no larger than 5MB" };
+      }
       const bucket = storage.bucket();
       const extension = imageFile.name.split('.').pop() || 'jpg';
       const filename = `avatars/${userId}/${Date.now()}.${extension}`;
@@ -177,6 +206,9 @@ export async function saveProfileSettings(formData: FormData) {
 
 export async function updateUserSchedule(uid: string, schedule: any) {
   try {
+    const userId = await getCurrentUserId();
+    if (!userId || userId !== uid) throw new Error("Unauthorized");
+    if (!schedule || typeof schedule !== "object" || Array.isArray(schedule)) throw new Error("Invalid schedule");
     if (!db) throw new Error("Database not initialized");
     const userRef = db.collection("users").doc(uid);
     await userRef.update({

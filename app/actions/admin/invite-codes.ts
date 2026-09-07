@@ -2,6 +2,7 @@
 
 import { db } from "@/lib/firebase-admin";
 import crypto from "crypto";
+import { requireAdminUser } from "./auth";
 
 // Helper to generate a secure random code (e.g. WV-8KX2-MP4Q)
 function generateSecureCode() {
@@ -20,6 +21,8 @@ export async function createInviteCode(
   expiresInDays: number | null, 
   applicationId?: string
 ) {
+  await requireAdminUser();
+  if (!/^\S+@\S+\.\S+$/.test(email) || (expiresInDays !== null && (!Number.isInteger(expiresInDays) || expiresInDays < 1 || expiresInDays > 365))) return { error: "Invalid invite details" };
   if (!db) return { error: "Database not initialized" };
 
   try {
@@ -53,6 +56,7 @@ export async function createInviteCode(
 }
 
 export async function getIssuedInvites() {
+  await requireAdminUser();
   if (!db) return { error: "Database not initialized" };
 
   try {
@@ -73,6 +77,7 @@ export async function getIssuedInvites() {
 }
 
 export async function revokeInviteCode(id: string) {
+  await requireAdminUser();
   if (!db) return { error: "Database not initialized" };
 
   try {
@@ -87,6 +92,8 @@ export async function revokeInviteCode(id: string) {
 }
 
 export async function extendInviteCode(id: string, additionalDays: number) {
+  await requireAdminUser();
+  if (!Number.isInteger(additionalDays) || additionalDays < 1 || additionalDays > 365) return { error: "Invalid extension" };
   if (!db) return { error: "Database not initialized" };
 
   try {
@@ -115,6 +122,7 @@ export async function extendInviteCode(id: string, additionalDays: number) {
 import { sendEmail } from "@/lib/email";
 
 export async function resendInviteEmail(id: string) {
+  await requireAdminUser();
   if (!db) return { error: "Database not initialized" };
 
   try {

@@ -1,8 +1,11 @@
 "use server";
 
 import { db } from "@/lib/firebase-admin";
+import { auth } from "@/lib/firebase-admin-auth";
+import { requireAdminUser } from "./auth";
 
 export async function getAdminUsersDashboard() {
+  await requireAdminUser();
   if (!db) {
     return { error: "Database connection not initialized" };
   }
@@ -92,6 +95,7 @@ export async function getAdminUsersDashboard() {
 }
 
 export async function updateUserStatus(uid: string, status: "active" | "suspended" | "banned") {
+  await requireAdminUser();
   if (!db) return { error: "Database not initialized" };
   try {
     await db.collection("users").doc(uid).update({ status });
@@ -102,6 +106,7 @@ export async function updateUserStatus(uid: string, status: "active" | "suspende
 }
 
 export async function updateUserVerification(uid: string, isVerified: boolean) {
+  await requireAdminUser();
   if (!db) return { error: "Database not initialized" };
   try {
     await db.collection("users").doc(uid).update({ isVerified });
@@ -112,6 +117,8 @@ export async function updateUserVerification(uid: string, isVerified: boolean) {
 }
 
 export async function saveAdminUserNotes(uid: string, notes: string) {
+  await requireAdminUser();
+  if (typeof notes !== "string" || notes.length > 5000) return { error: "Invalid notes" };
   if (!db) return { error: "Database not initialized" };
   try {
     await db.collection("users").doc(uid).update({ adminNotes: notes });
@@ -122,6 +129,10 @@ export async function saveAdminUserNotes(uid: string, notes: string) {
 }
 
 export async function adjustUserSkillHours(uid: string, amount: number, reason: string) {
+  await requireAdminUser();
+  if (!Number.isFinite(amount) || !Number.isInteger(amount) || Math.abs(amount) > 10000 || !reason.trim() || reason.length > 500) {
+    return { error: "Invalid adjustment" };
+  }
   if (!db) return { error: "Database not initialized" };
   try {
     const userRef = db.collection("users").doc(uid);
@@ -155,9 +166,10 @@ export async function adjustUserSkillHours(uid: string, amount: number, reason: 
 }
 
 export async function deleteUserAccount(uid: string) {
+  await requireAdminUser();
   if (!db) return { error: "Database not initialized" };
   try {
-    // Delete from Firestore (Auth deletion would normally require admin SDK auth functions)
+    if (auth) await auth.deleteUser(uid);
     await db.collection("users").doc(uid).delete();
     return { success: true };
   } catch (error: any) {

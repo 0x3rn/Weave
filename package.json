@@ -6,16 +6,28 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "cf:build": "opennextjs-cloudflare build",
+    "cf:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "cf:typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
+    "db:apply-schema": "node --env-file=.env.local scripts/apply-neon-schema.mjs",
+    "db:migrate:firestore": "node --env-file=.env.local scripts/migrate-firestore-to-neon.mjs",
+    "db:verify-migration": "node --env-file=.env.local scripts/verify-firestore-neon.mjs",
+    "storage:verify": "node --env-file=.env.local scripts/verify-neon-storage.mjs",
+    "storage:migrate": "node --env-file=.env.local scripts/migrate-firebase-storage-to-neon.mjs"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1127.0",
+    "@aws-sdk/s3-request-presigner": "^3.1127.0",
+    "@neondatabase/serverless": "^1.1.0",
     "@types/ua-parser-js": "^0.7.39",
     "country-list": "^2.4.1",
     "date-fns": "^4.4.0",
     "firebase": "^12.15.0",
     "firebase-admin": "^14.1.0",
     "lucide-react": "^1.23.0",
-    "next": "16.2.6",
+    "next": "^16.3.4",
     "next-themes": "^0.4.6",
     "nodemailer": "^9.0.3",
     "react": "19.2.4",
@@ -29,6 +41,7 @@
     "ua-parser-js": "^2.0.10"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "^1.20.6",
     "@tailwindcss/postcss": "^4",
     "@types/country-list": "^2.1.4",
     "@types/node": "^20",
@@ -36,9 +49,10 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.6",
+    "eslint-config-next": "^16.3.4",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wrangler": "^4.129.1"
   },
   "overrides": {
     "jwks-rsa": {

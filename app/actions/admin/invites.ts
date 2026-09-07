@@ -3,8 +3,14 @@
 import { db } from "@/lib/firebase-admin";
 import { sendEmail } from "@/lib/email";
 import { createInviteCode } from "./invite-codes";
+import { requireAdminUser } from "./auth";
+
+function escapeHtml(value: unknown) {
+  return String(value ?? "").replace(/[&<>'\"]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[character]!));
+}
 
 export async function getInviteApplications() {
+  await requireAdminUser();
   if (!db) {
     return { error: "Database not initialized" };
   }
@@ -27,6 +33,8 @@ export async function getInviteApplications() {
 }
 
 export async function saveInternalNotes(id: string, notes: string) {
+  await requireAdminUser();
+  if (typeof notes !== "string" || notes.length > 5000) return { error: "Invalid notes" };
   if (!db) return { error: "Database not initialized" };
 
   try {
@@ -42,6 +50,8 @@ export async function saveInternalNotes(id: string, notes: string) {
 }
 
 export async function approveInvite(id: string, data: { startingHours: number, welcomeMessage: string, badge: boolean, expiresInDays: number | null }) {
+  await requireAdminUser();
+  if (!Number.isInteger(data.startingHours) || data.startingHours < 0 || data.startingHours > 10000 || data.welcomeMessage.length > 2000 || (data.expiresInDays !== null && (!Number.isInteger(data.expiresInDays) || data.expiresInDays < 1 || data.expiresInDays > 365))) return { error: "Invalid invite settings" };
   if (!db) return { error: "Database not initialized" };
 
   try {
@@ -76,9 +86,9 @@ export async function approveInvite(id: string, data: { startingHours: number, w
     
     const emailHtml = `
       <div style="font-family: sans-serif; max-w: 600px; margin: 0 auto;">
-        <h2>Welcome to Weave, ${inviteData.fullName.split(' ')[0]}!</h2>
+        <h2>Welcome to Weave, ${escapeHtml(inviteData.fullName?.split(' ')[0])}!</h2>
         <p>Your invite request has been officially approved.</p>
-        ${data.welcomeMessage ? `<p><em>"${data.welcomeMessage}"</em></p>` : ''}
+        ${data.welcomeMessage ? `<p><em>"${escapeHtml(data.welcomeMessage)}"</em></p>` : ''}
         <p>You have been credited with <strong>${data.startingHours}</strong> starting Skill Hours to begin exchanging services.</p>
         
         <div style="background-color: #f5f5f5; padding: 16px; border-radius: 8px; margin: 24px 0; text-align: center;">
@@ -107,6 +117,8 @@ export async function approveInvite(id: string, data: { startingHours: number, w
 }
 
 export async function rejectInvite(id: string, data: { reason: string, feedback: string }) {
+  await requireAdminUser();
+  if (typeof data.reason !== "string" || typeof data.feedback !== "string" || data.reason.length > 500 || data.feedback.length > 2000) return { error: "Invalid rejection" };
   if (!db) return { error: "Database not initialized" };
 
   try {
@@ -124,10 +136,10 @@ export async function rejectInvite(id: string, data: { reason: string, feedback:
     if (docData && docData.email) {
       const emailHtml = `
         <div style="font-family: sans-serif; max-w: 600px; margin: 0 auto;">
-          <h2>Hi ${docData.fullName.split(' ')[0]},</h2>
+          <h2>Hi ${escapeHtml(docData.fullName?.split(' ')[0])},</h2>
           <p>Thank you for your interest in joining Weave.</p>
           <p>After reviewing your application, we are currently unable to offer you an invite to the platform.</p>
-          ${data.feedback ? `<p><strong>Feedback:</strong> ${data.feedback}</p>` : ''}
+          ${data.feedback ? `<p><strong>Feedback:</strong> ${escapeHtml(data.feedback)}</p>` : ''}
           <p>We wish you the best in your professional endeavors.</p>
           <p>- The Weave Team</p>
         </div>

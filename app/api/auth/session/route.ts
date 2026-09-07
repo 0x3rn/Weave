@@ -6,7 +6,11 @@ import { UAParser } from "ua-parser-js";
 
 export async function POST(request: Request) {
   try {
-    const { idToken, rememberMe } = await request.json();
+    const body: unknown = await request.json();
+    const idToken = typeof body === "object" && body !== null && "idToken" in body && typeof body.idToken === "string"
+      ? body.idToken
+      : null;
+    const rememberMe = typeof body === "object" && body !== null && "rememberMe" in body && body.rememberMe === true;
 
     if (!idToken) {
       return NextResponse.json({ error: "Missing ID token" }, { status: 400 });
@@ -63,6 +67,7 @@ export async function POST(request: Request) {
           maxAge: expiresIn,
           httpOnly: true,
           secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
           path: "/",
         });
       }
@@ -78,6 +83,7 @@ export async function POST(request: Request) {
       maxAge: expiresIn,
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
+      sameSite: "lax" as const,
       path: "/",
     };
 

@@ -27,6 +27,16 @@ export async function submitReview(
       return { success: false, error: "Exchange must be completed to leave a review" };
     }
 
+    const exchange = exchangeDoc.data() as { requesterId: string; providerId: string };
+    const isParticipant = exchange.requesterId === userId || exchange.providerId === userId;
+    const counterpartId = exchange.requesterId === userId ? exchange.providerId : exchange.requesterId;
+    if (!isParticipant || targetUserId !== counterpartId) {
+      return { success: false, error: "You can only review your exchange partner" };
+    }
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5 || typeof comment !== "string" || comment.length > 3000) {
+      return { success: false, error: "Invalid review" };
+    }
+
     // Check if review already exists
     const existingReviewQuery = await db!.collection("reviews")
       .where("exchangeId", "==", exchangeId)
@@ -69,7 +79,7 @@ export async function submitReview(
         else if (rating === 2) scoreDelta = -5;
         else if (rating === 1) scoreDelta = -10;
 
-        let newTrustScore = Math.min(100, Math.max(0, (targetData.trustScore || 50) + scoreDelta));
+        const newTrustScore = Math.min(100, Math.max(0, (targetData.trustScore || 50) + scoreDelta));
         
         t.update(targetUserRef, {
           trustScore: newTrustScore,

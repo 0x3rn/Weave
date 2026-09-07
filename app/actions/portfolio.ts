@@ -114,12 +114,13 @@ export async function deletePortfolioItem(portfolioId: string, imageURL?: string
   await portfolioRef.delete();
 
   // Attempt to delete the image from storage if it exists
-  if (imageURL && storage) {
+  const storedImageURL = data?.imageURL;
+  if (typeof storedImageURL === "string" && storage) {
     try {
       const bucket = storage.bucket();
       const bucketPrefix = `https://storage.googleapis.com/${bucket.name}/`;
-      if (imageURL.startsWith(bucketPrefix)) {
-        const filePath = imageURL.replace(bucketPrefix, "");
+      if (storedImageURL.startsWith(`${bucketPrefix}portfolio/${userId}/`)) {
+        const filePath = storedImageURL.replace(bucketPrefix, "");
         await bucket.file(filePath).delete();
       }
     } catch (error) {

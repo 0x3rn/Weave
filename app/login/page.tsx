@@ -41,8 +41,11 @@ function LoginContent() {
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to create session");
+        const data: unknown = await res.json();
+        const message = typeof data === "object" && data !== null && "error" in data && typeof data.error === "string"
+          ? data.error
+          : "Failed to create session";
+        throw new Error(message);
       }
 
       // 4. Redirect to user dashboard or requested URL

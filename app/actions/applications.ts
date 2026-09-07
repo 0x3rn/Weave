@@ -29,6 +29,9 @@ export async function submitApplication(
     if (!db) {
       return { success: false, error: "Database not initialized" };
     }
+    if (!data || typeof data.coverMessage !== "string" || data.coverMessage.trim().length === 0 || data.coverMessage.length > 5000 || !Array.isArray(data.portfolioLinks) || data.portfolioLinks.length > 10 || data.portfolioLinks.some(link => typeof link !== "string" || link.length > 2048 || !/^https:\/\//.test(link)) || typeof data.availability !== "string" || data.availability.length > 200 || !Number.isInteger(data.estimatedHours) || data.estimatedHours <= 0 || data.estimatedHours > 10000 || !data.agreedToTerms || (data.isMutualProposal && (!Array.isArray(data.offeredDeliverables) || data.offeredDeliverables.length > 50 || !Number.isInteger(data.offeredHours) || data.offeredHours! <= 0 || data.offeredHours! > 10000))) {
+      return { success: false, error: "Invalid application" };
+    }
 
     // 1. Verify the request exists and is open
     const requestRef = db.collection("marketplace_requests").doc(requestId);
@@ -48,17 +51,7 @@ export async function submitApplication(
     }
 
     // 2. Check if user already applied
-    const existingAppQuery = await db.collection("marketplace_applications")
-      .where("requestId", "==", requestId)
-      .where("applicantId", "==", userId)
-      .limit(1)
-      .get();
-      
-    if (!existingAppQuery.empty) {
-      return { success: false, error: "You have already applied for this request" };
-    }
-
-    // 3. Create the application
+    // 3. Create the application with a deterministic ID so duplicate submissions cannot race.
     const now = new Date().toISOString();
     const application: Omit<MarketplaceApplication, "id"> = {
       requestId,
@@ -79,25 +72,26 @@ export async function submitApplication(
       })
     };
 
-    const docRef = await db.collection("marketplace_applications").add(application);
-
-    // 4. Update the request's applicantsCount
-    await requestRef.update({
-      applicantsCount: (requestData.applicantsCount || 0) + 1
-    });
-
-    // 5. Create a notification for the requester
-    const notifRef = db.collection("notifications").doc();
-    await notifRef.set({
-      id: notifRef.id,
-      userId: requestData.requesterId,
-      type: "request_update",
-      title: "New Application Received",
-      message: `Someone applied to your request: ${requestData.title}`,
-      isRead: false,
-      link: `/dashboard/requests/${requestId}`,
-      relatedId: requestId,
-      createdAt: now,
+    const firestoreDb = db;
+    const docRef = firestoreDb.collection("marketplace_applications").doc(`${requestId}_${userId}`);
+    await firestoreDb.runTransaction(async transaction => {
+      const [currentRequest, existingApplication] = await Promise.all([transaction.get(requestRef), transaction.get(docRef)]);
+      if (!currentRequest.exists || currentRequest.data()?.status !== "open") throw new Error("This request is no longer open for applications");
+      if (existingApplication.exists) throw new Error("You have already applied for this request");
+      transaction.set(docRef, application);
+      transaction.update(requestRef, { applicantsCount: (currentRequest.data()?.applicantsCount || 0) + 1 });
+      const notifRef = firestoreDb.collection("notifications").doc();
+      transaction.set(notifRef, {
+        id: notifRef.id,
+        userId: requestData.requesterId,
+        type: "request_update",
+        title: "New Application Received",
+        message: `Someone applied to your request: ${requestData.title}`,
+        isRead: false,
+        link: `/dashboard/requests/${requestId}`,
+        relatedId: requestId,
+        createdAt: now,
+      });
     });
 
     return { success: true, applicationId: docRef.id };
@@ -209,7 +203,13 @@ export async function updateApplicationStatus(applicationId: string, newStatus: 
       return await createExchangeFromApplication(applicationId);
     }
 
-    const updates: any = { status: newStatus, updatedAt: new Date().toISOString() };
+    if (!(["shortlisted", "rejected"] as const).includes(newStatus as "shortlisted" | "rejected")) {
+      return { success: false, error: "Invalid application status" };
+    }
+    if (appData.status !== "pending" && appData.status !== "shortlisted") {
+      return { success: false, error: "Application cannot be updated" };
+    }
+    const updates = { status: newStatus, updatedAt: new Date().toISOString() };
     await appRef.update(updates);
 
     return { success: true };

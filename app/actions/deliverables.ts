@@ -13,6 +13,12 @@ export async function submitDeliverable(
     const userId = await getCurrentUserId();
     if (!userId) return { success: false, error: "Unauthorized" };
     if (!db) return { success: false, error: "Database not initialized" };
+    if (!Array.isArray(files) || files.length === 0 || files.length > 20 || typeof comments !== "string" || comments.length > 5000) {
+      return { success: false, error: "Invalid deliverable" };
+    }
+    if (files.some(file => !file || typeof file.name !== "string" || file.name.length > 255 || typeof file.url !== "string" || !file.url.startsWith("https://storage.googleapis.com/") || !Number.isFinite(file.size) || file.size < 0 || file.size > 5 * 1024 * 1024)) {
+      return { success: false, error: "Invalid delivery file" };
+    }
 
     const exchangeRef = db.collection("exchanges").doc(exchangeId);
     const exchangeDoc = await exchangeRef.get();
@@ -68,6 +74,7 @@ export async function submitDeliverable(
         }
       } else {
         updates.status = "in_review";
+        updates.providerSubmittedAt = now;
       }
 
       t.update(exchangeRef, updates);
@@ -107,8 +114,12 @@ export async function getDeliverables(exchangeId: string) {
     if (!userId) return { success: false, error: "Unauthorized" };
     if (!db) return { success: false, error: "Database not initialized" };
 
-    // Basic access check could be added here, but typically this is fetched client-side or we rely on the page layout's auth check.
-    const snapshot = await db.collection("exchanges").doc(exchangeId).collection("deliveries").orderBy("version", "desc").get();
+    const exchangeDoc = await db.collection("exchanges").doc(exchangeId).get();
+    const exchange = exchangeDoc.data() as Exchange | undefined;
+    if (!exchange || (exchange.requesterId !== userId && exchange.providerId !== userId)) {
+      return { success: false, error: "Unauthorized", deliveries: [] };
+    }
+    const snapshot = await exchangeDoc.ref.collection("deliveries").orderBy("version", "desc").get();
     
     const deliveries = snapshot.docs.map(doc => ({
       id: doc.id,

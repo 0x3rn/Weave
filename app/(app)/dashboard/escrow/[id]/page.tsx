@@ -21,6 +21,7 @@ export default async function EscrowDetailsPage({ params }: { params: { id: stri
   const escrowDoc = await db.collection("escrows").doc(params.id).get();
   if (!escrowDoc.exists) redirect("/dashboard/escrow");
   const escrow = { id: escrowDoc.id, ...escrowDoc.data() } as Escrow;
+  if (!escrow.participants[userId]) redirect("/dashboard/escrow");
 
   // Fetch Exchange
   const exchangeDoc = await db.collection("exchanges").doc(escrow.exchangeId).get();
@@ -35,7 +36,8 @@ export default async function EscrowDetailsPage({ params }: { params: { id: stri
   const usersMap: Record<string, User> = {};
   userDocs.forEach(doc => {
     if (doc.exists) {
-      usersMap[doc.id] = doc.data() as User;
+      const data = doc.data() as User;
+      usersMap[doc.id] = { uid: doc.id, username: data.username, fullName: data.fullName, email: "", photoURL: data.photoURL ?? null, profession: data.profession, country: data.country, timeZone: data.timeZone, createdAt: data.createdAt, lastActive: "", skillsOffered: [], skillsLookingFor: [], stats: data.stats, trustScore: data.trustScore, isVerified: data.isVerified, profileCompletion: data.profileCompletion };
     }
   });
 

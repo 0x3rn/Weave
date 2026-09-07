@@ -1,182 +1,67 @@
 "use server";
 
-import { db } from "@/lib/firebase-admin";
+import { payload, sql, iso } from "@/lib/neon";
 import { User, PortfolioItem, Exchange, Review } from "@/types";
 
-/**
- * Fetch a user profile by their unique username
- */
-export async function getUserByUsername(username: string): Promise<User | null> {
-  if (!db) throw new Error("Firestore not initialized");
+type Row = Record<string, unknown> & { id: string; payload: unknown };
 
-  const usersRef = db.collection("users");
-  
-  // First try by username
-  let snapshot = await usersRef.where("username", "==", username).limit(1).get();
-
-  if (snapshot.empty) {
-    return null;
-  }
-
-  const userDoc = snapshot.docs[0];
-  const data = userDoc.data();
-  
-  let finalData = data;
-
-  // Auto-award mock achievements (TEMPORARY: force all badges so user can see them)
-  const mockAchievements = {
-    welcome_aboard: true,
-    profile_complete: true,
-    first_match: true,
-    first_exchange: true,
-    collaborator: true,
-    power_collaborator: true,
-    exchange_expert: true,
-    exchange_master: true,
-    top_rated: true,
-    trusted_member: true,
-    fast_responder: true,
-    dispute_free: true,
-    hour_earner: true,
-    time_investor: true,
-    balanced_contributor: true,
-    multi_talented: true,
-    specialist: true,
-    verified: true,
-    helpful_member: true,
-    ambassador: true,
-    six_month_member: true,
-    one_year_member: true,
-  };
-  
-  await userDoc.ref.update({
-    achievements: mockAchievements
-  });
-  
-  finalData.achievements = mockAchievements;
-  
-  // Return the user object
+function publicUser(row: Row): User {
+  const data = payload<Record<string, unknown>>(row.payload);
   return {
-    ...finalData,
-    uid: userDoc.id,
-  } as User;
+    uid: row.id,
+    username: String(row.username ?? data.username ?? row.id),
+    fullName: String(row.full_name ?? data.fullName ?? data.displayName ?? "Unknown"),
+    photoURL: String(row.photo_url ?? data.photoURL ?? data.photoUrl ?? "") || null,
+    profession: String(row.profession ?? data.profession ?? ""),
+    headline: String(row.headline ?? data.headline ?? "") || undefined,
+    country: String(row.country ?? data.country ?? ""),
+    timeZone: String(row.time_zone ?? data.timeZone ?? ""),
+    bio: String(row.bio ?? data.bio ?? "") || undefined,
+    languages: Array.isArray(data.languages) ? data.languages.filter((item): item is string => typeof item === "string") : undefined,
+    experienceLevel: String(data.experienceLevel ?? "") || undefined,
+    availability: String(data.availability ?? "") || undefined,
+    schedule: data.schedule as User["schedule"],
+    skillsOffered: Array.isArray(data.skillsOffered) ? data.skillsOffered as User["skillsOffered"] : [],
+    skillsLookingFor: Array.isArray(data.skillsLookingFor) ? data.skillsLookingFor.filter((item): item is string => typeof item === "string") : [],
+    stats: payload<User["stats"]>(data.stats),
+    trustScore: Number(row.trust_score ?? data.trustScore ?? 0),
+    achievements: data.achievements as User["achievements"],
+    isVerified: row.is_verified === true,
+    hasPortfolio: data.hasPortfolio === true,
+    profileCompletion: Number(row.profile_completion ?? data.profileCompletion ?? 0),
+    createdAt: iso(row.created_at),
+    lastActive: "",
+    email: "",
+  };
 }
 
-/**
- * Fetch a user's portfolio items
- */
+export async function getUserByUsername(username: string): Promise<User | null> {
+  const [row] = await sql.query("select * from users where lower(username) = lower($1) limit 1", [username]);
+  return row ? publicUser(row as Row) : null;
+}
+
 export async function getUserPortfolio(userId: string): Promise<PortfolioItem[]> {
-  if (!db) throw new Error("Firestore not initialized");
-
-  try {
-    const portfolioRef = db.collection("users").doc(userId).collection("portfolio");
-    // Sort by createdAt descending
-    const snapshot = await portfolioRef.orderBy("createdAt", "desc").get();
-
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    })) as PortfolioItem[];
-  } catch (error) {
-    console.warn(`[getUserPortfolio] Index might be building. Returning empty array for ${userId}.`, error);
-    return [];
-  }
+  const rows = await sql.query("select * from portfolio_items where user_id = $1 order by created_at desc", [userId]);
+  return rows.map(row => {
+    const data = payload<Record<string, unknown>>(row.payload);
+    return { id: String(row.id), userId, title: String(row.title ?? ""), description: String(row.description ?? ""), imageURL: String(row.image_url ?? "") || undefined, link: String(row.link ?? "") || undefined, technologies: Array.isArray(row.technologies) ? row.technologies.filter((item): item is string => typeof item === "string") : [], createdAt: iso(row.created_at), ...data } as PortfolioItem;
+  });
 }
 
-/**
- * Fetch public completed exchanges for a user
- */
 export async function getUserExchanges(userId: string): Promise<Exchange[]> {
-  if (!db) throw new Error("Firestore not initialized");
-
-  try {
-    const exchangesRef = db.collection("exchanges");
-    
-    // We need exchanges where the user is either the provider or the receiver
-    // and status is 'completed'.
-    // Assuming the schema has a `participants` array to make querying easier:
-    const snapshot = await exchangesRef
-      .where("participants", "array-contains", userId)
-      .where("status", "==", "completed")
-      .orderBy("completedAt", "desc")
-      .limit(10)
-      .get();
-
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    })) as Exchange[];
-  } catch (error) {
-    console.warn(`[getUserExchanges] Index might be building. Returning empty array for ${userId}.`, error);
-    return [];
-  }
+  const rows = await sql.query("select * from exchanges where status = 'completed' and (requester_id = $1 or provider_id = $1) order by completed_at desc nulls last limit 10", [userId]);
+  return rows.map(row => ({ id: row.id, ...payload<Record<string, unknown>>(row.payload), createdAt: iso(row.created_at), completedAt: iso(row.completed_at) || null }) as Exchange);
 }
 
-/**
- * Fetch reviews targeting a specific user
- */
 export async function getUserReviews(userId: string): Promise<Review[]> {
-  if (!db) throw new Error("Firestore not initialized");
-
-  try {
-    const reviewsRef = db.collection("reviews");
-    const snapshot = await reviewsRef
-      .where("targetUserId", "==", userId)
-      .orderBy("createdAt", "desc")
-      .limit(10)
-      .get();
-
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    })) as Review[];
-  } catch (error) {
-    console.warn(`[getUserReviews] Index might be building. Returning empty array for ${userId}.`, error);
-    return [];
-  }
+  const rows = await sql.query("select * from reviews where target_user_id = $1 order by created_at desc limit 10", [userId]);
+  return rows.map(row => ({ id: row.id, ...payload<Record<string, unknown>>(row.payload), createdAt: iso(row.created_at) }) as Review);
 }
 
-/**
- * Fetch similar professionals based on a user's profession
- */
-export async function getSimilarProfessionals(userId: string, profession: string, limitCount: number = 3) {
-  if (!db) return [];
-  
-  try {
-    let similar: any[] = [];
-    
-    if (profession) {
-      const snapshot = await db.collection("users")
-        .where("profession", "==", profession)
-        .limit(limitCount + 1)
-        .get();
-        
-      snapshot.forEach(doc => {
-        if (doc.id !== userId && similar.length < limitCount) {
-          similar.push({ id: doc.id, ...doc.data() });
-        }
-      });
-    }
-    
-    // Fallback if not enough similar users
-    if (similar.length < limitCount) {
-      const fallback = await db.collection("users").limit(limitCount + 2).get();
-      fallback.forEach(doc => {
-        if (doc.id !== userId && similar.length < limitCount && !similar.find(s => s.id === doc.id)) {
-          similar.push({ id: doc.id, ...doc.data() });
-        }
-      });
-    }
-    
-    return similar.map(u => ({
-      id: u.id,
-      username: u.username || u.id,
-      name: u.fullName || u.displayName || u.username || "Unknown",
-      role: u.profession || "Professional",
-      photoURL: u.photoURL || u.photoUrl || null
-    }));
-  } catch (e) {
-    console.error("Error fetching similar professionals:", e);
-    return [];
-  }
+export async function getSimilarProfessionals(userId: string, profession: string, limitCount = 3) {
+  const rows = await sql.query("select * from users where id <> $1 order by (profession = $2) desc, trust_score desc limit $3", [userId, profession || "", limitCount]);
+  return rows.map(row => {
+    const data = payload<Record<string, unknown>>(row.payload);
+    return { id: row.id, username: String(row.username ?? data.username ?? row.id), name: String(row.full_name ?? data.fullName ?? data.displayName ?? row.username ?? "Unknown"), role: String(row.profession ?? data.profession ?? "Professional"), photoURL: String(row.photo_url ?? data.photoURL ?? data.photoUrl ?? "") || null };
+  });
 }

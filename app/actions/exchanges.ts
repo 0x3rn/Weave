@@ -6,8 +6,15 @@ import { getCurrentUserId } from "./user";
 
 export async function createExchangeRequest(data: Omit<ExchangeRequest, "id" | "status" | "createdAt" | "updatedAt">) {
   try {
+    const userId = await getCurrentUserId();
+    if (!userId) return { success: false, error: "Unauthorized" };
     if (!db) throw new Error("Database not initialized");
-    const docRef = db!.collection("exchangeRequests").doc();
+    if (!data || data.senderId !== userId || !data.receiverId || data.receiverId === userId || typeof data.skillNeeded !== "string" || data.skillNeeded.length > 120 || !Array.isArray(data.dateOptions) || data.dateOptions.length > 10 || data.dateOptions.some(date => typeof date !== "string" || date.length > 32) || (data.message && data.message.length > 2000) || (data.hoursNeeded !== undefined && (!Number.isFinite(data.hoursNeeded) || data.hoursNeeded <= 0 || data.hoursNeeded > 1000))) {
+      return { success: false, error: "Invalid exchange request" };
+    }
+    const receiver = await db.collection("users").doc(data.receiverId).get();
+    if (!receiver.exists) return { success: false, error: "Recipient not found" };
+    const docRef = db.collection("exchange_requests").doc();
     
     const request: ExchangeRequest = {
       ...data,
@@ -43,8 +50,11 @@ export async function createExchangeRequest(data: Omit<ExchangeRequest, "id" | "
 
 export async function updateExchangeRequest(requestId: string, status: string, message?: string, updates?: Partial<ExchangeRequest>) {
   try {
+    const userId = await getCurrentUserId();
+    if (!userId) return { success: false, error: "Unauthorized" };
     if (!db) throw new Error("Database not initialized");
-    const reqRef = db!.collection("exchangeRequests").doc(requestId);
+    if (!["reviewing", "accepted", "rejected"].includes(status) || (message && message.length > 2000)) return { success: false, error: "Invalid request update" };
+    const reqRef = db.collection("exchange_requests").doc(requestId);
     const doc = await reqRef.get();
     
     if (!doc.exists) {
@@ -52,6 +62,9 @@ export async function updateExchangeRequest(requestId: string, status: string, m
     }
     
     const request = doc.data() as ExchangeRequest;
+    if (request.receiverId !== userId || request.status === "accepted" || request.status === "rejected") {
+      return { success: false, error: "Unauthorized request update" };
+    }
     
     const payload: any = { 
       status, 
@@ -59,9 +72,9 @@ export async function updateExchangeRequest(requestId: string, status: string, m
     };
     
     if (updates) {
-      if (updates.hoursNeeded !== undefined) payload.hoursNeeded = updates.hoursNeeded;
-      if (updates.timeNeeded !== undefined) payload.timeNeeded = updates.timeNeeded;
-      if (updates.dateOptions !== undefined) payload.dateOptions = updates.dateOptions;
+      if (updates.hoursNeeded !== undefined && Number.isFinite(updates.hoursNeeded) && updates.hoursNeeded > 0 && updates.hoursNeeded <= 1000) payload.hoursNeeded = updates.hoursNeeded;
+      if (updates.timeNeeded !== undefined && typeof updates.timeNeeded === "string" && updates.timeNeeded.length <= 32) payload.timeNeeded = updates.timeNeeded;
+      if (updates.dateOptions !== undefined && Array.isArray(updates.dateOptions) && updates.dateOptions.length <= 10 && updates.dateOptions.every(date => typeof date === "string" && date.length <= 32)) payload.dateOptions = updates.dateOptions;
     }
     
     await reqRef.update(payload);
@@ -94,9 +107,11 @@ export async function updateExchangeRequest(requestId: string, status: string, m
 
 export async function getExchangeRequests(userId: string, role: "sender" | "receiver") {
   try {
+    const currentUserId = await getCurrentUserId();
+    if (!currentUserId || currentUserId !== userId) return { success: false, error: "Unauthorized", requests: [] };
     if (!db) throw new Error("Database not initialized");
     const field = role === "sender" ? "senderId" : "receiverId";
-    const snapshot = await db!.collection("exchangeRequests")
+    const snapshot = await db.collection("exchange_requests")
       .where(field, "==", userId)
       .orderBy("createdAt", "desc")
       .get();
@@ -144,8 +159,8 @@ export async function createExchangeFromApplication(applicationId: string) {
       return { success: false, error: "Unauthorized" };
     }
 
-    if (appData.status === "accepted") {
-      return { success: false, error: "Application is already accepted" };
+    if (appData.status !== "pending" && appData.status !== "shortlisted") {
+      return { success: false, error: "Application cannot be accepted" };
     }
 
     const requiredHours = appData.estimatedHours;
@@ -154,6 +169,9 @@ export async function createExchangeFromApplication(applicationId: string) {
 
     const isMutual = !!appData.isMutualProposal;
     const mutualHours = appData.offeredHours || requiredHours;
+    if (!Number.isInteger(requiredHours) || requiredHours <= 0 || requiredHours > 10000 || !Number.isInteger(mutualHours) || mutualHours <= 0 || mutualHours > 10000) {
+      return { success: false, error: "Invalid exchange hours" };
+    }
 
     let newExchangeId = "";
 
@@ -193,17 +211,22 @@ export async function createExchangeFromApplication(applicationId: string) {
 
       // 2. Create the Exchange
       const exchangeRef = db!.collection("exchanges").doc();
+      const escrowRef = db!.collection("escrows").doc();
       newExchangeId = exchangeRef.id;
       
       const now = new Date().toISOString();
       const exchange: Omit<Exchange, "id"> = {
-        requestId: requestData.id,
-        applicationId: appData.id,
+        requestId: requestDoc.id,
+        applicationId: appDoc.id,
         title: requestData.title,
         requesterId: userId,
         providerId: appData.applicantId,
+        participants: [userId, appData.applicantId],
         skillHours: requiredHours,
+        requesterEscrowHours: requiredHours,
+        providerEscrowHours: isMutual ? mutualHours : 0,
         status: "in_progress",
+        escrowId: escrowRef.id,
         escrowStatus: "reserved",
         deliverables: requestData.deliverables || [],
         deadline: appData.estimatedCompletionDate || "",
@@ -219,6 +242,43 @@ export async function createExchangeFromApplication(applicationId: string) {
         })
       };
       t.set(exchangeRef, exchange);
+
+      t.set(escrowRef, {
+        exchangeId: newExchangeId,
+        status: "locked",
+        participantIds: [userId, appData.applicantId],
+        participants: {
+          [userId]: {
+            userId,
+            role: "requester",
+            skillHoursReserved: requiredHours,
+            securityDepositAmount: 0,
+            depositStatus: "received",
+            deliverablesStatus: "pending",
+            approvalStatus: "pending",
+            commitments: requestData.offeredDeliverables || ["Complete required deliverables"],
+          },
+          [appData.applicantId]: {
+            userId: appData.applicantId,
+            role: "provider",
+            skillHoursReserved: isMutual ? mutualHours : 0,
+            securityDepositAmount: 0,
+            depositStatus: "received",
+            deliverablesStatus: "pending",
+            approvalStatus: "pending",
+            commitments: requestData.deliverables || ["Complete required deliverables"],
+          },
+        },
+        timeline: [{
+          id: newExchangeId,
+          type: "created",
+          message: "Skill Hours reserved and exchange activated.",
+          timestamp: now,
+          actorId: userId,
+        }],
+        createdAt: now,
+        updatedAt: now,
+      });
 
       // 3. Create Ledger Transaction (Requester)
       const ledgerRefReq = db!.collection("transactions").doc();
@@ -346,6 +406,7 @@ export async function requestRevision(exchangeId: string, message: string) {
     const userId = await getCurrentUserId();
     if (!userId) return { success: false, error: "Unauthorized" };
     if (!db) return { success: false, error: "Database not initialized" };
+    if (typeof message !== "string" || message.trim().length === 0 || message.length > 3000) return { success: false, error: "Invalid revision request" };
 
     const exchangeRef = db!.collection("exchanges").doc(exchangeId);
     
@@ -420,15 +481,19 @@ export async function acceptDelivery(exchangeId: string) {
         throw new Error("Only the requester can accept delivery in a standard exchange");
       }
       
-      if (data.status !== "in_review" && data.status !== "in_progress") {
+      if (data.status !== "in_review") {
         throw new Error("Exchange cannot be completed in its current state");
+      }
+
+      if ((!isMutual && !data.providerSubmittedAt) || (isMutual && (!data.providerSubmittedAt || !data.requesterSubmittedAt))) {
+        throw new Error("All required deliverables must be submitted before approval");
       }
 
       const now = new Date().toISOString();
       const updates: any = { updatedAt: now };
 
-      let providerAcceptedNow = isProvider;
-      let requesterAcceptedNow = isRequester;
+      const providerAcceptedNow = isProvider;
+      const requesterAcceptedNow = isRequester;
 
       if (isMutual) {
         if (isProvider) updates.providerAcceptedAt = now;
@@ -467,36 +532,12 @@ export async function acceptDelivery(exchangeId: string) {
       const providerBalance = providerData.skillHours || 0;
       const requesterBalance = requesterData.skillHours || 0;
       
-      const hoursToTransferFromRequester = data.skillHours;
-      const hoursToTransferFromProvider = data.skillHours; // In a mutual exchange, they are equal. But wait, what if they aren't? The mutual hours was stored. Wait, we didn't store `mutualHours` in the exchange! 
-
-      // Wait, we need to know how many hours the provider escrowed. 
-      // In a mutual exchange, `data.skillHours` is the requester's escrow.
-      // But actually, we enforced that mutual hours = requested hours or `offeredHours`. 
-      // We should really look at the LedgerTransactions to see what was escrowed.
-      // For now, let's look up the escrow transactions.
-      
       const transactionsRef = db!.collection("transactions");
-      const escrowsQuery = await transactionsRef
-        .where("exchangeId", "==", exchangeId)
-        .where("type", "==", "Reserved")
-        .where("status", "==", "Active")
-        .get();
-
-      let requesterEscrowTx: any = null;
-      let providerEscrowTx: any = null;
-
-      escrowsQuery.docs.forEach(doc => {
-        const tx = doc.data();
-        if (tx.userId === data.requesterId) requesterEscrowTx = { id: doc.id, ref: doc.ref, data: tx };
-        if (tx.userId === data.providerId) providerEscrowTx = { id: doc.id, ref: doc.ref, data: tx };
-      });
-
-      if (!requesterEscrowTx) throw new Error("Requester escrow not found");
-      if (isMutual && !providerEscrowTx) throw new Error("Provider escrow not found");
-
-      const reqEscrowAmount = Math.abs(requesterEscrowTx.data.amount);
-      const provEscrowAmount = providerEscrowTx ? Math.abs(providerEscrowTx.data.amount) : 0;
+      const reqEscrowAmount = data.requesterEscrowHours ?? data.skillHours;
+      const provEscrowAmount = data.providerEscrowHours ?? 0;
+      if (!Number.isFinite(reqEscrowAmount) || reqEscrowAmount <= 0 || !Number.isFinite(provEscrowAmount) || provEscrowAmount < 0 || (isMutual && provEscrowAmount <= 0)) {
+        throw new Error("Invalid escrow state");
+      }
 
       // 1. Update Balances & Stats
       // Requester escrow goes to Provider
@@ -514,21 +555,7 @@ export async function acceptDelivery(exchangeId: string) {
         "stats.exchangesCompleted": (requesterData.stats?.exchangesCompleted || 0) + 1
       });
 
-      // 2. Mark Escrows as Spent
-      t.update(requesterEscrowTx.ref, {
-        type: "Spent",
-        status: "Completed",
-        notes: "Escrow released to provider upon completion."
-      });
-      if (providerEscrowTx) {
-        t.update(providerEscrowTx.ref, {
-          type: "Spent",
-          status: "Completed",
-          notes: "Mutual escrow released to requester upon completion."
-        });
-      }
-
-      // 3. Create Earned Transactions
+      // 2. Create completion ledger entries. Reservation records remain immutable audit events.
       const providerTxRef = transactionsRef.doc();
       t.set(providerTxRef, {
         userId: data.providerId,
@@ -565,7 +592,7 @@ export async function acceptDelivery(exchangeId: string) {
         });
       }
 
-      // 4. Update Exchange Status
+      // 3. Update Exchange Status
       updates.status = "completed";
       updates.escrowStatus = "released";
       if (isMutual) {
@@ -575,7 +602,14 @@ export async function acceptDelivery(exchangeId: string) {
       updates.completedAt = now;
       t.update(exchangeRef, updates);
 
-      // 5. Update Marketplace Request Status
+      if (data.escrowId) {
+        t.update(db!.collection("escrows").doc(data.escrowId), {
+          status: "released",
+          updatedAt: now,
+        });
+      }
+
+      // 4. Update Marketplace Request Status
       if (data.requestId) {
         t.update(db!.collection("marketplace_requests").doc(data.requestId), {
           status: "completed",
@@ -583,7 +617,7 @@ export async function acceptDelivery(exchangeId: string) {
         });
       }
 
-      // 6. Log Activity
+      // 5. Log Activity
       const activityRef = exchangeRef.collection("activity").doc();
       t.set(activityRef, {
         type: "completed",
@@ -591,7 +625,7 @@ export async function acceptDelivery(exchangeId: string) {
         timestamp: now
       });
 
-      // 7. Notify Provider & Requester
+      // 6. Notify Provider & Requester
       t.set(providerRef.collection("notifications").doc(), {
         type: "system",
         title: "Exchange Completed!",

@@ -98,11 +98,16 @@ export async function bulkUpdateNotifications(notificationIds: string[], updates
     if (!userId) return { success: false, error: "Unauthorized" };
     if (!db) return { success: false, error: "Database not initialized" };
 
-    const batch = db.batch();
-    for (const id of notificationIds) {
-      const ref = db.collection("notifications").doc(id);
-      batch.update(ref, updates);
-    }
+    if (!Array.isArray(notificationIds) || notificationIds.length === 0 || notificationIds.length > 100) return { success: false, error: "Invalid notification selection" };
+    const allowedUpdates: { isRead?: boolean; isArchived?: boolean } = {};
+    if (typeof updates.isRead === "boolean") allowedUpdates.isRead = updates.isRead;
+    if (typeof updates.isArchived === "boolean") allowedUpdates.isArchived = updates.isArchived;
+    if (Object.keys(allowedUpdates).length === 0) return { success: false, error: "Invalid notification update" };
+    const firestoreDb = db;
+    const docs = await Promise.all(notificationIds.map(id => firestoreDb.collection("notifications").doc(id).get()));
+    if (docs.some(doc => !doc.exists || doc.data()?.userId !== userId)) return { success: false, error: "Unauthorized" };
+    const batch = firestoreDb.batch();
+    docs.forEach(doc => batch.update(doc.ref, allowedUpdates));
 
     await batch.commit();
     return { success: true };
@@ -117,11 +122,12 @@ export async function bulkDeleteNotifications(notificationIds: string[]) {
     if (!userId) return { success: false, error: "Unauthorized" };
     if (!db) return { success: false, error: "Database not initialized" };
 
-    const batch = db.batch();
-    for (const id of notificationIds) {
-      const ref = db.collection("notifications").doc(id);
-      batch.delete(ref);
-    }
+    if (!Array.isArray(notificationIds) || notificationIds.length === 0 || notificationIds.length > 100) return { success: false, error: "Invalid notification selection" };
+    const firestoreDb = db;
+    const docs = await Promise.all(notificationIds.map(id => firestoreDb.collection("notifications").doc(id).get()));
+    if (docs.some(doc => !doc.exists || doc.data()?.userId !== userId)) return { success: false, error: "Unauthorized" };
+    const batch = firestoreDb.batch();
+    docs.forEach(doc => batch.delete(doc.ref));
 
     await batch.commit();
     return { success: true };

@@ -43,7 +43,10 @@ export async function GET(request: Request) {
     cookieStore.delete("deviceId");
     
     const url = new URL(request.url);
-    const redirectTo = url.searchParams.get("redirect") || "/login";
+    const requestedRedirect = url.searchParams.get("redirect") || "/login";
+    const redirectTo = requestedRedirect.startsWith("/") && !requestedRedirect.startsWith("//")
+      ? requestedRedirect
+      : "/login";
     
     return NextResponse.redirect(new URL(redirectTo, request.url));
   } catch (error) {
