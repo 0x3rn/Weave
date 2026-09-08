@@ -2,11 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { Conversation, User } from "@/types";
-import { Search, Filter, ShieldCheck, Star } from "lucide-react";
+import { Search, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
-import { db } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { getConversationPartners } from "@/app/actions/messages";
 
 interface Props {
   conversations: Conversation[];
@@ -23,20 +22,9 @@ export default function ConversationList({ conversations, currentUserId, activeC
   useEffect(() => {
     // Fetch partner details for each conversation
     const fetchPartners = async () => {
-      const newPartners: Record<string, User> = {};
-      for (const conv of conversations) {
-        const partnerId = conv.participants.find(id => id !== currentUserId);
-        if (partnerId && !partners[partnerId]) {
-          try {
-            const userDoc = await getDoc(doc(db, "users", partnerId));
-            if (userDoc.exists()) {
-              newPartners[partnerId] = userDoc.data() as User;
-            }
-          } catch (e) {
-            console.error(e);
-          }
-        }
-      }
+      const result = await getConversationPartners(conversations.map(conversation => conversation.id));
+      if (!result.success) return;
+      const newPartners = Object.fromEntries(result.partners.map(partner => [partner.uid, partner]));
       setPartners(prev => ({ ...prev, ...newPartners }));
     };
     

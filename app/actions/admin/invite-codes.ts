@@ -1,179 +1,84 @@
 "use server";
 
-import { db } from "@/lib/firebase-admin";
-import crypto from "crypto";
+import { sendEmail } from "@/lib/email";
+import { iso, payload, sql } from "@/lib/neon";
 import { requireAdminUser } from "./auth";
 
-// Helper to generate a secure random code (e.g. WV-8KX2-MP4Q)
 function generateSecureCode() {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // Excluded I, O, 1, 0 for readability
-  let result = "WV-";
-  for (let i = 0; i < 8; i++) {
-    if (i === 4) result += "-";
-    const randomByte = crypto.randomBytes(1)[0];
-    result += chars[randomByte % chars.length];
-  }
-  return result;
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const bytes = crypto.getRandomValues(new Uint8Array(8));
+  const encoded = Array.from(bytes, byte => chars[byte % chars.length]).join("");
+  return `WV-${encoded.slice(0, 4)}-${encoded.slice(4)}`;
 }
 
-export async function createInviteCode(
-  email: string, 
-  expiresInDays: number | null, 
-  applicationId?: string
-) {
+function escapeHtml(value: unknown) {
+  return String(value ?? "").replace(/[&<>'"]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]!);
+}
+
+export async function createInviteCode(email: string, expiresInDays: number | null, applicationId?: string) {
   await requireAdminUser();
-  if (!/^\S+@\S+\.\S+$/.test(email) || (expiresInDays !== null && (!Number.isInteger(expiresInDays) || expiresInDays < 1 || expiresInDays > 365))) return { error: "Invalid invite details" };
-  if (!db) return { error: "Database not initialized" };
-
-  try {
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!/^\S+@\S+\.\S+$/.test(normalizedEmail) || (expiresInDays !== null && (!Number.isInteger(expiresInDays) || expiresInDays < 1 || expiresInDays > 365))) return { error: "Invalid invite details" };
+  const now = new Date();
+  const expiresAt = expiresInDays === null ? null : new Date(now.getTime() + expiresInDays * 86_400_000).toISOString();
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const id = crypto.randomUUID();
     const code = generateSecureCode();
-    const now = new Date();
-    
-    let expiresAt = null;
-    if (expiresInDays !== null) {
-      const expirationDate = new Date(now.getTime() + expiresInDays * 24 * 60 * 60 * 1000);
-      expiresAt = expirationDate.toISOString();
+    const invite = { code, email: normalizedEmail, status: "pending", createdAt: now.toISOString(), expiresAt, inviteApplicationId: applicationId || null, usedAt: null, userId: null };
+    try {
+      await sql.query("insert into invites (id,code,email,status,created_at,expires_at,payload) values ($1,$2,$3,'pending',$4,$5,$6::jsonb)", [id, code, normalizedEmail, now.toISOString(), expiresAt, JSON.stringify(invite)]);
+      return { success: true, code, id };
+    } catch (error) {
+      if (!error || typeof error !== "object" || !("code" in error) || error.code !== "23505") return { error: error instanceof Error ? error.message : "Unable to create invite" };
     }
-
-    const inviteData = {
-      code,
-      email: email.toLowerCase(),
-      status: "pending", // pending | used | expired | revoked
-      createdAt: now.toISOString(),
-      expiresAt,
-      inviteApplicationId: applicationId || null,
-      usedAt: null,
-      userId: null // will be populated when used
-    };
-
-    const docRef = await db.collection("invites").add(inviteData);
-    
-    return { success: true, code, id: docRef.id };
-  } catch (error: any) {
-    console.error("Error creating invite code:", error);
-    return { error: error.message };
   }
+  return { error: "Unable to generate a unique invite code" };
 }
 
 export async function getIssuedInvites() {
   await requireAdminUser();
-  if (!db) return { error: "Database not initialized" };
-
-  try {
-    const snapshot = await db.collection("invites")
-      .orderBy("createdAt", "desc")
-      .get();
-      
-    const invites = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-
-    return { invites };
-  } catch (error: any) {
-    console.error("Error fetching invites:", error);
-    return { error: error.message };
-  }
+  const rows = await sql.query("select * from invites order by created_at desc");
+  return { invites: rows.map(row => ({ ...payload<Record<string, unknown>>(row.payload), id: row.id, code: row.code, email: row.email, status: row.status, createdAt: iso(row.created_at), expiresAt: iso(row.expires_at) || null })) };
 }
 
 export async function revokeInviteCode(id: string) {
   await requireAdminUser();
-  if (!db) return { error: "Database not initialized" };
-
-  try {
-    await db.collection("invites").doc(id).update({
-      status: "revoked",
-      revokedAt: new Date().toISOString()
-    });
-    return { success: true };
-  } catch (error: any) {
-    return { error: error.message };
-  }
+  const now = new Date().toISOString();
+  const rows = await sql.query("update invites set status='revoked',payload=payload || $2::jsonb where id=$1 and status<>'used' returning id", [id, JSON.stringify({ status: "revoked", revokedAt: now })]);
+  return rows.length ? { success: true } : { error: "Invite not found or already used" };
 }
 
 export async function extendInviteCode(id: string, additionalDays: number) {
   await requireAdminUser();
   if (!Number.isInteger(additionalDays) || additionalDays < 1 || additionalDays > 365) return { error: "Invalid extension" };
-  if (!db) return { error: "Database not initialized" };
-
-  try {
-    const doc = await db.collection("invites").doc(id).get();
-    if (!doc.exists) return { error: "Invite not found" };
-
-    const data = doc.data()!;
-    if (data.status === "used" || data.status === "revoked") {
-      return { error: "Cannot extend a used or revoked invite" };
-    }
-
-    const baseDate = data.expiresAt ? new Date(data.expiresAt) : new Date();
-    const newExpiresAt = new Date(baseDate.getTime() + additionalDays * 24 * 60 * 60 * 1000).toISOString();
-
-    await db.collection("invites").doc(id).update({
-      expiresAt: newExpiresAt,
-      status: "pending" // If it was expired, reactivate it
-    });
-
-    return { success: true };
-  } catch (error: any) {
-    return { error: error.message };
-  }
+  const [invite] = await sql.query("select * from invites where id=$1", [id]);
+  if (!invite) return { error: "Invite not found" };
+  if (["used", "revoked"].includes(String(invite.status))) return { error: "Cannot extend a used or revoked invite" };
+  const base = iso(invite.expires_at) ? new Date(iso(invite.expires_at)) : new Date();
+  const expiresAt = new Date(base.getTime() + additionalDays * 86_400_000).toISOString();
+  await sql.query("update invites set expires_at=$2,status='pending',payload=payload || $3::jsonb where id=$1", [id, expiresAt, JSON.stringify({ expiresAt, status: "pending" })]);
+  return { success: true };
 }
-
-import { sendEmail } from "@/lib/email";
 
 export async function resendInviteEmail(id: string) {
   await requireAdminUser();
-  if (!db) return { error: "Database not initialized" };
-
-  try {
-    const doc = await db.collection("invites").doc(id).get();
-    if (!doc.exists) return { error: "Invite not found" };
-
-    const data = doc.data()!;
-    if (data.status === "used" || data.status === "revoked") {
-      return { error: "Cannot resend email for a used or revoked invite" };
+  const [invite] = await sql.query("select * from invites where id=$1", [id]);
+  if (!invite) return { error: "Invite not found" };
+  if (["used", "revoked"].includes(String(invite.status))) return { error: "Cannot resend email for a used or revoked invite" };
+  const data = payload<Record<string, unknown>>(invite.payload);
+  let fullName = "there";
+  let startingHours = 0;
+  if (typeof data.inviteApplicationId === "string") {
+    const [application] = await sql.query("select full_name,payload from invite_applications where id=$1", [data.inviteApplicationId]);
+    if (application) {
+      const applicationData = payload<Record<string, unknown>>(application.payload);
+      fullName = String(application.full_name ?? applicationData.fullName ?? "there").split(" ")[0];
+      startingHours = Number(payload<Record<string, unknown>>(applicationData.approvedSettings).startingHours ?? 0);
     }
-
-    let fullName = "there";
-    let startingHours = 0;
-
-    // Try to fetch the original application to get their name and starting hours
-    if (data.inviteApplicationId) {
-      const appDoc = await db.collection("invite_applications").doc(data.inviteApplicationId).get();
-      if (appDoc.exists) {
-        const appData = appDoc.data()!;
-        fullName = appData.fullName?.split(' ')[0] || "there";
-        startingHours = appData.approvedSettings?.startingHours || 0;
-      }
-    }
-
-    const signupUrl = `https://weavenetwork.vercel.app/signup?invite=${data.code}`;
-    
-    const emailHtml = `
-      <div style="font-family: sans-serif; max-w: 600px; margin: 0 auto;">
-        <h2>Welcome to Weave, ${fullName}!</h2>
-        <p>This is a reminder that your invite to join Weave is still pending.</p>
-        <p>You have been credited with <strong>${startingHours}</strong> starting Skill Hours to begin exchanging services.</p>
-        
-        <div style="background-color: #f5f5f5; padding: 16px; border-radius: 8px; margin: 24px 0; text-align: center;">
-          <p style="margin-top: 0; color: #666; font-size: 14px;">Your unique invite code:</p>
-          <div style="font-size: 24px; font-weight: bold; letter-spacing: 2px; color: #111;">${data.code}</div>
-        </div>
-
-        <p>Click the link below to set up your password and access the platform.</p>
-        <a href="${signupUrl}" style="display: inline-block; padding: 12px 24px; background-color: #2E7D32; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 16px;">Create Your Account</a>
-      </div>
-    `;
-
-    await sendEmail({
-      to: data.email,
-      subject: "Reminder: Your Weave invite is waiting!",
-      html: emailHtml
-    });
-
-    return { success: true };
-  } catch (error: any) {
-    console.error("Error resending email:", error);
-    return { error: error.message };
   }
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://weavenetwork.vercel.app";
+  const signupUrl = `${baseUrl.replace(/\/$/, "")}/signup?invite=${encodeURIComponent(String(invite.code))}`;
+  const emailHtml = `<div style="font-family:sans-serif;max-width:600px;margin:0 auto"><h2>Welcome to Weave, ${escapeHtml(fullName)}!</h2><p>This is a reminder that your invite to join Weave is still pending.</p><p>You have been credited with <strong>${startingHours}</strong> starting Skill Hours.</p><div style="background:#f5f5f5;padding:16px;border-radius:8px;margin:24px 0;text-align:center"><p>Your unique invite code:</p><div style="font-size:24px;font-weight:bold;letter-spacing:2px">${escapeHtml(invite.code)}</div></div><a href="${escapeHtml(signupUrl)}">Create Your Account</a></div>`;
+  await sendEmail({ to: String(invite.email), subject: "Reminder: Your Weave invite is waiting!", html: emailHtml });
+  return { success: true };
 }

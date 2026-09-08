@@ -66,7 +66,7 @@ export default function SubmitDeliverableClient({ exchange, isProvider, deliveri
         });
       }
 
-      // Submit deliverable metadata to Firestore
+      // Submit deliverable metadata to the application database
       const submitResult = await submitDeliverable(exchange.id, uploadedFiles, comments);
       
       if (!submitResult.success) {

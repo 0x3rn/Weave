@@ -1,120 +1,72 @@
 "use server";
 
-import { db } from "@/lib/firebase-admin";
-import { getCurrentUserId } from "./user";
-import { Escrow, EscrowParticipant, EscrowEvent, Exchange, User } from "@/types";
+import { iso, payload, sql } from "@/lib/neon";
+import { Escrow, EscrowEvent, EscrowParticipant, Exchange } from "@/types";
 import { revalidatePath } from "next/cache";
-import { randomUUID } from "crypto";
+import { getCurrentUserId } from "./user";
+
+function escrowFromRow(row: Record<string, unknown>): Escrow {
+  return {
+    ...payload<Record<string, unknown>>(row.payload), id: String(row.id), exchangeId: String(row.exchange_id ?? ""), status: String(row.status ?? "locked") as Escrow["status"],
+    participants: payload<Record<string, EscrowParticipant>>(row.participants), timeline: Array.isArray(row.timeline) ? row.timeline as EscrowEvent[] : [],
+    dispute: row.dispute ?? undefined, createdAt: iso(row.created_at), updatedAt: iso(row.updated_at),
+  } as Escrow;
+}
+
+function exchangeFromRow(row: Record<string, unknown>): Exchange {
+  return { ...payload<Record<string, unknown>>(row.payload), id: String(row.id), requesterId: String(row.requester_id ?? ""), providerId: String(row.provider_id ?? ""), skillHours: Number(row.skill_hours ?? 0), status: String(row.status ?? "") as Exchange["status"], isMutual: row.is_mutual === true } as Exchange;
+}
+
+async function ownedEscrow(escrowId: string, userId: string) {
+  const [row] = await sql.query("select * from escrows where id=$1 and participants ? $2", [escrowId, userId]);
+  return row ? { row, escrow: escrowFromRow(row) } : null;
+}
+
+async function saveEscrow(row: Record<string, unknown>, escrow: Escrow) {
+  const updatedAt = new Date().toISOString();
+  const rows = await sql.query("update escrows set status=$2,participants=$3::jsonb,timeline=$4::jsonb,dispute=$5::jsonb,updated_at=$6,payload=$7::jsonb where id=$1 and updated_at is not distinct from $8 returning id", [escrow.id, escrow.status, JSON.stringify(escrow.participants), JSON.stringify(escrow.timeline), escrow.dispute ? JSON.stringify(escrow.dispute) : null, updatedAt, JSON.stringify({ ...escrow, updatedAt }), row.updated_at ?? null]);
+  if (!rows.length) throw new Error("Escrow changed while you were editing it. Please try again.");
+}
 
 export async function getEscrowByExchangeId(exchangeId: string) {
-  try {
-    const userId = await getCurrentUserId();
-    if (!userId) return { success: false, error: "Unauthorized" };
-    if (!db) return { success: false, error: "Database not initialized" };
-
-    const snapshot = await db.collection("escrows").where("exchangeId", "==", exchangeId).get();
-    if (snapshot.empty) return { success: false, error: "Escrow not found" };
-
-    const escrow = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as Escrow;
-    
-    // Ensure the user is a participant or admin
-    if (!escrow.participants[userId]) {
-      // Check admin status here if needed, but for now just block
-      return { success: false, error: "Unauthorized access to escrow" };
-    }
-
-    return { success: true, escrow };
-  } catch (error: any) {
-    return { success: false, error: error.message };
-  }
+  const userId = await getCurrentUserId();
+  if (!userId) return { success: false, error: "Unauthorized" };
+  const [row] = await sql.query("select * from escrows where exchange_id=$1 and participants ? $2", [exchangeId, userId]);
+  return row ? { success: true, escrow: escrowFromRow(row) } : { success: false, error: "Escrow not found" };
 }
 
 export async function getActiveEscrows() {
-  try {
-    const userId = await getCurrentUserId();
-    if (!userId) return { success: false, error: "Unauthorized" };
-    if (!db) return { success: false, error: "Database not initialized" };
-
-    const snapshot = await db.collection("escrows").where("participantIds", "array-contains", userId).get();
-    const escrows = snapshot.docs
-      .map(doc => ({ id: doc.id, ...doc.data() } as Escrow))
-      .filter(escrow => !!escrow.participants[userId]);
-      
-    return { success: true, escrows };
-  } catch (error: any) {
-    return { success: false, error: error.message };
-  }
+  const userId = await getCurrentUserId();
+  if (!userId) return { success: false, error: "Unauthorized" };
+  const rows = await sql.query("select * from escrows where participants ? $1 order by updated_at desc", [userId]);
+  return { success: true, escrows: rows.map(row => escrowFromRow(row)) };
 }
 
 export async function initializeEscrow(exchangeId: string) {
   try {
     const userId = await getCurrentUserId();
     if (!userId) return { success: false, error: "Unauthorized" };
-    if (!db) return { success: false, error: "Database not initialized" };
-
-    const exchangeDoc = await db.collection("exchanges").doc(exchangeId).get();
-    if (!exchangeDoc.exists) return { success: false, error: "Exchange not found" };
-    const exchange = exchangeDoc.data() as Exchange;
-    if (exchange.requesterId !== userId && exchange.providerId !== userId) return { success: false, error: "Unauthorized access to exchange" };
-
-    // Check if escrow already exists
-    if (exchange.escrowId) {
-      return { success: false, error: "Escrow already exists for this exchange" };
-    }
-
-    const participants: Record<string, EscrowParticipant> = {};
-
-    participants[exchange.requesterId] = {
-      userId: exchange.requesterId,
-      role: "requester",
-      skillHoursReserved: exchange.skillHours,
-      securityDepositAmount: 0,
-      depositStatus: "received",
-      deliverablesStatus: "pending",
-      approvalStatus: "pending",
-      commitments: exchange.requesterDeliverables || ["Complete required deliverables"]
+    const [row] = await sql.query("select * from exchanges where id=$1 and (requester_id=$2 or provider_id=$2)", [exchangeId, userId]);
+    if (!row) return { success: false, error: "Exchange not found" };
+    const exchange = exchangeFromRow(row);
+    const existing = await sql.query("select id from escrows where exchange_id=$1", [exchangeId]);
+    if (existing.length) return { success: false, error: "Escrow already exists for this exchange" };
+    const participants: Record<string, EscrowParticipant> = {
+      [exchange.requesterId]: { userId: exchange.requesterId, role: "requester", skillHoursReserved: exchange.requesterEscrowHours ?? exchange.skillHours, securityDepositAmount: 0, depositStatus: "received", deliverablesStatus: "pending", approvalStatus: "pending", commitments: exchange.requesterDeliverables || ["Complete required deliverables"] },
+      [exchange.providerId]: { userId: exchange.providerId, role: "provider", skillHoursReserved: exchange.providerEscrowHours ?? 0, securityDepositAmount: 0, depositStatus: "received", deliverablesStatus: "pending", approvalStatus: "pending", commitments: exchange.providerDeliverables || exchange.deliverables || ["Complete required deliverables"] },
     };
-
-    participants[exchange.providerId] = {
-      userId: exchange.providerId,
-      role: "provider",
-      skillHoursReserved: exchange.isMutual ? exchange.skillHours : 0, // In single exchanges, provider doesn't reserve hours
-      securityDepositAmount: 0,
-      depositStatus: "received",
-      deliverablesStatus: "pending",
-      approvalStatus: "pending",
-      commitments: exchange.providerDeliverables || exchange.deliverables || ["Complete required deliverables"]
-    };
-
-    const initialEvent: EscrowEvent = {
-      id: randomUUID(),
-      type: "created",
-      message: "Escrow contract created. Skill Hours are reserved by the exchange workflow.",
-      timestamp: new Date().toISOString(),
-      actorId: userId
-    };
-
-    const newEscrowRef = db.collection("escrows").doc();
-    const newEscrow: Partial<Escrow> = {
-      exchangeId,
-      status: "locked",
-      participants,
-      participantIds: [exchange.requesterId, exchange.providerId],
-      timeline: [initialEvent],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
-    const batch = db.batch();
-    batch.set(newEscrowRef, newEscrow);
-    batch.update(exchangeDoc.ref, { escrowId: newEscrowRef.id });
-    
-    await batch.commit();
+    const now = new Date().toISOString();
+    const escrowId = crypto.randomUUID();
+    const timeline: EscrowEvent[] = [{ id: crypto.randomUUID(), type: "created", message: "Escrow contract created. Skill Hours are reserved by the exchange workflow.", timestamp: now, actorId: userId }];
+    const escrow = { id: escrowId, exchangeId, status: "locked", participants, participantIds: [exchange.requesterId, exchange.providerId], timeline, createdAt: now, updatedAt: now };
+    await sql.transaction(tx => [
+      tx.query("insert into escrows (id,exchange_id,status,participants,timeline,created_at,updated_at,payload) values ($1,$2,'locked',$3::jsonb,$4::jsonb,$5,$5,$6::jsonb)", [escrowId, exchangeId, JSON.stringify(participants), JSON.stringify(timeline), now, JSON.stringify(escrow)]),
+      tx.query("update exchanges set payload=payload || $3::jsonb,updated_at=$4 where id=$1 and (requester_id=$2 or provider_id=$2)", [exchangeId, userId, JSON.stringify({ escrowId }), now]),
+    ]);
     revalidatePath(`/dashboard/exchanges/${exchangeId}`);
-    return { success: true, escrowId: newEscrowRef.id };
-
-  } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: true, escrowId };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Unable to initialize escrow" };
   }
 }
 
@@ -122,237 +74,78 @@ export async function processDeposit(escrowId: string) {
   try {
     const userId = await getCurrentUserId();
     if (!userId) return { success: false, error: "Unauthorized" };
-    if (!db) return { success: false, error: "Database not initialized" };
-
-    const escrowRef = db.collection("escrows").doc(escrowId);
-    
-    const result = await db.runTransaction(async (transaction) => {
-      const escrowDoc = await transaction.get(escrowRef);
-      if (!escrowDoc.exists) throw new Error("Escrow not found");
-      const escrow = escrowDoc.data() as Escrow;
-
-      if (!escrow.participants[userId]) throw new Error("Not a participant");
-      if (escrow.participants[userId].depositStatus === "received") return { newStatus: escrow.status };
-
-      // The exchange workflow already reserves Skill Hours. This legacy view never moves balances.
-      const updatedParticipants = { ...escrow.participants };
-      updatedParticipants[userId].depositStatus = "received";
-
-      // 3. Add timeline events
-      const events = [...escrow.timeline];
-      events.push({
-        id: randomUUID(),
-        type: "deposit_received",
-        message: `$${updatedParticipants[userId].securityDepositAmount} Security Deposit received.`,
-        timestamp: new Date().toISOString(),
-        actorId: userId
-      });
-
-      // Check if both have deposited
-      const allDeposited = Object.values(updatedParticipants).every(p => p.depositStatus === "received");
-      let newStatus = escrow.status;
-
-      if (allDeposited && escrow.status === "pending_deposits") {
-        newStatus = "locked";
-        events.push({
-          id: randomUUID(),
-          type: "created",
-          message: "All deposits received. Contract is now locked and active.",
-          timestamp: new Date().toISOString()
-        });
-      }
-
-      transaction.update(escrowRef, {
-        participants: updatedParticipants,
-        status: newStatus,
-        timeline: events,
-        updatedAt: new Date().toISOString()
-      });
-
-      return { newStatus };
-    });
-
+    const owned = await ownedEscrow(escrowId, userId);
+    if (!owned) return { success: false, error: "Escrow not found" };
+    const escrow = owned.escrow;
+    if (escrow.participants[userId].depositStatus === "received") return { success: true, status: escrow.status };
+    escrow.participants[userId].depositStatus = "received";
+    const now = new Date().toISOString();
+    escrow.timeline.push({ id: crypto.randomUUID(), type: "deposit_received", message: `$${escrow.participants[userId].securityDepositAmount} Security Deposit received.`, timestamp: now, actorId: userId });
+    if (Object.values(escrow.participants).every(participant => participant.depositStatus === "received") && escrow.status === "pending_deposits") {
+      escrow.status = "locked";
+      escrow.timeline.push({ id: crypto.randomUUID(), type: "created", message: "All deposits received. Contract is now locked and active.", timestamp: now });
+    }
+    await saveEscrow(owned.row, escrow);
     revalidatePath(`/dashboard/escrow/${escrowId}`);
-    return { success: true, status: result.newStatus };
-
-  } catch (error: any) {
-    return { success: false, error: error.message };
-  }
+    return { success: true, status: escrow.status };
+  } catch (error) { return { success: false, error: error instanceof Error ? error.message : "Unable to process deposit" }; }
 }
 
-export async function submitDeliverables(escrowId: string) {
-  try {
-    const userId = await getCurrentUserId();
-    if (!userId) return { success: false, error: "Unauthorized" };
-    if (!db) return { success: false, error: "Database not initialized" };
-
-    return { success: false, error: "Submit deliverables from the exchange workspace" };
-  } catch (error: any) {
-    return { success: false, error: error.message };
-  }
+export async function submitDeliverables(_escrowId: string) {
+  void _escrowId;
+  const userId = await getCurrentUserId();
+  return userId ? { success: false, error: "Submit deliverables from the exchange workspace" } : { success: false, error: "Unauthorized" };
 }
 
 export async function approveDeliverables(escrowId: string, partnerId: string) {
   try {
     const userId = await getCurrentUserId();
     if (!userId) return { success: false, error: "Unauthorized" };
-    if (!db) return { success: false, error: "Database not initialized" };
-
-    const escrowRef = db.collection("escrows").doc(escrowId);
-    
-    const result = await db.runTransaction(async (transaction) => {
-      const escrowDoc = await transaction.get(escrowRef);
-      if (!escrowDoc.exists) throw new Error("Escrow not found");
-      const escrow = escrowDoc.data() as Escrow;
-      if (!escrow.participants[userId] || !escrow.participants[partnerId] || partnerId === userId) throw new Error("Not an escrow participant");
-
-      if (escrow.participants[partnerId].deliverablesStatus !== "submitted") {
-        throw new Error("Partner has not submitted deliverables yet");
-      }
-
-      const participants = { ...escrow.participants };
-      participants[partnerId].deliverablesStatus = "approved";
-      participants[userId].approvalStatus = "approved";
-
-      const events = [...escrow.timeline];
-      events.push({
-        id: randomUUID(),
-        type: "approved",
-        message: "Partner deliverables approved.",
-        timestamp: new Date().toISOString(),
-        actorId: userId
-      });
-
-      // Check if both have approved (or if it's a single exchange and requester approved)
-      // For a mutual exchange, both need to approve. For single, only requester approves provider's work.
-      const p1 = Object.values(participants)[0];
-      const p2 = Object.values(participants)[1];
-      
-      const singleExchangeComplete = p1.skillHoursReserved === 0 || p2.skillHoursReserved === 0;
-      let allApproved = false;
-
-      if (singleExchangeComplete) {
-        // Single exchange: Provider gives 0 hours, Requester gives X hours. Requester approves provider's work.
-        const requester = Object.values(participants).find(p => p.role === "requester");
-        if (userId === requester?.userId) {
-          allApproved = true;
-        }
-      } else {
-        // Mutual exchange
-        allApproved = p1.approvalStatus === "approved" && p2.approvalStatus === "approved";
-      }
-
-      transaction.update(escrowRef, {
-        participants,
-        timeline: events,
-        updatedAt: new Date().toISOString()
-      });
-
-      return { allApproved };
-    });
-
+    const owned = await ownedEscrow(escrowId, userId);
+    if (!owned || !owned.escrow.participants[partnerId] || partnerId === userId) return { success: false, error: "Not an escrow participant" };
+    const escrow = owned.escrow;
+    if (escrow.participants[partnerId].deliverablesStatus !== "submitted") return { success: false, error: "Partner has not submitted deliverables yet" };
+    escrow.participants[partnerId].deliverablesStatus = "approved";
+    escrow.participants[userId].approvalStatus = "approved";
+    escrow.timeline.push({ id: crypto.randomUUID(), type: "approved", message: "Partner deliverables approved.", timestamp: new Date().toISOString(), actorId: userId });
+    await saveEscrow(owned.row, escrow);
     revalidatePath(`/dashboard/escrow/${escrowId}`);
     return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
-  }
+  } catch (error) { return { success: false, error: error instanceof Error ? error.message : "Unable to approve deliverables" }; }
 }
 
 export async function releaseEscrow(escrowId: string) {
   try {
     const userId = await getCurrentUserId();
     if (!userId) return { success: false, error: "Unauthorized" };
-    if (!db) return { success: false, error: "Database not initialized" };
-
-    const escrowRef = db.collection("escrows").doc(escrowId);
-    
-    await db.runTransaction(async (transaction) => {
-      const escrowDoc = await transaction.get(escrowRef);
-      if (!escrowDoc.exists) throw new Error("Escrow not found");
-      const escrow = escrowDoc.data() as Escrow;
-
-      if (!escrow.participants[userId]) throw new Error("Not an escrow participant");
-
-      if (escrow.status === "released") throw new Error("Escrow already released");
-
-      const pArr = Object.values(escrow.participants);
-      const requester = pArr.find(p => p.role === "requester")!;
-      const provider = pArr.find(p => p.role === "provider")!;
-
-      // Refund logic - simulating refunding standard deposit amount
-      const participants = { ...escrow.participants };
-      participants[requester.userId].depositStatus = "returned";
-      participants[provider.userId].depositStatus = "returned";
-
-      const exchangeRef = db!.collection("exchanges").doc(escrow.exchangeId);
-      const exchangeDoc = await transaction.get(exchangeRef);
-      if (!exchangeDoc.exists || exchangeDoc.data()?.status !== "completed") throw new Error("Complete the exchange from its workspace first");
-
-      // Add final events
-      const events = [...escrow.timeline];
-      events.push({
-        id: randomUUID(),
-        type: "released",
-        message: "Escrow successfully released. Deposits returned and Skill Hours transferred.",
-        timestamp: new Date().toISOString(),
-        actorId: "system"
-      });
-
-      // Close Escrow
-      transaction.update(escrowRef, {
-        status: "released",
-        participants,
-        timeline: events,
-        updatedAt: new Date().toISOString()
-      });
-    });
-
+    const owned = await ownedEscrow(escrowId, userId);
+    if (!owned) return { success: false, error: "Escrow not found" };
+    const escrow = owned.escrow;
+    if (escrow.status === "released") return { success: false, error: "Escrow already released" };
+    const [exchange] = await sql.query("select id from exchanges where id=$1 and status='completed'", [escrow.exchangeId]);
+    if (!exchange) return { success: false, error: "Complete the exchange from its workspace first" };
+    for (const participant of Object.values(escrow.participants)) participant.depositStatus = "returned";
+    escrow.status = "released";
+    escrow.timeline.push({ id: crypto.randomUUID(), type: "released", message: "Escrow successfully released. Deposits returned and Skill Hours transferred.", timestamp: new Date().toISOString(), actorId: "system" });
+    await saveEscrow(owned.row, escrow);
     revalidatePath(`/dashboard/escrow/${escrowId}`);
     return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
-  }
+  } catch (error) { return { success: false, error: error instanceof Error ? error.message : "Unable to release escrow" }; }
 }
 
 export async function openDispute(escrowId: string, reason: string, details: string) {
   try {
     const userId = await getCurrentUserId();
     if (!userId) return { success: false, error: "Unauthorized" };
-    if (!db) return { success: false, error: "Database not initialized" };
-
-    const escrowRef = db.collection("escrows").doc(escrowId);
-    const escrowDoc = await escrowRef.get();
-    if (!escrowDoc.exists) return { success: false, error: "Escrow not found" };
-    
-    const escrow = escrowDoc.data() as Escrow;
-    if (!escrow.participants[userId]) return { success: false, error: "Unauthorized" };
-    if (typeof reason !== "string" || typeof details !== "string" || reason.trim().length === 0 || reason.length > 500 || details.length > 5000) return { success: false, error: "Invalid dispute" };
-    
-    await escrowRef.update({
-      status: "disputed",
-      dispute: {
-        reason,
-        details,
-        openedAt: new Date().toISOString(),
-        status: "investigating",
-        evidenceUrls: []
-      },
-      timeline: [
-        ...escrow.timeline,
-        {
-          id: randomUUID(),
-          type: "disputed",
-          message: `Dispute opened: ${reason}`,
-          timestamp: new Date().toISOString(),
-          actorId: userId
-        }
-      ],
-      updatedAt: new Date().toISOString()
-    });
-
+    if (typeof reason !== "string" || typeof details !== "string" || !reason.trim() || reason.length > 500 || details.length > 5000) return { success: false, error: "Invalid dispute" };
+    const owned = await ownedEscrow(escrowId, userId);
+    if (!owned) return { success: false, error: "Escrow not found" };
+    const now = new Date().toISOString();
+    owned.escrow.status = "disputed";
+    owned.escrow.dispute = { reason: reason.trim(), details: details.trim(), openedAt: now, status: "investigating", evidenceUrls: [] };
+    owned.escrow.timeline.push({ id: crypto.randomUUID(), type: "disputed", message: `Dispute opened: ${reason.trim()}`, timestamp: now, actorId: userId });
+    await saveEscrow(owned.row, owned.escrow);
     revalidatePath(`/dashboard/escrow/${escrowId}`);
     return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
-  }
+  } catch (error) { return { success: false, error: error instanceof Error ? error.message : "Unable to open dispute" }; }
 }

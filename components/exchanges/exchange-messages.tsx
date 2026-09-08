@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { db } from "@/lib/firebase";
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp } from "firebase/firestore";
+import { getMessages, getOrCreateExchangeConversation, sendMessage } from "@/app/actions/messages";
 import { Send } from "lucide-react";
 import { ExchangeMessage } from "@/types";
 
@@ -25,24 +24,18 @@ export default function ExchangeMessages({
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!db || !exchangeId) return;
-
-    const messagesRef = collection(db, "exchanges", exchangeId, "messages");
-    const q = query(messagesRef, orderBy("createdAt", "asc"));
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const msgs = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        // Handle serverTimestamp which might be null initially
-        createdAt: doc.data().createdAt?.toDate?.()?.toISOString() || new Date().toISOString()
-      })) as ExchangeMessage[];
-      
-      setMessages(msgs);
-    });
-
-    return () => unsubscribe();
-  }, [exchangeId]);
+    if (!exchangeId) return;
+    let active = true;
+    const load = async () => {
+      const conversation = await getOrCreateExchangeConversation(exchangeId);
+      if (!conversation.success) return;
+      const result = await getMessages(exchangeId);
+      if (active && result.success) setMessages(result.messages.map(message => ({ id: message.id, exchangeId, senderId: message.senderId, text: message.content, createdAt: message.createdAt, isRead: message.readBy?.includes(currentUserId) ?? false })));
+    };
+    load();
+    const timer = window.setInterval(load, 5000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [exchangeId, currentUserId]);
 
   useEffect(() => {
     // Scroll to bottom on new messages
@@ -51,18 +44,14 @@ export default function ExchangeMessages({
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !db) return;
+    if (!newMessage.trim()) return;
 
     setIsSending(true);
     try {
-      const messagesRef = collection(db, "exchanges", exchangeId, "messages");
-      await addDoc(messagesRef, {
-        exchangeId,
-        senderId: currentUserId,
-        text: newMessage.trim(),
-        createdAt: serverTimestamp(),
-        isRead: false
-      });
+      const conversation = await getOrCreateExchangeConversation(exchangeId);
+      if (!conversation.success) throw new Error(conversation.error);
+      const result = await sendMessage(exchangeId, newMessage.trim());
+      if (!result.success) throw new Error(result.error);
       setNewMessage("");
     } catch (error) {
       console.error("Error sending message:", error);

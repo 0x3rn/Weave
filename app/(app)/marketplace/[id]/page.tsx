@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SkillIcon } from "@/components/profile/skill-icon";
 import { getCurrentUserId } from "@/app/actions/user";
-import { db } from "@/lib/firebase-admin";
+import { sql } from "@/lib/neon";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -30,13 +30,9 @@ export default async function RequestDetailsPage({ params }: { params: Promise<{
   const userId = await getCurrentUserId();
   
   let hasApplied = false;
-  if (userId && db) {
-    const existingApp = await db.collection("marketplace_applications")
-      .where("requestId", "==", req.id)
-      .where("applicantId", "==", userId)
-      .limit(1)
-      .get();
-    hasApplied = !existingApp.empty;
+  if (userId) {
+    const [existingApp] = await sql.query("select id from marketplace_applications where request_id=$1 and applicant_id=$2 limit 1", [req.id, userId]);
+    hasApplied = Boolean(existingApp);
   }
   
   const isOwner = userId === req.requesterId;

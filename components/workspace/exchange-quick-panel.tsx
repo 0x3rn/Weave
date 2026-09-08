@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Conversation, Exchange, Escrow } from "@/types";
-import { db } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { getExchangeQuickContext } from "@/app/actions/messages";
 import { ShieldCheck, Clock, CheckCircle2, AlertCircle } from "lucide-react";
 
 interface Props {
@@ -12,23 +11,17 @@ interface Props {
 }
 
 export default function ExchangeQuickPanel({ conversation, currentUserId }: Props) {
+  void currentUserId;
   const [exchange, setExchange] = useState<Exchange | null>(null);
   const [escrow, setEscrow] = useState<Escrow | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       if (conversation?.type === "exchange" && conversation.contextId) {
-        const exDoc = await getDoc(doc(db, "exchanges", conversation.contextId));
-        if (exDoc.exists()) {
-          const exData = exDoc.data() as Exchange;
-          setExchange(exData);
-
-          if (exData.escrowId) {
-            const escDoc = await getDoc(doc(db, "escrows", exData.escrowId));
-            if (escDoc.exists()) {
-              setEscrow(escDoc.data() as Escrow);
-            }
-          }
+        const result = await getExchangeQuickContext(conversation.contextId);
+        if (result.success) {
+          setExchange(result.exchange as Exchange | null);
+          setEscrow(result.escrow as Escrow | null);
         }
       }
     };

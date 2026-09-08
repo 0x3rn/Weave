@@ -1,5 +1,5 @@
 import { getCurrentUserId } from "@/app/actions/user";
-import { db } from "@/lib/firebase-admin";
+import { getUserById } from "@/lib/users";
 import { redirect } from "next/navigation";
 import NotificationPreferencesClient from "@/components/settings/notification-preferences-client";
 
@@ -14,13 +14,8 @@ export default async function NotificationSettingsPage() {
     redirect("/api/auth/logout");
   }
 
-  let preferences = null;
-  if (db) {
-    const userDoc = await db.collection("users").doc(userId).get();
-    if (userDoc.exists) {
-      preferences = userDoc.data()?.notificationPreferences || null;
-    }
-  }
+  const user = await getUserById(userId);
+  const preferences = user?.notificationPreferences || null;
 
   return (
     <div className="p-8">

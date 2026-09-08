@@ -1,656 +1,132 @@
 "use server";
 
-import { db } from "@/lib/firebase-admin";
-import { ExchangeRequest, Notification, MarketplaceApplication, MarketplaceRequest, Exchange, LedgerTransaction, User } from "@/types";
+import { iso, payload, sql } from "@/lib/neon";
+import { getUserById } from "@/lib/users";
+import { Exchange, ExchangeRequest } from "@/types";
 import { getCurrentUserId } from "./user";
+
+function requestFromRow(row: Record<string, unknown>): ExchangeRequest {
+  return {
+    ...payload<Record<string, unknown>>(row.payload), id: String(row.id), senderId: String(row.sender_id ?? ""), receiverId: String(row.receiver_id ?? ""),
+    skillNeeded: String(row.skill_needed ?? ""), dateOptions: Array.isArray(row.date_options) ? row.date_options as string[] : [], timeNeeded: String(row.time_needed ?? ""),
+    hoursNeeded: row.hours_needed == null ? undefined : Number(row.hours_needed), message: row.message ? String(row.message) : undefined,
+    status: String(row.status ?? "pending") as ExchangeRequest["status"], createdAt: iso(row.created_at), updatedAt: iso(row.updated_at),
+  } as ExchangeRequest;
+}
+
+function exchangeFromRow(row: Record<string, unknown>): Exchange {
+  return {
+    ...payload<Record<string, unknown>>(row.payload), id: String(row.id), requestId: row.marketplace_request_id ? String(row.marketplace_request_id) : undefined,
+    applicationId: row.marketplace_application_id ? String(row.marketplace_application_id) : undefined, requesterId: String(row.requester_id ?? ""), providerId: String(row.provider_id ?? ""),
+    title: String(row.title ?? ""), skillHours: Number(row.skill_hours ?? 0), requesterEscrowHours: Number(row.requester_escrow_hours ?? 0), providerEscrowHours: Number(row.provider_escrow_hours ?? 0),
+    status: String(row.status ?? "") as Exchange["status"], isMutual: row.is_mutual === true, deadline: iso(row.deadline_at), progress: Number(row.progress ?? 0), createdAt: iso(row.created_at), completedAt: iso(row.completed_at), updatedAt: iso(row.updated_at),
+  } as Exchange;
+}
 
 export async function createExchangeRequest(data: Omit<ExchangeRequest, "id" | "status" | "createdAt" | "updatedAt">) {
   try {
     const userId = await getCurrentUserId();
     if (!userId) return { success: false, error: "Unauthorized" };
-    if (!db) throw new Error("Database not initialized");
-    if (!data || data.senderId !== userId || !data.receiverId || data.receiverId === userId || typeof data.skillNeeded !== "string" || data.skillNeeded.length > 120 || !Array.isArray(data.dateOptions) || data.dateOptions.length > 10 || data.dateOptions.some(date => typeof date !== "string" || date.length > 32) || (data.message && data.message.length > 2000) || (data.hoursNeeded !== undefined && (!Number.isFinite(data.hoursNeeded) || data.hoursNeeded <= 0 || data.hoursNeeded > 1000))) {
-      return { success: false, error: "Invalid exchange request" };
-    }
-    const receiver = await db.collection("users").doc(data.receiverId).get();
-    if (!receiver.exists) return { success: false, error: "Recipient not found" };
-    const docRef = db.collection("exchange_requests").doc();
-    
-    const request: ExchangeRequest = {
-      ...data,
-      id: docRef.id,
-      status: "pending",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    
-    await docRef.set(request);
-    
-    // Create a notification for the receiver
-    const notifRef = db!.collection("notifications").doc();
-    const notification: Notification = {
-      id: notifRef.id,
-      userId: data.receiverId,
-      type: "exchange_request",
-      title: "New Exchange Request",
-      message: `You have a new request for ${data.skillNeeded}.`,
-      isRead: false,
-      relatedId: request.id,
-      createdAt: new Date().toISOString()
-    };
-    
-    await notifRef.set(notification);
-    
-    return { success: true, id: docRef.id };
-  } catch (error: any) {
-    console.error("Error creating exchange request:", error);
-    return { success: false, error: error.message };
-  }
+    if (!data || data.senderId !== userId || !data.receiverId || data.receiverId === userId || typeof data.skillNeeded !== "string" || !data.skillNeeded.trim() || data.skillNeeded.length > 120 || !Array.isArray(data.dateOptions) || data.dateOptions.length > 10 || data.dateOptions.some(date => typeof date !== "string" || date.length > 32) || (data.message && data.message.length > 2000) || (data.hoursNeeded !== undefined && (!Number.isInteger(data.hoursNeeded) || data.hoursNeeded < 1 || data.hoursNeeded > 1000))) return { success: false, error: "Invalid exchange request" };
+    const id = crypto.randomUUID();
+    const notificationId = crypto.randomUUID();
+    const now = new Date().toISOString();
+    const request = { ...data, id, skillNeeded: data.skillNeeded.trim(), status: "pending", createdAt: now, updatedAt: now };
+    const notification = { id: notificationId, userId: data.receiverId, type: "exchange_request", title: "New Exchange Request", message: `You have a new request for ${request.skillNeeded}.`, isRead: false, relatedId: id, createdAt: now };
+    const rows = await sql.query(
+      `with recipient as (select id from users where id=$2), inserted as (
+        insert into exchange_requests (id,sender_id,receiver_id,skill_needed,date_options,time_needed,hours_needed,message,status,created_at,updated_at,payload)
+        select $1,$3,$2,$4,$5::jsonb,$6,$7,$8,'pending',$9,$9,$10::jsonb from recipient returning id
+      ), notified as (insert into notifications (id,source_path,user_id,notification_type,title,message,is_read,is_archived,related_id,created_at,payload)
+        select $11,$12,$2,'exchange_request','New Exchange Request',$13,false,false,$1,$9,$14::jsonb from inserted returning id)
+      select id from inserted`,
+      [id, data.receiverId, userId, request.skillNeeded, JSON.stringify(data.dateOptions), data.timeNeeded ?? null, data.hoursNeeded ?? null, data.message?.trim() ?? null, now, JSON.stringify(request), notificationId, `notifications/${notificationId}`, notification.message, JSON.stringify(notification)],
+    );
+    return rows.length ? { success: true, id } : { success: false, error: "Recipient not found" };
+  } catch (error) { return { success: false, error: error instanceof Error ? error.message : "Unable to create exchange request" }; }
 }
 
 export async function updateExchangeRequest(requestId: string, status: string, message?: string, updates?: Partial<ExchangeRequest>) {
   try {
     const userId = await getCurrentUserId();
     if (!userId) return { success: false, error: "Unauthorized" };
-    if (!db) throw new Error("Database not initialized");
     if (!["reviewing", "accepted", "rejected"].includes(status) || (message && message.length > 2000)) return { success: false, error: "Invalid request update" };
-    const reqRef = db.collection("exchange_requests").doc(requestId);
-    const doc = await reqRef.get();
-    
-    if (!doc.exists) {
-      throw new Error("Request not found");
-    }
-    
-    const request = doc.data() as ExchangeRequest;
-    if (request.receiverId !== userId || request.status === "accepted" || request.status === "rejected") {
-      return { success: false, error: "Unauthorized request update" };
-    }
-    
-    const payload: any = { 
-      status, 
-      updatedAt: new Date().toISOString() 
-    };
-    
-    if (updates) {
-      if (updates.hoursNeeded !== undefined && Number.isFinite(updates.hoursNeeded) && updates.hoursNeeded > 0 && updates.hoursNeeded <= 1000) payload.hoursNeeded = updates.hoursNeeded;
-      if (updates.timeNeeded !== undefined && typeof updates.timeNeeded === "string" && updates.timeNeeded.length <= 32) payload.timeNeeded = updates.timeNeeded;
-      if (updates.dateOptions !== undefined && Array.isArray(updates.dateOptions) && updates.dateOptions.length <= 10 && updates.dateOptions.every(date => typeof date === "string" && date.length <= 32)) payload.dateOptions = updates.dateOptions;
-    }
-    
-    await reqRef.update(payload);
-    
-    // Notify the sender
-    let notifMsg = `Your request for ${request.skillNeeded} was ${status}.`;
-    if (status === "reviewing") notifMsg = `The provider has countered your request for ${request.skillNeeded}.`;
-    if (message) notifMsg += ` Message: ${message}`;
-    
-    const notifRef = db!.collection("notifications").doc();
-    const notification: Notification = {
-      id: notifRef.id,
-      userId: request.senderId,
-      type: "request_update",
-      title: `Request ${status === "reviewing" ? "Update" : status}`,
-      message: notifMsg,
-      isRead: false,
-      relatedId: requestId,
-      createdAt: new Date().toISOString()
-    };
-    
-    await notifRef.set(notification);
-    
+    const [row] = await sql.query("select * from exchange_requests where id=$1 and receiver_id=$2 and status not in ('accepted','rejected')", [requestId, userId]);
+    if (!row) return { success: false, error: "Request not found or unauthorized" };
+    const request = requestFromRow(row);
+    const changes: Record<string, unknown> = { status, updatedAt: new Date().toISOString() };
+    if (updates?.hoursNeeded !== undefined && Number.isInteger(updates.hoursNeeded) && updates.hoursNeeded > 0 && updates.hoursNeeded <= 1000) changes.hoursNeeded = updates.hoursNeeded;
+    if (typeof updates?.timeNeeded === "string" && updates.timeNeeded.length <= 32) changes.timeNeeded = updates.timeNeeded;
+    if (Array.isArray(updates?.dateOptions) && updates.dateOptions.length <= 10 && updates.dateOptions.every(date => typeof date === "string" && date.length <= 32)) changes.dateOptions = updates.dateOptions;
+    const now = String(changes.updatedAt);
+    let notificationMessage = `Your request for ${request.skillNeeded} was ${status}.`;
+    if (status === "reviewing") notificationMessage = `The provider has countered your request for ${request.skillNeeded}.`;
+    if (message) notificationMessage += ` Message: ${message.trim()}`;
+    const notificationId = crypto.randomUUID();
+    const nextPayload = { ...payload<Record<string, unknown>>(row.payload), ...changes };
+    await sql.transaction(tx => [
+      tx.query("update exchange_requests set status=$3,time_needed=$4,hours_needed=$5,date_options=$6::jsonb,updated_at=$7,payload=$8::jsonb where id=$1 and receiver_id=$2", [requestId, userId, status, nextPayload.timeNeeded ?? row.time_needed, nextPayload.hoursNeeded ?? row.hours_needed, JSON.stringify(nextPayload.dateOptions ?? row.date_options), now, JSON.stringify(nextPayload)]),
+      tx.query("insert into notifications (id,source_path,user_id,notification_type,title,message,is_read,is_archived,related_id,created_at,payload) values ($1,$2,$3,'request_update',$4,$5,false,false,$6,$7,$8::jsonb)", [notificationId, `notifications/${notificationId}`, request.senderId, `Request ${status === "reviewing" ? "Update" : status}`, notificationMessage, requestId, now, JSON.stringify({ type: "request_update", title: `Request ${status}`, message: notificationMessage, isRead: false, relatedId: requestId, createdAt: now })]),
+    ]);
     return { success: true };
-  } catch (error: any) {
-    console.error("Error updating exchange request:", error);
-    return { success: false, error: error.message };
-  }
+  } catch (error) { return { success: false, error: error instanceof Error ? error.message : "Unable to update request" }; }
 }
 
 export async function getExchangeRequests(userId: string, role: "sender" | "receiver") {
-  try {
-    const currentUserId = await getCurrentUserId();
-    if (!currentUserId || currentUserId !== userId) return { success: false, error: "Unauthorized", requests: [] };
-    if (!db) throw new Error("Database not initialized");
-    const field = role === "sender" ? "senderId" : "receiverId";
-    const snapshot = await db.collection("exchange_requests")
-      .where(field, "==", userId)
-      .orderBy("createdAt", "desc")
-      .get();
-      
-    return {
-      success: true,
-      requests: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as ExchangeRequest)
-    };
-  } catch (error: any) {
-    console.error("Error fetching exchange requests:", error);
-    return { success: false, error: error.message, requests: [] };
-  }
+  const currentUserId = await getCurrentUserId();
+  if (!currentUserId || currentUserId !== userId) return { success: false, error: "Unauthorized", requests: [] };
+  const column = role === "sender" ? "sender_id" : "receiver_id";
+  const rows = await sql.query(`select * from exchange_requests where ${column}=$1 order by created_at desc`, [userId]);
+  return { success: true, requests: rows.map(row => requestFromRow(row)) };
 }
 
 export async function createExchangeFromApplication(applicationId: string) {
+  const userId = await getCurrentUserId();
+  if (!userId) return { success: false, error: "Unauthorized" };
   try {
-    const userId = await getCurrentUserId();
-    if (!userId) {
-      return { success: false, error: "Unauthorized" };
-    }
-
-    if (!db) {
-      return { success: false, error: "Database not initialized" };
-    }
-
-    const appRef = db!.collection("marketplace_applications").doc(applicationId);
-    const appDoc = await appRef.get();
-    
-    if (!appDoc.exists) {
-      return { success: false, error: "Application not found" };
-    }
-
-    const appData = appDoc.data() as MarketplaceApplication;
-
-    // Verify ownership of the associated request
-    const requestRef = db!.collection("marketplace_requests").doc(appData.requestId);
-    const requestDoc = await requestRef.get();
-    
-    if (!requestDoc.exists) {
-      return { success: false, error: "Associated request not found" };
-    }
-    
-    const requestData = requestDoc.data() as MarketplaceRequest;
-    if (requestData.requesterId !== userId) {
-      return { success: false, error: "Unauthorized" };
-    }
-
-    if (appData.status !== "pending" && appData.status !== "shortlisted") {
-      return { success: false, error: "Application cannot be accepted" };
-    }
-
-    const requiredHours = appData.estimatedHours;
-    const providerRef = db!.collection("users").doc(appData.applicantId);
-    const requesterRef = db!.collection("users").doc(userId);
-
-    const isMutual = !!appData.isMutualProposal;
-    const mutualHours = appData.offeredHours || requiredHours;
-    if (!Number.isInteger(requiredHours) || requiredHours <= 0 || requiredHours > 10000 || !Number.isInteger(mutualHours) || mutualHours <= 0 || mutualHours > 10000) {
-      return { success: false, error: "Invalid exchange hours" };
-    }
-
-    let newExchangeId = "";
-
-    // Run transaction for Escrow (Skill Hours Reservation)
-    await db.runTransaction(async (t) => {
-      const requesterDoc = await t.get(requesterRef);
-      if (!requesterDoc.exists) throw new Error("Requester profile not found");
-      
-      const providerDoc = await t.get(providerRef);
-      if (!providerDoc.exists) throw new Error("Applicant profile not found");
-
-      const requesterData = requesterDoc.data() as User;
-      const providerData = providerDoc.data() as User;
-      
-      const reqBalance = requesterData.skillHours || 0;
-      const provBalance = providerData.skillHours || 0;
-
-      if (reqBalance < requiredHours) {
-        throw new Error(`Insufficient Skill Hours. You need ${requiredHours} hours to accept this proposal.`);
-      }
-
-      if (isMutual && provBalance < mutualHours) {
-        throw new Error(`The applicant does not have enough Skill Hours (${mutualHours}) to commit to this mutual exchange.`);
-      }
-
-      // 1. Deduct from Requester
-      t.update(requesterRef, {
-        skillHours: reqBalance - requiredHours
-      });
-
-      // 1b. Deduct from Provider (if mutual)
-      if (isMutual) {
-        t.update(providerRef, {
-          skillHours: provBalance - mutualHours
-        });
-      }
-
-      // 2. Create the Exchange
-      const exchangeRef = db!.collection("exchanges").doc();
-      const escrowRef = db!.collection("escrows").doc();
-      newExchangeId = exchangeRef.id;
-      
-      const now = new Date().toISOString();
-      const exchange: Omit<Exchange, "id"> = {
-        requestId: requestDoc.id,
-        applicationId: appDoc.id,
-        title: requestData.title,
-        requesterId: userId,
-        providerId: appData.applicantId,
-        participants: [userId, appData.applicantId],
-        skillHours: requiredHours,
-        requesterEscrowHours: requiredHours,
-        providerEscrowHours: isMutual ? mutualHours : 0,
-        status: "in_progress",
-        escrowId: escrowRef.id,
-        escrowStatus: "reserved",
-        deliverables: requestData.deliverables || [],
-        deadline: appData.estimatedCompletionDate || "",
-        progress: 0,
-        createdAt: now,
-        updatedAt: now,
-        ...(isMutual && {
-          isMutual: true,
-          providerEscrowStatus: "reserved",
-          requesterEscrowStatus: "reserved",
-          providerDeliverables: requestData.offeredDeliverables || [], // The applicant delivers what the requester wanted
-          requesterDeliverables: appData.offeredDeliverables || [], // The requester delivers what the applicant wanted
-        })
-      };
-      t.set(exchangeRef, exchange);
-
-      t.set(escrowRef, {
-        exchangeId: newExchangeId,
-        status: "locked",
-        participantIds: [userId, appData.applicantId],
-        participants: {
-          [userId]: {
-            userId,
-            role: "requester",
-            skillHoursReserved: requiredHours,
-            securityDepositAmount: 0,
-            depositStatus: "received",
-            deliverablesStatus: "pending",
-            approvalStatus: "pending",
-            commitments: requestData.offeredDeliverables || ["Complete required deliverables"],
-          },
-          [appData.applicantId]: {
-            userId: appData.applicantId,
-            role: "provider",
-            skillHoursReserved: isMutual ? mutualHours : 0,
-            securityDepositAmount: 0,
-            depositStatus: "received",
-            deliverablesStatus: "pending",
-            approvalStatus: "pending",
-            commitments: requestData.deliverables || ["Complete required deliverables"],
-          },
-        },
-        timeline: [{
-          id: newExchangeId,
-          type: "created",
-          message: "Skill Hours reserved and exchange activated.",
-          timestamp: now,
-          actorId: userId,
-        }],
-        createdAt: now,
-        updatedAt: now,
-      });
-
-      // 3. Create Ledger Transaction (Requester)
-      const ledgerRefReq = db!.collection("transactions").doc();
-      t.set(ledgerRefReq, {
-        userId: userId,
-        date: now,
-        type: "Reserved",
-        description: `Escrow for: ${requestData.title}`,
-        exchangeId: newExchangeId,
-        amount: -requiredHours,
-        balanceAfter: reqBalance - requiredHours,
-        balanceBefore: reqBalance,
-        status: "Active",
-        linkedUserId: appData.applicantId,
-        linkedUserName: providerData?.fullName || providerData?.username || "Unknown",
-        linkedUserAvatar: providerData?.photoURL || null,
-        notes: "Hours are locked in escrow until the exchange is completed."
-      });
-
-      // 3b. Create Ledger Transaction (Provider, if mutual)
-      if (isMutual) {
-        const ledgerRefProv = db!.collection("transactions").doc();
-        t.set(ledgerRefProv, {
-          userId: appData.applicantId,
-          date: now,
-          type: "Reserved",
-          description: `Mutual Escrow for: ${requestData.title}`,
-          exchangeId: newExchangeId,
-          amount: -mutualHours,
-          balanceAfter: provBalance - mutualHours,
-          balanceBefore: provBalance,
-          status: "Active",
-          linkedUserId: userId,
-          linkedUserName: requesterData?.fullName || requesterData?.username || "Unknown",
-          linkedUserAvatar: requesterData?.photoURL || null,
-          notes: "Hours are locked in escrow until the exchange is completed."
-        });
-      }
-
-      // 4. Update Application & Request Status
-      t.update(appRef, { status: "accepted", updatedAt: now });
-      t.update(requestRef, { status: "in_progress", updatedAt: now });
-
-      // 5. Initial Workspace Activity Log
-      const activityRef = exchangeRef.collection("activity").doc();
-      t.set(activityRef, {
-        type: "created",
-        description: "Exchange created and Skill Hours escrowed.",
-        timestamp: now,
-      });
-
-      // 6. Notification for Provider
-      const notificationRef = providerRef.collection("notifications").doc();
-      t.set(notificationRef, {
-        type: "request_update",
-        title: "Proposal Accepted!",
-        message: `Your application for '${requestData.title}' was accepted. Your workspace is ready.`,
-        isRead: false,
-        link: `/exchanges/${newExchangeId}`,
-        createdAt: now,
-      });
-    });
-
-    return { success: true, exchangeId: newExchangeId };
-  } catch (error: any) {
-    console.error("Error creating exchange:", error);
-    return { success: false, error: error.message || "Failed to create exchange" };
+    const ids = Array.from({ length: 7 }, () => crypto.randomUUID());
+    const [row] = await sql.query("select create_exchange_from_application($1,$2,$3,$4,$5,$6,$7,$8,$9) as exchange_id", [userId, applicationId, ids[0], ids[1], ids[2], ids[3], ids[4], ids[5], new Date().toISOString()]);
+    return { success: true, exchangeId: String(row.exchange_id) };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message.replace(/^.*error:\s*/i, "") : "Failed to create exchange" };
   }
 }
 
 export async function getExchange(exchangeId: string) {
-  try {
-    const userId = await getCurrentUserId();
-    if (!userId) {
-      return { success: false, error: "Unauthorized" };
-    }
-
-    if (!db) {
-      return { success: false, error: "Database not initialized" };
-    }
-
-    const exchangeDoc = await db!.collection("exchanges").doc(exchangeId).get();
-    if (!exchangeDoc.exists) {
-      return { success: false, error: "Exchange not found" };
-    }
-
-    const data = exchangeDoc.data() as Exchange;
-    data.id = exchangeDoc.id;
-
-    if (data.requesterId !== userId && data.providerId !== userId) {
-      return { success: false, error: "Unauthorized access to exchange" };
-    }
-
-    // Fetch user details for display
-    const requesterDoc = await db!.collection("users").doc(data.requesterId).get();
-    const providerDoc = await db!.collection("users").doc(data.providerId).get();
-
-    const requesterData = requesterDoc.data();
-    const providerData = providerDoc.data();
-
-    return {
-      success: true,
-      exchange: data,
-      requester: {
-        id: data.requesterId,
-        name: requesterData?.fullName || requesterData?.username || "Unknown",
-        avatar: requesterData?.photoURL || null,
-        timezone: requesterData?.timeZone || "UTC",
-      },
-      provider: {
-        id: data.providerId,
-        name: providerData?.fullName || providerData?.username || "Unknown",
-        avatar: providerData?.photoURL || null,
-        timezone: providerData?.timeZone || "UTC",
-      }
-    };
-  } catch (error: any) {
-    console.error("Error fetching exchange:", error);
-    return { success: false, error: error.message || "Failed to fetch exchange" };
-  }
+  const userId = await getCurrentUserId();
+  if (!userId) return { success: false, error: "Unauthorized" };
+  const [row] = await sql.query("select * from exchanges where id=$1 and (requester_id=$2 or provider_id=$2)", [exchangeId, userId]);
+  if (!row) return { success: false, error: "Exchange not found or unauthorized" };
+  const exchange = exchangeFromRow(row);
+  const [requester, provider] = await Promise.all([getUserById(exchange.requesterId), getUserById(exchange.providerId)]);
+  return { success: true, exchange, requester: { id: exchange.requesterId, name: requester?.fullName || requester?.username || "Unknown", avatar: requester?.photoURL || null, timezone: requester?.timeZone || "UTC" }, provider: { id: exchange.providerId, name: provider?.fullName || provider?.username || "Unknown", avatar: provider?.photoURL || null, timezone: provider?.timeZone || "UTC" } };
 }
 
 export async function requestRevision(exchangeId: string, message: string) {
-  try {
-    const userId = await getCurrentUserId();
-    if (!userId) return { success: false, error: "Unauthorized" };
-    if (!db) return { success: false, error: "Database not initialized" };
-    if (typeof message !== "string" || message.trim().length === 0 || message.length > 3000) return { success: false, error: "Invalid revision request" };
-
-    const exchangeRef = db!.collection("exchanges").doc(exchangeId);
-    
-    await db.runTransaction(async (t) => {
-      const exchangeDoc = await t.get(exchangeRef);
-      if (!exchangeDoc.exists) throw new Error("Exchange not found");
-      
-      const data = exchangeDoc.data() as Exchange;
-      if (data.requesterId !== userId) {
-        throw new Error("Only the requester can ask for revisions");
-      }
-      
-      if (data.status !== "in_review") {
-        throw new Error("Exchange must be in review to request revisions");
-      }
-
-      const now = new Date().toISOString();
-      
-      t.update(exchangeRef, {
-        status: "revision_requested",
-        updatedAt: now
-      });
-
-      const activityRef = exchangeRef.collection("activity").doc();
-      t.set(activityRef, {
-        type: "revision_requested",
-        description: `Requester asked for revisions: "${message}"`,
-        timestamp: now
-      });
-
-      const notifRef = db!.collection("users").doc(data.providerId).collection("notifications").doc();
-      t.set(notifRef, {
-        type: "request_update",
-        title: "Revisions Requested",
-        message: `Revisions were requested for "${data.title}".`,
-        isRead: false,
-        link: `/exchanges/${exchangeId}`,
-        createdAt: now
-      });
-    });
-
-    return { success: true };
-  } catch (error: any) {
-    console.error("Error requesting revision:", error);
-    return { success: false, error: error.message };
-  }
+  const userId = await getCurrentUserId();
+  if (!userId) return { success: false, error: "Unauthorized" };
+  if (typeof message !== "string" || !message.trim() || message.length > 3000) return { success: false, error: "Invalid revision request" };
+  const now = new Date().toISOString();
+  const activityId = crypto.randomUUID();
+  const notificationId = crypto.randomUUID();
+  const rows = await sql.query(
+    `with updated as (update exchanges set status='revision_requested',updated_at=$4,payload=payload || $5::jsonb where id=$1 and requester_id=$2 and status='in_review' returning id,provider_id,title),
+     activity as (insert into exchange_activity (id,exchange_id,actor_id,event_type,description,occurred_at,payload) select $6,id,$2,'revision_requested',$7,$4,$8::jsonb from updated returning id),
+     notified as (insert into notifications (id,source_path,user_id,notification_type,title,message,is_read,is_archived,link,related_id,created_at,payload) select $9,$10,provider_id,'revision_requested','Revisions Requested','Revisions were requested for "'||title||'".',false,false,'/exchanges/'||id,id,$4,$11::jsonb from updated returning id)
+     select id from updated`,
+    [exchangeId, userId, message.trim(), now, JSON.stringify({ status: "revision_requested", updatedAt: now }), activityId, `Requester asked for revisions: "${message.trim()}"`, JSON.stringify({ type: "revision_requested", description: `Requester asked for revisions: "${message.trim()}"`, timestamp: now }), notificationId, `notifications/${notificationId}`, JSON.stringify({ type: "revision_requested", title: "Revisions Requested", message: "Revisions were requested.", isRead: false, link: `/exchanges/${exchangeId}`, createdAt: now })],
+  );
+  return rows.length ? { success: true } : { success: false, error: "Exchange must be in review and owned by the requester" };
 }
-
 
 export async function acceptDelivery(exchangeId: string) {
+  const userId = await getCurrentUserId();
+  if (!userId) return { success: false, error: "Unauthorized" };
   try {
-    const userId = await getCurrentUserId();
-    if (!userId) return { success: false, error: "Unauthorized" };
-    if (!db) return { success: false, error: "Database not initialized" };
-
-    const exchangeRef = db!.collection("exchanges").doc(exchangeId);
-    
-    await db.runTransaction(async (t) => {
-      const exchangeDoc = await t.get(exchangeRef);
-      if (!exchangeDoc.exists) throw new Error("Exchange not found");
-      
-      const data = exchangeDoc.data() as Exchange;
-      const isMutual = !!data.isMutual;
-      const isProvider = userId === data.providerId;
-      const isRequester = userId === data.requesterId;
-
-      if (!isProvider && !isRequester) {
-        throw new Error("You are not part of this exchange");
-      }
-
-      if (!isMutual && !isRequester) {
-        throw new Error("Only the requester can accept delivery in a standard exchange");
-      }
-      
-      if (data.status !== "in_review") {
-        throw new Error("Exchange cannot be completed in its current state");
-      }
-
-      if ((!isMutual && !data.providerSubmittedAt) || (isMutual && (!data.providerSubmittedAt || !data.requesterSubmittedAt))) {
-        throw new Error("All required deliverables must be submitted before approval");
-      }
-
-      const now = new Date().toISOString();
-      const updates: any = { updatedAt: now };
-
-      const providerAcceptedNow = isProvider;
-      const requesterAcceptedNow = isRequester;
-
-      if (isMutual) {
-        if (isProvider) updates.providerAcceptedAt = now;
-        if (isRequester) updates.requesterAcceptedAt = now;
-
-        const bothAccepted = (data.providerAcceptedAt || isProvider) && (data.requesterAcceptedAt || isRequester);
-        
-        if (!bothAccepted) {
-          // Just update acceptance flag, wait for the other party
-          t.update(exchangeRef, updates);
-
-          const activityRef = exchangeRef.collection("activity").doc();
-          t.set(activityRef, {
-            type: "proposal_accepted",
-            description: `${isProvider ? 'Provider' : 'Requester'} accepted the delivery. Waiting for the other party to accept.`,
-            timestamp: now
-          });
-          return;
-        }
-      }
-
-      // If we reach here, either it's a standard exchange (requester accepted), 
-      // or it's a mutual exchange and both have accepted.
-      
-      const providerRef = db!.collection("users").doc(data.providerId);
-      const requesterRef = db!.collection("users").doc(data.requesterId);
-      
-      const providerDoc = await t.get(providerRef);
-      const requesterDoc = await t.get(requesterRef);
-      
-      if (!providerDoc.exists || !requesterDoc.exists) throw new Error("User not found");
-
-      const providerData = providerDoc.data() as User;
-      const requesterData = requesterDoc.data() as User;
-      
-      const providerBalance = providerData.skillHours || 0;
-      const requesterBalance = requesterData.skillHours || 0;
-      
-      const transactionsRef = db!.collection("transactions");
-      const reqEscrowAmount = data.requesterEscrowHours ?? data.skillHours;
-      const provEscrowAmount = data.providerEscrowHours ?? 0;
-      if (!Number.isFinite(reqEscrowAmount) || reqEscrowAmount <= 0 || !Number.isFinite(provEscrowAmount) || provEscrowAmount < 0 || (isMutual && provEscrowAmount <= 0)) {
-        throw new Error("Invalid escrow state");
-      }
-
-      // 1. Update Balances & Stats
-      // Requester escrow goes to Provider
-      t.update(providerRef, {
-        skillHours: providerBalance + reqEscrowAmount,
-        "stats.skillHoursEarned": (providerData.stats?.skillHoursEarned || 0) + reqEscrowAmount,
-        "stats.exchangesCompleted": (providerData.stats?.exchangesCompleted || 0) + 1
-      });
-
-      // Provider escrow goes to Requester (if mutual)
-      t.update(requesterRef, {
-        skillHours: requesterBalance + provEscrowAmount,
-        "stats.skillHoursEarned": (requesterData.stats?.skillHoursEarned || 0) + provEscrowAmount,
-        "stats.skillHoursSpent": (requesterData.stats?.skillHoursSpent || 0) + reqEscrowAmount,
-        "stats.exchangesCompleted": (requesterData.stats?.exchangesCompleted || 0) + 1
-      });
-
-      // 2. Create completion ledger entries. Reservation records remain immutable audit events.
-      const providerTxRef = transactionsRef.doc();
-      t.set(providerTxRef, {
-        userId: data.providerId,
-        date: now,
-        type: "Earned",
-        description: `Payment for: ${data.title}`,
-        exchangeId: exchangeId,
-        amount: reqEscrowAmount,
-        balanceBefore: providerBalance,
-        balanceAfter: providerBalance + reqEscrowAmount,
-        status: "Completed",
-        linkedUserId: data.requesterId,
-        linkedUserName: requesterData?.fullName || requesterData?.username || "Unknown",
-        linkedUserAvatar: requesterData?.photoURL || null,
-        notes: "Skill hours released from escrow."
-      });
-
-      if (isMutual && provEscrowAmount > 0) {
-        const requesterTxRef = transactionsRef.doc();
-        t.set(requesterTxRef, {
-          userId: data.requesterId,
-          date: now,
-          type: "Earned",
-          description: `Mutual Payment for: ${data.title}`,
-          exchangeId: exchangeId,
-          amount: provEscrowAmount,
-          balanceBefore: requesterBalance,
-          balanceAfter: requesterBalance + provEscrowAmount,
-          status: "Completed",
-          linkedUserId: data.providerId,
-          linkedUserName: providerData?.fullName || providerData?.username || "Unknown",
-          linkedUserAvatar: providerData?.photoURL || null,
-          notes: "Skill hours released from mutual escrow."
-        });
-      }
-
-      // 3. Update Exchange Status
-      updates.status = "completed";
-      updates.escrowStatus = "released";
-      if (isMutual) {
-        updates.providerEscrowStatus = "released";
-        updates.requesterEscrowStatus = "released";
-      }
-      updates.completedAt = now;
-      t.update(exchangeRef, updates);
-
-      if (data.escrowId) {
-        t.update(db!.collection("escrows").doc(data.escrowId), {
-          status: "released",
-          updatedAt: now,
-        });
-      }
-
-      // 4. Update Marketplace Request Status
-      if (data.requestId) {
-        t.update(db!.collection("marketplace_requests").doc(data.requestId), {
-          status: "completed",
-          updatedAt: now
-        });
-      }
-
-      // 5. Log Activity
-      const activityRef = exchangeRef.collection("activity").doc();
-      t.set(activityRef, {
-        type: "completed",
-        description: isMutual ? "Both parties accepted deliveries. Exchange completed." : "Requester accepted the delivery. Escrow has been released.",
-        timestamp: now
-      });
-
-      // 6. Notify Provider & Requester
-      t.set(providerRef.collection("notifications").doc(), {
-        type: "system",
-        title: "Exchange Completed!",
-        message: `Your work for "${data.title}" was accepted. ${reqEscrowAmount} Skill Hours have been added to your ledger.`,
-        isRead: false,
-        link: `/exchanges/${exchangeId}`,
-        createdAt: now
-      });
-
-      if (isMutual) {
-        t.set(requesterRef.collection("notifications").doc(), {
-          type: "system",
-          title: "Exchange Completed!",
-          message: `The mutual exchange "${data.title}" is complete. ${provEscrowAmount} Skill Hours have been added to your ledger.`,
-          isRead: false,
-          link: `/exchanges/${exchangeId}`,
-          createdAt: now
-        });
-      }
-    });
-
-    return { success: true };
-  } catch (error: any) {
-    console.error("Error accepting delivery:", error);
-    return { success: false, error: error.message };
+    const ids = Array.from({ length: 5 }, () => crypto.randomUUID());
+    const [row] = await sql.query("select complete_exchange_delivery($1,$2,$3,$4,$5,$6,$7,$8) as result", [userId, exchangeId, ids[0], ids[1], ids[2], ids[3], ids[4], new Date().toISOString()]);
+    return { success: true, status: String(row.result) };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message.replace(/^.*error:\s*/i, "") : "Unable to accept delivery" };
   }
 }
-

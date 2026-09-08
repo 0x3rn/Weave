@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/firebase-admin-auth";
-import { db } from "@/lib/firebase-admin";
+import { getUserById } from "@/lib/users";
 
 export default async function AdminLayout({
   children,
@@ -25,7 +25,7 @@ export default async function AdminLayout({
   const cookieStore = await cookies();
   const sessionCookie = cookieStore.get("session")?.value;
 
-  if (!sessionCookie || !auth || !db) {
+  if (!sessionCookie || !auth) {
     redirect("/api/auth/logout");
   }
 
@@ -35,14 +35,11 @@ export default async function AdminLayout({
     // 1. Verify the session cookie
     const decodedClaims = await auth.verifySessionCookie(sessionCookie, true);
     
-    // 2. Fetch the user's document from Firestore
-    const userDoc = await db.collection("users").doc(decodedClaims.uid).get();
-    
-    if (!userDoc.exists) {
+    // 2. Fetch the user's application profile
+    const userData = await getUserById(decodedClaims.uid);
+    if (!userData) {
       targetRedirect = "/api/auth/logout";
     } else {
-      const userData = userDoc.data()!;
-
       // 3. Check for admin privileges
       if (userData.isAdmin !== true) {
         targetRedirect = "/dashboard"; // Send non-admins back to their dashboard

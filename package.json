@@ -14,8 +14,11 @@
     "db:apply-schema": "node --env-file=.env.local scripts/apply-neon-schema.mjs",
     "db:migrate:firestore": "node --env-file=.env.local scripts/migrate-firestore-to-neon.mjs",
     "db:verify-migration": "node --env-file=.env.local scripts/verify-firestore-neon.mjs",
+    "db:verify-cutover": "node --env-file=.env.local scripts/verify-neon-cutover.mjs",
     "storage:verify": "node --env-file=.env.local scripts/verify-neon-storage.mjs",
-    "storage:migrate": "node --env-file=.env.local scripts/migrate-firebase-storage-to-neon.mjs"
+    "storage:roundtrip": "node --env-file=.env.local scripts/verify-neon-storage-roundtrip.mjs",
+    "storage:migrate": "node --env-file=.env.local scripts/migrate-firebase-storage-to-neon.mjs",
+    "storage:rewrite-references": "node --env-file=.env.local scripts/rewrite-storage-references.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1127.0",
@@ -57,6 +60,9 @@
   "overrides": {
     "jwks-rsa": {
       "jose": "4.15.9"
+    },
+    "teeny-request": {
+      "uuid": "11.1.1"
     }
   }
 }

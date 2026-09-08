@@ -1,142 +1,70 @@
 "use server";
 
-import { db, storage } from "@/lib/firebase-admin";
-import { getCurrentUserId } from "./user";
+import { payload, sql } from "@/lib/neon";
+import { deleteObject, publicBucket, publicObjectKeyFromUrl, storeUpload } from "@/lib/neon-storage";
 import { revalidatePath } from "next/cache";
+import { getCurrentUserId } from "./user";
 
-/**
- * Add a new portfolio item, optionally uploading an image.
- */
-export async function addPortfolioItem(formData: FormData) {
-  const userId = await getCurrentUserId();
-  if (!userId) {
-    throw new Error("Unauthorized");
-  }
-
-  if (!db || !storage) {
-    throw new Error("Firebase Admin not initialized");
-  }
-
-  const title = formData.get("title") as string;
-  const description = formData.get("description") as string;
-  const link = formData.get("link") as string | null;
-  const technologiesRaw = formData.get("technologies") as string;
-  const imageFile = formData.get("image") as File | null;
-
-  if (!title || !description) {
-    throw new Error("Missing required fields");
-  }
-
-  // Parse technologies (comma separated)
-  const technologies = technologiesRaw
-    .split(",")
-    .map(t => t.trim())
-    .filter(t => t.length > 0);
-
-  let imageURL: string | null = null;
-
-  // Handle Image Upload to Firebase Storage
-  if (imageFile && imageFile.size > 0) {
-    const bucket = storage.bucket();
-    const extension = imageFile.name.split('.').pop();
-    const filename = `portfolio/${userId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${extension}`;
-    const fileRef = bucket.file(filename);
-    
-    // Convert File to Buffer
-    const buffer = Buffer.from(await imageFile.arrayBuffer());
-    
-    // Upload the file. We DO NOT call .makePublic() because enterprise buckets 
-    // should use Uniform Bucket-Level Access (IAM) for public read access.
-    await fileRef.save(buffer, {
-      metadata: {
-        contentType: imageFile.type,
-      },
-    });
-
-    // Construct the public URL (Google Cloud Storage standard format)
-    imageURL = `https://storage.googleapis.com/${bucket.name}/${filename}`;
-  }
-
-  // Save to Firestore
-  const portfolioRef = db.collection("users").doc(userId).collection("portfolio").doc();
-  
-  const portfolioData = {
-    userId,
-    title,
-    description,
-    link: link || null,
-    technologies,
-    imageURL,
-    createdAt: new Date().toISOString(),
-  };
-
-  await portfolioRef.set(portfolioData);
-  await db.collection("users").doc(userId).update({ hasPortfolio: true, updatedAt: new Date().toISOString() });
-
-  // Get the user's username to revalidate their profile page
-  const userDoc = await db.collection("users").doc(userId).get();
-  if (userDoc.exists) {
-    const username = userDoc.data()?.username;
-    if (username) {
-      revalidatePath(`/u/${username}`);
-    }
-  }
-
-  return { success: true, id: portfolioRef.id };
+async function revalidateUserProfile(userId: string) {
+  const [user] = await sql.query("select username from users where id=$1", [userId]);
+  if (user?.username) revalidatePath(`/u/${user.username}`);
 }
 
-/**
- * Delete a portfolio item.
- */
-export async function deletePortfolioItem(portfolioId: string, imageURL?: string) {
+export async function addPortfolioItem(formData: FormData) {
   const userId = await getCurrentUserId();
-  if (!userId) {
-    throw new Error("Unauthorized");
+  if (!userId) throw new Error("Unauthorized");
+  const title = String(formData.get("title") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  const link = String(formData.get("link") ?? "").trim();
+  if (!title || title.length > 200 || !description || description.length > 5000) throw new Error("Invalid portfolio item");
+  if (link) {
+    const parsed = new URL(link);
+    if (parsed.protocol !== "https:") throw new Error("Portfolio links must use HTTPS");
   }
-
-  if (!db) {
-    throw new Error("Firebase Admin not initialized");
+  const technologies = String(formData.get("technologies") ?? "")
+    .split(",").map(value => value.trim()).filter(Boolean).slice(0, 30);
+  const image = formData.get("image");
+  let imageURL: string | null = null;
+  if (image instanceof File && image.size > 0) {
+    if (!["image/jpeg", "image/png", "image/webp"].includes(image.type)) throw new Error("Portfolio images must be JPEG, PNG, or WebP");
+    imageURL = await storeUpload(userId, image, "portfolio");
   }
+  const id = crypto.randomUUID();
+  const createdAt = new Date().toISOString();
+  const item = { userId, title, description, link: link || null, technologies, imageURL, createdAt };
+  await sql.transaction(tx => [
+    tx.query(
+      "insert into portfolio_items (id,user_id,title,description,image_url,link,technologies,created_at,payload) values ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb)",
+      [id, userId, title, description, imageURL, link || null, technologies, createdAt, JSON.stringify(item)],
+    ),
+    tx.query(
+      "update users set updated_at=now(),payload=jsonb_set(jsonb_set(payload,'{hasPortfolio}','true'::jsonb,true),'{updatedAt}',to_jsonb($2::text),true) where id=$1",
+      [userId, createdAt],
+    ),
+  ]);
+  await revalidateUserProfile(userId);
+  return { success: true, id };
+}
 
-  const portfolioRef = db.collection("users").doc(userId).collection("portfolio").doc(portfolioId);
-  
-  // Verify ownership before deleting
-  const docSnap = await portfolioRef.get();
-  if (!docSnap.exists) {
-    throw new Error("Portfolio item not found");
-  }
-
-  const data = docSnap.data();
-  if (data?.userId !== userId) {
-    throw new Error("Unauthorized to delete this item");
-  }
-
-  await portfolioRef.delete();
-
-  // Attempt to delete the image from storage if it exists
-  const storedImageURL = data?.imageURL;
-  if (typeof storedImageURL === "string" && storage) {
+export async function deletePortfolioItem(portfolioId: string, _legacyImageUrl?: string) {
+  void _legacyImageUrl;
+  const userId = await getCurrentUserId();
+  if (!userId) throw new Error("Unauthorized");
+  const [deleted] = await sql.query(
+    "delete from portfolio_items where id=$1 and user_id=$2 returning image_url,payload",
+    [portfolioId, userId],
+  );
+  if (!deleted) throw new Error("Portfolio item not found");
+  const data = payload<Record<string, unknown>>(deleted.payload);
+  const imageURL = typeof deleted.image_url === "string" ? deleted.image_url : typeof data.imageURL === "string" ? data.imageURL : null;
+  const objectKey = imageURL ? publicObjectKeyFromUrl(imageURL) : null;
+  if (objectKey?.startsWith(`portfolio/${userId}/`)) {
     try {
-      const bucket = storage.bucket();
-      const bucketPrefix = `https://storage.googleapis.com/${bucket.name}/`;
-      if (storedImageURL.startsWith(`${bucketPrefix}portfolio/${userId}/`)) {
-        const filePath = storedImageURL.replace(bucketPrefix, "");
-        await bucket.file(filePath).delete();
-      }
+      await deleteObject(publicBucket(), objectKey);
     } catch (error) {
-      console.error("Failed to delete image from storage:", error);
-      // We don't throw here because the DB record is already deleted
+      console.error("Failed to remove portfolio object", error);
     }
   }
-
-  // Get the user's username to revalidate their profile page
-  const userDoc = await db.collection("users").doc(userId).get();
-  if (userDoc.exists) {
-    const username = userDoc.data()?.username;
-    if (username) {
-      revalidatePath(`/u/${username}`);
-    }
-  }
-
+  await revalidateUserProfile(userId);
   return { success: true };
 }

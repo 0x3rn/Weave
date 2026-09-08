@@ -1,240 +1,74 @@
 "use server";
 
-import { db } from "@/lib/firebase-admin";
-import { getCurrentUserId } from "./user";
-import { MarketplaceApplication, MarketplaceRequest } from "@/types";
+import { DEMO_APPLIED_REQUEST_IDS, USE_DEMO_MARKETPLACE } from "@/lib/demo-marketplace-data";
+import { iso, payload, sql } from "@/lib/neon";
+import { userFromRow } from "@/lib/users";
+import { MarketplaceApplication } from "@/types";
 import { createExchangeFromApplication } from "./exchanges";
-import { USE_DEMO_MARKETPLACE, DEMO_APPLIED_REQUEST_IDS } from "@/lib/demo-marketplace-data";
+import { getCurrentUserId } from "./user";
 
-export async function submitApplication(
-  requestId: string,
-  data: {
-    coverMessage: string;
-    portfolioLinks: string[];
-    availability: string;
-    estimatedHours: number;
-    estimatedCompletionDate?: string;
-    agreedToTerms: boolean;
-    isMutualProposal?: boolean;
-    offeredDeliverables?: string[];
-    offeredHours?: number;
-  }
-) {
+function applicationFromRow(row: Record<string, unknown>): MarketplaceApplication {
+  return {
+    ...payload<Record<string, unknown>>(row.payload), id: String(row.id), requestId: String(row.request_id ?? ""), applicantId: String(row.applicant_id ?? ""),
+    coverMessage: String(row.cover_message ?? ""), portfolioLinks: Array.isArray(row.portfolio_links) ? row.portfolio_links as string[] : [], availability: String(row.availability ?? ""),
+    estimatedHours: Number(row.estimated_hours ?? 0), status: String(row.status ?? "pending") as MarketplaceApplication["status"], isMutualProposal: row.is_mutual_proposal === true,
+    offeredHours: row.offered_hours == null ? undefined : Number(row.offered_hours), createdAt: iso(row.created_at), updatedAt: iso(row.updated_at),
+  } as MarketplaceApplication;
+}
+
+export async function submitApplication(requestId: string, data: { coverMessage: string; portfolioLinks: string[]; availability: string; estimatedHours: number; estimatedCompletionDate?: string; agreedToTerms: boolean; isMutualProposal?: boolean; offeredDeliverables?: string[]; offeredHours?: number }) {
   try {
     const userId = await getCurrentUserId();
-    if (!userId) {
-      return { success: false, error: "Unauthorized" };
-    }
-
-    if (!db) {
-      return { success: false, error: "Database not initialized" };
-    }
-    if (!data || typeof data.coverMessage !== "string" || data.coverMessage.trim().length === 0 || data.coverMessage.length > 5000 || !Array.isArray(data.portfolioLinks) || data.portfolioLinks.length > 10 || data.portfolioLinks.some(link => typeof link !== "string" || link.length > 2048 || !/^https:\/\//.test(link)) || typeof data.availability !== "string" || data.availability.length > 200 || !Number.isInteger(data.estimatedHours) || data.estimatedHours <= 0 || data.estimatedHours > 10000 || !data.agreedToTerms || (data.isMutualProposal && (!Array.isArray(data.offeredDeliverables) || data.offeredDeliverables.length > 50 || !Number.isInteger(data.offeredHours) || data.offeredHours! <= 0 || data.offeredHours! > 10000))) {
-      return { success: false, error: "Invalid application" };
-    }
-
-    // 1. Verify the request exists and is open
-    const requestRef = db.collection("marketplace_requests").doc(requestId);
-    const requestDoc = await requestRef.get();
-    
-    if (!requestDoc.exists) {
-      return { success: false, error: "Request not found" };
-    }
-    
-    const requestData = requestDoc.data() as MarketplaceRequest;
-    if (requestData.status !== "open") {
-      return { success: false, error: "This request is no longer open for applications" };
-    }
-
-    if (requestData.requesterId === userId) {
-      return { success: false, error: "You cannot apply to your own request" };
-    }
-
-    // 2. Check if user already applied
-    // 3. Create the application with a deterministic ID so duplicate submissions cannot race.
+    if (!userId) return { success: false, error: "Unauthorized" };
+    if (!data || typeof data.coverMessage !== "string" || !data.coverMessage.trim() || data.coverMessage.length > 5000 || !Array.isArray(data.portfolioLinks) || data.portfolioLinks.length > 10 || data.portfolioLinks.some(link => typeof link !== "string" || link.length > 2048 || !/^https:\/\//.test(link)) || typeof data.availability !== "string" || data.availability.length > 200 || !Number.isInteger(data.estimatedHours) || data.estimatedHours < 1 || data.estimatedHours > 10_000 || !data.agreedToTerms || (data.isMutualProposal && (!Array.isArray(data.offeredDeliverables) || data.offeredDeliverables.length > 50 || data.offeredDeliverables.some(item => typeof item !== "string" || item.length > 500) || !Number.isInteger(data.offeredHours) || Number(data.offeredHours) < 1 || Number(data.offeredHours) > 10_000))) return { success: false, error: "Invalid application" };
+    const id = `${requestId}_${userId}`;
     const now = new Date().toISOString();
-    const application: Omit<MarketplaceApplication, "id"> = {
-      requestId,
-      applicantId: userId,
-      coverMessage: data.coverMessage,
-      portfolioLinks: data.portfolioLinks,
-      availability: data.availability,
-      estimatedHours: data.estimatedHours,
-      estimatedCompletionDate: data.estimatedCompletionDate,
-      agreedToTerms: data.agreedToTerms,
-      status: "pending",
-      createdAt: now,
-      updatedAt: now,
-      ...(data.isMutualProposal && {
-        isMutualProposal: true,
-        offeredDeliverables: data.offeredDeliverables || [],
-        offeredHours: data.offeredHours || data.estimatedHours,
-      })
-    };
-
-    const firestoreDb = db;
-    const docRef = firestoreDb.collection("marketplace_applications").doc(`${requestId}_${userId}`);
-    await firestoreDb.runTransaction(async transaction => {
-      const [currentRequest, existingApplication] = await Promise.all([transaction.get(requestRef), transaction.get(docRef)]);
-      if (!currentRequest.exists || currentRequest.data()?.status !== "open") throw new Error("This request is no longer open for applications");
-      if (existingApplication.exists) throw new Error("You have already applied for this request");
-      transaction.set(docRef, application);
-      transaction.update(requestRef, { applicantsCount: (currentRequest.data()?.applicantsCount || 0) + 1 });
-      const notifRef = firestoreDb.collection("notifications").doc();
-      transaction.set(notifRef, {
-        id: notifRef.id,
-        userId: requestData.requesterId,
-        type: "request_update",
-        title: "New Application Received",
-        message: `Someone applied to your request: ${requestData.title}`,
-        isRead: false,
-        link: `/dashboard/requests/${requestId}`,
-        relatedId: requestId,
-        createdAt: now,
-      });
-    });
-
-    return { success: true, applicationId: docRef.id };
-  } catch (error: any) {
-    console.error("Error submitting application:", error);
-    return { success: false, error: error.message || "Failed to submit application" };
+    const notificationId = crypto.randomUUID();
+    const application = { requestId, applicantId: userId, coverMessage: data.coverMessage.trim(), portfolioLinks: data.portfolioLinks, availability: data.availability.trim(), estimatedHours: data.estimatedHours, estimatedCompletionDate: data.estimatedCompletionDate, agreedToTerms: true, status: "pending", createdAt: now, updatedAt: now, isMutualProposal: data.isMutualProposal === true, offeredDeliverables: data.offeredDeliverables || [], offeredHours: data.offeredHours || data.estimatedHours };
+    const rows = await sql.query(
+      `with eligible as (select id,requester_id,title from marketplace_requests where id=$1 and status='open' and requester_id<>$2),
+       inserted as (insert into marketplace_applications (id,request_id,applicant_id,cover_message,portfolio_links,availability,estimated_hours,status,is_mutual_proposal,offered_hours,estimated_completion_at,created_at,updated_at,payload)
+         select $3,id,$2,$4,$5,$6,$7,'pending',$8,$9,$10,$11,$11,$12::jsonb from eligible on conflict (request_id,applicant_id) do nothing returning id,request_id),
+       updated as (update marketplace_requests set applicants_count=applicants_count+1,payload=jsonb_set(payload,'{applicantsCount}',to_jsonb(applicants_count+1)),updated_at=$11 where id in(select request_id from inserted) returning requester_id,title),
+       notified as (insert into notifications (id,source_path,user_id,notification_type,title,message,is_read,is_archived,link,related_id,created_at,payload)
+         select $13,$14,requester_id,'request_update','New Application Received','Someone applied to your request: ' || title,false,false,$15,$1,$11,$16::jsonb from updated returning id)
+       select id from inserted`,
+      [requestId, userId, id, application.coverMessage, application.portfolioLinks, application.availability, application.estimatedHours, application.isMutualProposal, application.offeredHours, data.estimatedCompletionDate || null, now, JSON.stringify(application), notificationId, `notifications/${notificationId}`, `/dashboard/requests/${requestId}`, JSON.stringify({ type: "request_update", title: "New Application Received", message: "A new application was received.", isRead: false, link: `/dashboard/requests/${requestId}`, relatedId: requestId, createdAt: now })],
+    );
+    return rows.length ? { success: true, applicationId: id } : { success: false, error: "Request is unavailable or you have already applied" };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to submit application" };
   }
 }
 
 export async function getApplicationsForRequest(requestId: string) {
-  try {
-    const userId = await getCurrentUserId();
-    if (!userId) {
-      return { success: false, error: "Unauthorized" };
-    }
-
-    if (!db) {
-      return { success: false, error: "Database not initialized" };
-    }
-
-    // 1. Verify the requester owns this request
-    const requestDoc = await db.collection("marketplace_requests").doc(requestId).get();
-    if (!requestDoc.exists) {
-      return { success: false, error: "Request not found" };
-    }
-    
-    if (requestDoc.data()?.requesterId !== userId) {
-      return { success: false, error: "You can only view applications for your own requests" };
-    }
-
-    // 2. Fetch applications
-    const appsQuery = await db.collection("marketplace_applications")
-      .where("requestId", "==", requestId)
-      .orderBy("createdAt", "desc")
-      .get();
-      
-    const applications = appsQuery.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    })) as MarketplaceApplication[];
-
-    // 3. Fetch applicant profiles
-    if (applications.length === 0) {
-      return { success: true, applications: [], request: { id: requestDoc.id, ...requestDoc.data() } };
-    }
-
-    const applicantIds = [...new Set(applications.map(a => a.applicantId))];
-    const usersMap = new Map();
-    
-    for (let i = 0; i < applicantIds.length; i += 30) {
-      const chunk = applicantIds.slice(i, i + 30);
-      if (chunk.length > 0) {
-        const userDocs = await db.collection("users").where("__name__", "in", chunk).get();
-        userDocs.forEach(doc => {
-          usersMap.set(doc.id, doc.data());
-        });
-      }
-    }
-
-    // 4. Combine data
-    const enrichedApplications = applications.map(app => {
-      const uData = usersMap.get(app.applicantId);
-      return {
-        ...app,
-        applicant: uData ? {
-          name: uData.fullName || uData.displayName || uData.username || "Unknown User",
-          avatar: uData.photoURL || uData.photoUrl || null,
-          trustScore: uData.trustScore || 0,
-          stats: uData.stats || { rating: 0, exchangesCompleted: 0 }
-        } : null
-      };
-    });
-
-    return { success: true, applications: enrichedApplications, request: { id: requestDoc.id, ...requestDoc.data() } };
-  } catch (error: any) {
-    console.error("Error fetching applications:", error);
-    return { success: false, error: error.message || "Failed to fetch applications" };
-  }
+  const userId = await getCurrentUserId();
+  if (!userId) return { success: false, error: "Unauthorized" };
+  const [request] = await sql.query("select * from marketplace_requests where id=$1 and requester_id=$2", [requestId, userId]);
+  if (!request) return { success: false, error: "Request not found or unauthorized" };
+  const rows = await sql.query("select a.*,u.id as user_row_id,u.email,u.username,u.full_name,u.photo_url,u.trust_score,u.payload as user_payload from marketplace_applications a left join users u on u.id=a.applicant_id where a.request_id=$1 order by a.created_at desc", [requestId]);
+  const applications = rows.map(row => {
+    const application = applicationFromRow(row);
+    const applicant = row.user_row_id ? userFromRow({ id: row.user_row_id, email: row.email, username: row.username, full_name: row.full_name, photo_url: row.photo_url, trust_score: row.trust_score, payload: row.user_payload }) : null;
+    return { ...application, applicant: applicant ? { name: applicant.fullName || applicant.username || "Unknown User", avatar: applicant.photoURL || null, trustScore: applicant.trustScore || 0, stats: applicant.stats || { rating: 0, exchangesCompleted: 0 } } : null };
+  });
+  return { success: true, applications, request: { ...payload<Record<string, unknown>>(request.payload), id: request.id, requesterId: request.requester_id, title: request.title, status: request.status } };
 }
 
 export async function updateApplicationStatus(applicationId: string, newStatus: string) {
-  try {
-    const userId = await getCurrentUserId();
-    if (!userId) {
-      return { success: false, error: "Unauthorized" };
-    }
-
-    if (!db) {
-      return { success: false, error: "Database not initialized" };
-    }
-
-    const appRef = db.collection("marketplace_applications").doc(applicationId);
-    const appDoc = await appRef.get();
-    
-    if (!appDoc.exists) {
-      return { success: false, error: "Application not found" };
-    }
-
-    const appData = appDoc.data() as MarketplaceApplication;
-
-    // Verify ownership of the associated request
-    const requestDoc = await db.collection("marketplace_requests").doc(appData.requestId).get();
-    if (!requestDoc.exists || requestDoc.data()?.requesterId !== userId) {
-      return { success: false, error: "Unauthorized" };
-    }
-
-    if (newStatus === "accepted") {
-      // Delegate to the exchange creation logic which handles escrow, transactions, and status updates atomically
-      return await createExchangeFromApplication(applicationId);
-    }
-
-    if (!(["shortlisted", "rejected"] as const).includes(newStatus as "shortlisted" | "rejected")) {
-      return { success: false, error: "Invalid application status" };
-    }
-    if (appData.status !== "pending" && appData.status !== "shortlisted") {
-      return { success: false, error: "Application cannot be updated" };
-    }
-    const updates = { status: newStatus, updatedAt: new Date().toISOString() };
-    await appRef.update(updates);
-
-    return { success: true };
-  } catch (error: any) {
-    console.error("Error updating application status:", error);
-    return { success: false, error: error.message || "Failed to update status" };
-  }
+  const userId = await getCurrentUserId();
+  if (!userId) return { success: false, error: "Unauthorized" };
+  if (newStatus === "accepted") return createExchangeFromApplication(applicationId);
+  if (!(["shortlisted", "rejected"] as const).includes(newStatus as "shortlisted" | "rejected")) return { success: false, error: "Invalid application status" };
+  const now = new Date().toISOString();
+  const rows = await sql.query("update marketplace_applications a set status=$3,updated_at=$4,payload=a.payload || $5::jsonb from marketplace_requests r where a.id=$1 and a.request_id=r.id and r.requester_id=$2 and a.status in ('pending','shortlisted') returning a.id", [applicationId, userId, newStatus, now, JSON.stringify({ status: newStatus, updatedAt: now })]);
+  return rows.length ? { success: true } : { success: false, error: "Application not found or cannot be updated" };
 }
 
 export async function getUserApplicationRequestIds() {
-  if (USE_DEMO_MARKETPLACE) {
-    return DEMO_APPLIED_REQUEST_IDS;
-  }
-  
-  try {
-    const userId = await getCurrentUserId();
-    if (!userId || !db) return [];
-
-    const snapshot = await db.collection("marketplace_applications")
-      .where("applicantId", "==", userId)
-      .get();
-      
-    return snapshot.docs.map(doc => doc.data().requestId as string);
-  } catch (error) {
-    console.error("Error fetching user applications:", error);
-    return [];
-  }
+  if (USE_DEMO_MARKETPLACE) return DEMO_APPLIED_REQUEST_IDS;
+  const userId = await getCurrentUserId();
+  if (!userId) return [];
+  const rows = await sql.query("select request_id from marketplace_applications where applicant_id=$1", [userId]);
+  return rows.map(row => String(row.request_id));
 }

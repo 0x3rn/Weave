@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/firebase-admin-auth";
-import { db } from "@/lib/firebase-admin";
+import { sql } from "@/lib/neon";
 
 export async function POST() {
   try {
@@ -14,9 +14,9 @@ export async function POST() {
       const decodedClaims = await auth.verifySessionCookie(sessionCookie).catch(() => null);
       if (decodedClaims) {
         // Remove device tracking
-        if (deviceId && db) {
+        if (deviceId) {
           try {
-            await db.collection("users").doc(decodedClaims.sub).collection("devices").doc(deviceId).delete();
+            await sql.query("delete from user_devices where id=$1 and user_id=$2", [deviceId, decodedClaims.sub]);
           } catch (e) {
             console.error("Failed to delete device on logout:", e);
           }

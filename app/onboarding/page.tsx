@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { auth } from "@/lib/firebase-admin-auth";
-import { db } from "@/lib/firebase-admin";
+import { getUserById } from "@/lib/users";
 import OnboardingWizard from "@/components/onboarding/onboarding-wizard";
 
 export const metadata = {
@@ -11,14 +11,12 @@ export default async function OnboardingPage() {
   const cookieStore = await cookies();
   const sessionCookie = cookieStore.get("session")?.value;
 
-  if (!sessionCookie || !auth || !db) return null;
+  if (!sessionCookie || !auth) return null;
 
   try {
     const decodedClaims = await auth.verifySessionCookie(sessionCookie, true);
-    const userDoc = await db.collection("users").doc(decodedClaims.uid).get();
-    
-    if (!userDoc.exists) return null;
-    const userData = userDoc.data()!;
+    const userData = await getUserById(decodedClaims.uid);
+    if (!userData) return null;
 
     return (
       <main className="min-h-screen py-4 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">

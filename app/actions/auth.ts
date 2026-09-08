@@ -1,127 +1,86 @@
 "use server";
 
-import { db } from "@/lib/firebase-admin";
 import { auth } from "@/lib/firebase-admin-auth";
+import { iso, payload, sql } from "@/lib/neon";
 
 export async function getInviteDetails(code: string) {
-  if (!db) return null;
-
+  if (!code || code.length > 200) return null;
   try {
-    const querySnapshot = await db.collection("invites").where("code", "==", code).get();
-    if (querySnapshot.empty) return null;
-    
-    const data = querySnapshot.docs[0].data();
-    return {
-      email: data.email,
-      status: data.status,
-      expiresAt: data.expiresAt
-    };
-  } catch (e) {
+    const [invite] = await sql.query("select email,status,expires_at,payload from invites where code=$1 limit 1", [code]);
+    if (!invite) return null;
+    const data = payload<Record<string, unknown>>(invite.payload);
+    return { email: invite.email ?? data.email, status: invite.status ?? data.status, expiresAt: iso(invite.expires_at ?? data.expiresAt) };
+  } catch {
     return null;
   }
 }
 
 export async function registerWithInvite(code: string, email: string, password: string) {
-  if (!db || !auth) return { error: "Database not initialized" };
+  if (!auth) return { error: "Authentication is not initialized" };
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!code || code.length > 200 || !/^\S+@\S+\.\S+$/.test(normalizedEmail) || password.length < 8 || password.length > 128) return { error: "Invalid registration details" };
 
+  let createdUid: string | null = null;
   try {
-    // 1. Validate Invite Code
-    const querySnapshot = await db.collection("invites").where("code", "==", code).get();
-    
-    if (querySnapshot.empty) {
-      return { error: "Invalid invite code" };
-    }
+    const [invite] = await sql.query("select * from invites where code=$1 limit 1", [code]);
+    if (!invite) return { error: "Invalid invite code" };
+    const inviteData = payload<Record<string, unknown>>(invite.payload);
+    const status = String(invite.status ?? inviteData.status ?? "");
+    if (status === "used") return { error: "This invitation has already been used" };
+    if (status === "revoked") return { error: "This invitation is no longer valid" };
+    const expiresAt = iso(invite.expires_at ?? inviteData.expiresAt);
+    if (expiresAt && Date.now() > new Date(expiresAt).getTime()) return { error: "This invitation has expired" };
+    if (String(invite.email ?? inviteData.email ?? "").toLowerCase() !== normalizedEmail) return { error: "This invitation was issued for another email address" };
 
-    const inviteDoc = querySnapshot.docs[0];
-    const inviteData = inviteDoc.data();
-
-    if (inviteData.status === "used") {
-      return { error: "This invitation has already been used" };
-    }
-
-    if (inviteData.status === "revoked") {
-      return { error: "This invitation is no longer valid" };
-    }
-
-    if (inviteData.expiresAt && new Date() > new Date(inviteData.expiresAt)) {
-      return { error: "This invitation has expired" };
-    }
-
-    if (inviteData.email.toLowerCase() !== email.toLowerCase()) {
-      return { error: "This invitation was issued for another email address" };
-    }
-
-    // 2. Check if user already exists in Firebase Auth
-    let userRecord;
     try {
-      userRecord = await auth.getUserByEmail(email);
-      if (userRecord) {
-        return { error: "An account with this email already exists" };
-      }
-    } catch (e: any) {
-      if (e.code !== 'auth/user-not-found') {
-        return { error: "Error checking user existence" };
-      }
+      await auth.getUserByEmail(normalizedEmail);
+      return { error: "An account with this email already exists" };
+    } catch (error) {
+      if (!error || typeof error !== "object" || !("code" in error) || error.code !== "auth/user-not-found") throw error;
     }
 
-    // 3. Create the Auth User
-    userRecord = await auth.createUser({
-      email: email.toLowerCase(),
-      password: password,
-      emailVerified: true // They proved ownership via the invite flow
-    });
-
-    const uid = userRecord.uid;
-
-    // Fetch original application data if available to prefill the profile
-    let startingHours = 5;
-    let isVerified = false;
-    let profileData = {};
-
-    if (inviteData.inviteApplicationId) {
-      const appDoc = await db.collection("invite_applications").doc(inviteData.inviteApplicationId).get();
-      if (appDoc.exists) {
-        const appData = appDoc.data()!;
-        profileData = {
-          fullName: appData.fullName,
-          country: appData.country,
-          timeZone: appData.timeZone,
-          profession: appData.profession,
-          experience: appData.experience,
-          portfolio: appData.portfolio || "",
-          linkedIn: appData.linkedIn || "",
-          github: appData.github || "",
-          skillsOffered: appData.skillsOffered || [],
-          skillsLookingFor: appData.skillsLookingFor || [],
-        };
-        
-        if (appData.approvedSettings) {
-          startingHours = appData.approvedSettings.startingHours || 5;
-          isVerified = appData.approvedSettings.badge || false;
-        }
-      }
+    let application: Record<string, unknown> = {};
+    const applicationId = typeof inviteData.inviteApplicationId === "string" ? inviteData.inviteApplicationId : null;
+    if (applicationId) {
+      const [row] = await sql.query("select payload from invite_applications where id=$1", [applicationId]);
+      if (row) application = payload<Record<string, unknown>>(row.payload);
     }
+    const settings = payload<Record<string, unknown>>(application.approvedSettings);
+    const startingHours = Number.isFinite(Number(settings.startingHours)) ? Math.max(0, Math.min(10_000, Number(settings.startingHours))) : 5;
+    const isVerified = settings.badge === true;
 
-    // 3. Create User Profile
-    await db.collection("users").doc(uid).set({
-      email: email.toLowerCase(),
-      createdAt: new Date().toISOString(),
+    const authUser = await auth.createUser({ email: normalizedEmail, password, emailVerified: true });
+    createdUid = authUser.uid;
+    const now = new Date().toISOString();
+    const userPayload = {
+      email: normalizedEmail,
+      createdAt: now,
       skillHours: startingHours,
       isVerified,
       source: "invite_code",
-      ...profileData
-    });
-
-    // 4. Mark invite as used
-    await inviteDoc.ref.update({
-      status: "used",
-      usedAt: new Date().toISOString(),
-      userId: uid
-    });
-
+      fullName: application.fullName ?? null,
+      country: application.country ?? null,
+      timeZone: application.timeZone ?? null,
+      profession: application.profession ?? null,
+      experience: application.experience ?? null,
+      portfolio: application.portfolio ?? "",
+      linkedIn: application.linkedIn ?? "",
+      github: application.github ?? "",
+      skillsOffered: application.skillsOffered ?? [],
+      skillsLookingFor: application.skillsLookingFor ?? [],
+    };
+    const claimPayload = JSON.stringify({ status: "used", usedAt: now, userId: createdUid });
+    const rows = await sql.query(
+      "with claimed as (update invites set status='used',payload=payload || $3::jsonb where id=$1 and status not in ('used','revoked') and (expires_at is null or expires_at>now()) returning id) insert into users (id,email,full_name,profession,country,time_zone,skill_hours,is_verified,created_at,updated_at,payload) select $2,$4,$5,$6,$7,$8,$9,$10,$11,$11,$12::jsonb from claimed returning id",
+      [invite.id, createdUid, claimPayload, normalizedEmail, application.fullName ?? null, application.profession ?? null, application.country ?? null, application.timeZone ?? null, startingHours, isVerified, now, JSON.stringify(userPayload)],
+    );
+    if (!rows.length) throw new Error("This invitation was already claimed or expired");
     return { success: true };
-  } catch (error: any) {
-    console.error("Error during registration:", error);
-    return { error: error.message };
+  } catch (error) {
+    if (createdUid && auth) {
+      try { await auth.deleteUser(createdUid); } catch (cleanupError) { console.error("Unable to roll back Firebase Auth user", cleanupError); }
+    }
+    console.error("Error during registration", error);
+    return { error: error instanceof Error ? error.message : "Registration failed" };
   }
 }

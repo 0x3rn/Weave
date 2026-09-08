@@ -10,7 +10,7 @@ import {
   AlertCircle
 } from "lucide-react";
 import Link from "next/link";
-import { db } from "@/lib/firebase-admin";
+import { iso, payload, sql } from "@/lib/neon";
 
 export const metadata = {
   title: "Overview Dashboard"
@@ -31,14 +31,8 @@ function formatTimeAgo(date: Date) {
 }
 
 export default async function AdminPage() {
-  if (!db) {
-    return <div className="p-8 text-error">Database connection not initialized.</div>;
-  }
-
-  // Fetch data
-  const invitesSnapshot = await db.collection("invite_applications").get();
-
-  const totalInvites = invitesSnapshot.size;
+  const inviteRows = await sql.query("select * from invite_applications");
+  const totalInvites = inviteRows.length;
   
   let approvedInvites = 0;
   let pendingInvites = 0;
@@ -49,19 +43,19 @@ export default async function AdminPage() {
   
   const activities: any[] = [];
 
-  invitesSnapshot.forEach(doc => {
-     const data = doc.data();
+  inviteRows.forEach(row => {
+     const data: Record<string, unknown> = { ...payload<Record<string, unknown>>(row.payload), status: row.status, fullName: row.full_name, createdAt: iso(row.submitted_at), approvedAt: iso(row.approved_at) };
      if (data.status === "approved") approvedInvites++;
      if (data.status === "pending" || !data.status) pendingInvites++;
      if (data.createdAt && data.createdAt >= startOfToday) invitesToday++;
 
      if (data.createdAt) {
        activities.push({
-         id: doc.id,
+         id: String(row.id),
          type: "invite",
          name: data.fullName || "Someone",
          action: data.status === "approved" ? "was approved" : data.status === "rejected" ? "was rejected" : "submitted an invite request",
-         date: new Date(data.status === "approved" ? (data.approvedAt || data.createdAt) : data.status === "rejected" ? (data.rejectedAt || data.createdAt) : data.createdAt),
+         date: new Date(String(data.status === "approved" ? (data.approvedAt || data.createdAt) : data.status === "rejected" ? (data.rejectedAt || data.createdAt) : data.createdAt)),
          status: data.status || "pending"
        });
      }

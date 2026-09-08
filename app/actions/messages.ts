@@ -3,6 +3,7 @@
 import { payload, sql, iso } from "@/lib/neon";
 import { getCurrentUserId } from "./user";
 import { Conversation, Exchange, Message } from "@/types";
+import { userFromRow } from "@/lib/users";
 import { revalidatePath } from "next/cache";
 
 type ConversationRow = Record<string, unknown> & { id: string; payload: unknown };
@@ -40,6 +41,36 @@ export async function getConversations() {
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to load conversations" };
   }
+}
+
+export async function getMessages(conversationId: string) {
+  const userId = await getCurrentUserId();
+  if (!userId) return { success: false, error: "Unauthorized", messages: [] };
+  const [membership] = await sql.query("select 1 from conversation_participants where conversation_id=$1 and user_id=$2", [conversationId, userId]);
+  if (!membership) return { success: false, error: "Conversation not found", messages: [] };
+  const rows = await sql.query("select * from messages where conversation_id=$1 order by created_at asc limit 500", [conversationId]);
+  const messages = rows.map(row => ({
+    ...payload<Record<string, unknown>>(row.payload),
+    id: String(row.id),
+    conversationId: String(row.conversation_id),
+    senderId: String(row.sender_id ?? ""),
+    type: String(row.message_type ?? "text") as Message["type"],
+    content: String(row.content ?? ""),
+    metadata: row.metadata ?? undefined,
+    readBy: Array.isArray(row.read_by) ? row.read_by as string[] : [],
+    createdAt: iso(row.created_at),
+  })) as Message[];
+  return { success: true, messages };
+}
+
+export async function getConversationPartners(conversationIds: string[]) {
+  const userId = await getCurrentUserId();
+  if (!userId || !Array.isArray(conversationIds) || conversationIds.length > 100) return { success: false, partners: [] };
+  const rows = await sql.query(
+    "select distinct u.* from conversation_participants mine join conversation_participants other on other.conversation_id=mine.conversation_id and other.user_id<>mine.user_id join users u on u.id=other.user_id where mine.user_id=$1 and mine.conversation_id=any($2::text[])",
+    [userId, conversationIds],
+  );
+  return { success: true, partners: rows.map(row => userFromRow(row)) };
 }
 
 export async function getOrCreateExchangeConversation(exchangeId: string) {
@@ -104,6 +135,17 @@ export async function getConversationContext(conversationId: string) {
     partner: partner ? { uid: partner.id, fullName: partner.full_name || partner.username || "Unknown User", photoURL: partner.photo_url || null, isVerified: partner.is_verified === true, trustScore: Number(partner.trust_score || 0) } : null,
     exchange: exchange ? { id: exchange.id, ...payload<Record<string, unknown>>(exchange.payload) } as Exchange : null,
   };
+}
+
+export async function getExchangeQuickContext(exchangeId: string) {
+  const userId = await getCurrentUserId();
+  if (!userId) return { success: false, exchange: null, escrow: null };
+  const [exchange] = await sql.query("select * from exchanges where id=$1 and (requester_id=$2 or provider_id=$2)", [exchangeId, userId]);
+  if (!exchange) return { success: false, exchange: null, escrow: null };
+  const exchangeData = { ...payload<Record<string, unknown>>(exchange.payload), id: exchange.id, requesterId: exchange.requester_id, providerId: exchange.provider_id, status: exchange.status, title: exchange.title, skillHours: Number(exchange.skill_hours ?? 0) } as Exchange;
+  const [escrow] = await sql.query("select * from escrows where exchange_id=$1", [exchangeId]);
+  const escrowData = escrow ? { ...payload<Record<string, unknown>>(escrow.payload), id: escrow.id, exchangeId: escrow.exchange_id, status: escrow.status, participants: escrow.participants, timeline: escrow.timeline } : null;
+  return { success: true, exchange: exchangeData, escrow: escrowData };
 }
 
 export async function markConversationRead(conversationId: string) {

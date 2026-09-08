@@ -2,7 +2,7 @@ import { getMarketplaceRequest } from "@/app/actions/marketplace";
 import { getCurrentUserId } from "@/app/actions/user";
 import { redirect, notFound } from "next/navigation";
 import ApplyClient from "@/components/marketplace/apply-client";
-import { db } from "@/lib/firebase-admin";
+import { sql } from "@/lib/neon";
 
 export const metadata = {
   title: "Apply for Exchange | Weave",
@@ -40,14 +40,8 @@ export default async function ApplyPage({
   }
 
   // Check if already applied
-  if (!db) return notFound();
-  const existingApp = await db.collection("marketplace_applications")
-    .where("requestId", "==", id)
-    .where("applicantId", "==", userId)
-    .limit(1)
-    .get();
-
-  if (!existingApp.empty) {
+  const [existingApp] = await sql.query("select id from marketplace_applications where request_id=$1 and applicant_id=$2 limit 1", [id, userId]);
+  if (existingApp) {
     // Already applied, redirect to dashboard or request page
     redirect(`/marketplace/${id}`);
   }

@@ -11,7 +11,7 @@ import {
 import { 
   Code2, Palette, PenTool, Layout, Box, Brush, Monitor, Smartphone, Video,
   Briefcase, ClipboardList, Database, Server, Megaphone, PenBox,
-  LineChart, Calculator, FileText, Globe, Headset, Lock, Search,
+  LineChart, Calculator, Globe, Headset, Lock, Search,
   Wrench, Users, Camera, Music, BookOpen, Layers
 } from "lucide-react";
 
@@ -133,7 +133,6 @@ export function SkillIcon({ skill, className = "w-5 h-5" }: { skill: string, cla
     case "frontenddevelopment":
     case "ui": return <Layout className={`${className} text-[#06B6D4]`} />;
     case "database":
-    case "sql":
     case "nosql":
     case "data":
     case "dataanalysis":

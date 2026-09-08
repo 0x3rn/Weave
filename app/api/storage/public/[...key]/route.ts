@@ -1,6 +1,6 @@
 import { getPublicObject, isPublicObjectKey } from "@/lib/neon-storage";
 
-export async function GET(_: Request, ctx: RouteContext<"/api/storage/public/[...key]">) {
+export async function GET(_: Request, ctx: { params: Promise<{ key: string[] }> }) {
   const { key: segments } = await ctx.params;
   const key = segments.join("/");
   if (!isPublicObjectKey(key)) return new Response("Not found", { status: 404 });

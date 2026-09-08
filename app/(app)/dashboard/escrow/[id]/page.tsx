@@ -1,7 +1,7 @@
 import { getCurrentUserId } from "@/app/actions/user";
-import { getEscrowByExchangeId } from "@/app/actions/escrow";
 import { redirect } from "next/navigation";
-import { db } from "@/lib/firebase-admin";
+import { payload, sql } from "@/lib/neon";
+import { userFromRow } from "@/lib/users";
 import { Escrow, Exchange, User } from "@/types";
 import EscrowDetailsClient from "@/components/escrow/escrow-details-client";
 import Link from "next/link";
@@ -11,35 +11,22 @@ export const metadata = {
   title: "Escrow Details | Weave"
 };
 
-export default async function EscrowDetailsPage({ params }: { params: { id: string } }) {
+export default async function EscrowDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const userId = await getCurrentUserId();
   if (!userId) redirect("/login");
-
-  if (!db) redirect("/dashboard");
-
-  // Note: params.id is the escrow ID
-  const escrowDoc = await db.collection("escrows").doc(params.id).get();
-  if (!escrowDoc.exists) redirect("/dashboard/escrow");
-  const escrow = { id: escrowDoc.id, ...escrowDoc.data() } as Escrow;
+  const { id } = await params;
+  const [escrowRow] = await sql.query("select * from escrows where id=$1 and participants ? $2", [id, userId]);
+  if (!escrowRow) redirect("/dashboard/escrow");
+  const escrow = { ...payload<Record<string, unknown>>(escrowRow.payload), id: String(escrowRow.id), exchangeId: String(escrowRow.exchange_id), status: String(escrowRow.status), participants: escrowRow.participants, timeline: escrowRow.timeline } as Escrow;
   if (!escrow.participants[userId]) redirect("/dashboard/escrow");
 
-  // Fetch Exchange
-  const exchangeDoc = await db.collection("exchanges").doc(escrow.exchangeId).get();
-  const exchange = { id: exchangeDoc.id, ...exchangeDoc.data() } as Exchange;
-
-  // Fetch Users
-  const userDocs = await Promise.all([
-    db.collection("users").doc(exchange.requesterId).get(),
-    db.collection("users").doc(exchange.providerId).get()
-  ]);
+  const [exchangeRow] = await sql.query("select * from exchanges where id=$1", [escrow.exchangeId]);
+  if (!exchangeRow) redirect("/dashboard/escrow");
+  const exchange = { ...payload<Record<string, unknown>>(exchangeRow.payload), id: String(exchangeRow.id), requesterId: String(exchangeRow.requester_id), providerId: String(exchangeRow.provider_id), title: String(exchangeRow.title), status: String(exchangeRow.status), skillHours: Number(exchangeRow.skill_hours ?? 0) } as Exchange;
 
   const usersMap: Record<string, User> = {};
-  userDocs.forEach(doc => {
-    if (doc.exists) {
-      const data = doc.data() as User;
-      usersMap[doc.id] = { uid: doc.id, username: data.username, fullName: data.fullName, email: "", photoURL: data.photoURL ?? null, profession: data.profession, country: data.country, timeZone: data.timeZone, createdAt: data.createdAt, lastActive: "", skillsOffered: [], skillsLookingFor: [], stats: data.stats, trustScore: data.trustScore, isVerified: data.isVerified, profileCompletion: data.profileCompletion };
-    }
-  });
+  const userRows = await sql.query("select * from users where id=any($1::text[])", [[exchange.requesterId, exchange.providerId]]);
+  userRows.forEach(row => { const user = userFromRow(row); usersMap[user.uid] = user; });
 
   return (
     <div className="max-w-5xl mx-auto py-8 px-4 sm:px-6 lg:px-8">

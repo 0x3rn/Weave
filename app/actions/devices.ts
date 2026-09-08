@@ -1,88 +1,48 @@
 "use server";
 
-import { db } from "@/lib/firebase-admin";
-import { auth as adminAuth } from "@/lib/firebase-admin-auth";
-import { getCurrentUserId } from "./user";
 import { cookies } from "next/headers";
+import { iso, payload, sql } from "@/lib/neon";
+import { getCurrentUserId } from "./user";
 
 export async function getUserDevices() {
   try {
-    const uid = await getCurrentUserId();
-    if (!uid || !db) return { devices: [], error: "Not authenticated" };
-
-    const snapshot = await db.collection("users").doc(uid).collection("devices").orderBy("lastActive", "desc").get();
-    
-    const cookieStore = await cookies();
-    const currentDeviceId = cookieStore.get("deviceId")?.value;
-
-    const devices = snapshot.docs.map(doc => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        os: data.os || "Unknown",
-        browser: data.browser || "Unknown",
-        deviceType: data.deviceType || "desktop",
-        ip: data.ip || "Unknown IP",
-        lastActive: data.lastActive,
-        isCurrentDevice: doc.id === currentDeviceId
-      };
-    });
-
-    return { devices, success: true };
-  } catch (error: any) {
-    console.error("Failed to fetch devices:", error);
+    const userId = await getCurrentUserId();
+    if (!userId) return { devices: [], error: "Not authenticated" };
+    const currentDeviceId = (await cookies()).get("deviceId")?.value;
+    const rows = await sql.query("select * from user_devices where user_id=$1 order by last_active_at desc", [userId]);
+    return {
+      success: true,
+      devices: rows.map(row => {
+        const data = payload<Record<string, unknown>>(row.payload);
+        return {
+          id: String(row.id),
+          os: String(row.os ?? data.os ?? "Unknown"),
+          browser: String(row.browser ?? data.browser ?? "Unknown"),
+          deviceType: String(row.device_type ?? data.deviceType ?? "desktop"),
+          ip: String(row.ip ?? data.ip ?? "Unknown IP"),
+          lastActive: iso(row.last_active_at ?? data.lastActive),
+          isCurrentDevice: row.id === currentDeviceId,
+        };
+      }),
+    };
+  } catch (error) {
+    console.error("Failed to fetch devices", error);
     return { devices: [], error: "Failed to fetch devices" };
   }
 }
 
 export async function revokeDevice(deviceId: string) {
-  try {
-    const uid = await getCurrentUserId();
-    if (!uid || !db) return { success: false, error: "Not authenticated" };
-
-    const cookieStore = await cookies();
-    const currentDeviceId = cookieStore.get("deviceId")?.value;
-
-    if (deviceId === currentDeviceId) {
-      return { success: false, error: "Cannot revoke current device directly from here." };
-    }
-
-    await db.collection("users").doc(uid).collection("devices").doc(deviceId).delete();
-
-    return { success: true };
-  } catch (error: any) {
-    console.error("Failed to revoke device:", error);
-    return { success: false, error: "Failed to revoke device" };
-  }
+  const userId = await getCurrentUserId();
+  if (!userId) return { success: false, error: "Not authenticated" };
+  if (deviceId === (await cookies()).get("deviceId")?.value) return { success: false, error: "Cannot revoke current device directly from here." };
+  await sql.query("delete from user_devices where id=$1 and user_id=$2", [deviceId, userId]);
+  return { success: true };
 }
 
 export async function revokeAllOtherDevices() {
-  try {
-    const uid = await getCurrentUserId();
-    if (!uid || !db || !adminAuth) return { success: false, error: "Not authenticated" };
-
-    const cookieStore = await cookies();
-    const currentDeviceId = cookieStore.get("deviceId")?.value;
-
-    // 1. Delete all devices in Firestore EXCEPT the current one
-    const snapshot = await db.collection("users").doc(uid).collection("devices").get();
-    const batch = db.batch();
-    let count = 0;
-    
-    snapshot.docs.forEach(doc => {
-      if (doc.id !== currentDeviceId) {
-        batch.delete(doc.ref);
-        count++;
-      }
-    });
-
-    if (count > 0) {
-      await batch.commit();
-    }
-
-    return { success: true };
-  } catch (error: any) {
-    console.error("Failed to revoke other devices:", error);
-    return { success: false, error: "Failed to revoke other devices" };
-  }
+  const userId = await getCurrentUserId();
+  if (!userId) return { success: false, error: "Not authenticated" };
+  const currentDeviceId = (await cookies()).get("deviceId")?.value;
+  await sql.query("delete from user_devices where user_id=$1 and ($2::text is null or id<>$2)", [userId, currentDeviceId ?? null]);
+  return { success: true };
 }

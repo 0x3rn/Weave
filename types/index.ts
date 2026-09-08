@@ -215,6 +215,7 @@ export interface Escrow {
   timeline: EscrowEvent[];
   dispute?: {
     reason: string;
+    details?: string;
     evidenceUrls: string[];
     openedAt: string;
     status: "investigating" | "resolved";

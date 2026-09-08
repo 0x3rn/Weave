@@ -2,9 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Conversation, Message, User, Exchange } from "@/types";
-import { db } from "@/lib/firebase";
-import { collection, query, where, orderBy, onSnapshot } from "firebase/firestore";
-import { getConversationContext, markConversationRead } from "@/app/actions/messages";
+import { getConversationContext, getMessages, markConversationRead } from "@/app/actions/messages";
 import { ArrowLeft, Phone, Video, MoreVertical, ShieldCheck, CheckCircle2 } from "lucide-react";
 import MessageBubble from "./message-bubble";
 import Composer from "./composer";
@@ -21,8 +19,6 @@ export default function ChatArea({ conversation, currentUserId, onBack }: Props)
   const [exchange, setExchange] = useState<Exchange | null>(null);
   const [activeTab, setActiveTab] = useState<"chat" | "files" | "links" | "activity" | "notes">("chat");
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  const partnerId = conversation.participants.find(id => id !== currentUserId);
 
   useEffect(() => {
     // Mark read
@@ -43,29 +39,16 @@ export default function ChatArea({ conversation, currentUserId, onBack }: Props)
   }, [conversation.id]);
 
   useEffect(() => {
-    // Real-time listener for messages
-    const q = query(
-      collection(db, "messages"),
-      where("conversationId", "==", conversation.id),
-      orderBy("createdAt", "asc")
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const msgs: Message[] = [];
-      snapshot.forEach(doc => {
-        msgs.push({ id: doc.id, ...doc.data() } as Message);
-      });
-      setMessages(msgs);
-      
-      // Auto-scroll to bottom
-      setTimeout(() => {
-        if (scrollRef.current) {
-          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-        }
-      }, 100);
-    });
-
-    return () => unsubscribe();
+    let active = true;
+    const load = async () => {
+      const result = await getMessages(conversation.id);
+      if (!active || !result.success) return;
+      setMessages(result.messages);
+      setTimeout(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, 100);
+    };
+    load();
+    const timer = window.setInterval(load, 5000);
+    return () => { active = false; window.clearInterval(timer); };
   }, [conversation.id]);
 
   return (

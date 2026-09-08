@@ -2,7 +2,8 @@
 
 import { getCurrentUserId } from "./user";
 import { LedgerTransaction } from "@/types";
-import { db } from "@/lib/firebase-admin";
+import { iso, payload, sql } from "@/lib/neon";
+import { getUserById } from "@/lib/users";
 
 export async function getLedgerData() {
   const userId = await getCurrentUserId();
@@ -10,27 +11,16 @@ export async function getLedgerData() {
     throw new Error("Unauthorized");
   }
 
-  if (!db) {
-    throw new Error("Database not initialized");
-  }
-
-  // 1. Fetch User Data
-  const userDoc = await db.collection("users").doc(userId).get();
-  if (!userDoc.exists) {
-    throw new Error("User not found");
-  }
-  const userData = userDoc.data();
-  
-  // 2. Fetch Transactions
-  const txSnapshot = await db.collection("transactions").where("userId", "==", userId).get();
-  
-  const transactions: LedgerTransaction[] = [];
-  txSnapshot.forEach(doc => {
-    transactions.push({ id: doc.id, ...doc.data() } as LedgerTransaction);
-  });
-
-  // Sort transactions by date descending (newest first)
-  transactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const userData = await getUserById(userId);
+  if (!userData) throw new Error("User not found");
+  const rows = await sql.query("select * from ledger_entries where user_id=$1 order by occurred_at desc", [userId]);
+  const transactions = rows.map(row => ({
+    ...payload<Record<string, unknown>>(row.payload),
+    id: String(row.id), userId: String(row.user_id ?? ""), exchangeId: row.exchange_id ? String(row.exchange_id) : undefined,
+    linkedUserId: row.related_user_id ? String(row.related_user_id) : undefined, type: String(row.entry_type ?? "Adjustment") as LedgerTransaction["type"],
+    status: String(row.entry_status ?? "Completed") as LedgerTransaction["status"], amount: Number(row.amount ?? 0), balanceBefore: Number(row.balance_before ?? 0),
+    balanceAfter: Number(row.balance_after ?? 0), description: String(row.description ?? ""), notes: row.notes ? String(row.notes) : undefined, date: iso(row.occurred_at),
+  })) as LedgerTransaction[];
 
   // 3. Compute Stats & Insights
   const now = new Date();
@@ -162,8 +152,8 @@ export async function getLedgerData() {
       tx.exchangeId && 
       (tx.type === "Earned" || tx.type === "Spent")
     ).length,
-    trustScoreChange30Days: userData?.stats?.trustScoreChange30Days || 0,
-    ratingsReceived30Days: userData?.stats?.reviewsCount30Days || 0
+    trustScoreChange30Days: Number((userData.stats as unknown as Record<string, unknown>)?.trustScoreChange30Days || 0),
+    ratingsReceived30Days: Number((userData.stats as unknown as Record<string, unknown>)?.reviewsCount30Days || 0)
   };
 
   const insights = {

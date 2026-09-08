@@ -1,5 +1,5 @@
 import { getCurrentUserId } from "@/app/actions/user";
-import { db } from "@/lib/firebase-admin";
+import { getUserById } from "@/lib/users";
 import { redirect } from "next/navigation";
 import { PrivacyClient } from "@/components/settings/privacy-client";
 
@@ -14,13 +14,7 @@ export default async function PrivacySettingsPage() {
     redirect("/login");
   }
 
-  let user = null;
-  if (db) {
-    const userDoc = await db.collection("users").doc(userId).get();
-    if (userDoc.exists) {
-      user = { id: userDoc.id, ...userDoc.data() };
-    }
-  }
+  const user = await getUserById(userId);
 
   if (!user) {
     return <div className="p-8 text-error">Failed to load account data.</div>;

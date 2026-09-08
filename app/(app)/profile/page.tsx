@@ -1,5 +1,5 @@
 import { getCurrentUserId } from "@/app/actions/user";
-import { db } from "@/lib/firebase-admin";
+import { getUserById } from "@/lib/users";
 import { User } from "@/types";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
@@ -32,20 +32,13 @@ export default async function ProfilePage() {
     redirect("/api/auth/logout");
   }
 
-  if (!db) {
-    throw new Error("Firestore not initialized");
-  }
-
-  const userDoc = await db.collection("users").doc(userId).get();
-  
-  if (!userDoc.exists) {
+  const user = await getUserById(userId);
+  if (!user) {
     notFound();
   }
 
-  const userData = userDoc.data();
-
   // If they don't have a username, render a client component to set one
-  if (!userData || !userData.username) {
+  if (!user.username) {
     return (
       <div className="min-h-full bg-background flex items-center justify-center p-4">
         <SetUsernameClient />
@@ -53,7 +46,6 @@ export default async function ProfilePage() {
     );
   }
 
-  const user = { uid: userDoc.id, ...userData } as User;
   const isOwner = true; // By definition on this route
 
   // Fetch Related Data in Parallel

@@ -1,5 +1,5 @@
 import { auth } from "@/lib/firebase-admin-auth";
-import { db } from "@/lib/firebase-admin";
+import { sql } from "@/lib/neon";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { UAParser } from "ua-parser-js";
@@ -31,11 +31,7 @@ export async function POST(request: Request) {
     // Verify token to get UID and update lastActive, plus device tracking
     try {
       const decodedToken = await auth.verifyIdToken(idToken);
-      if (db) {
-        await db.collection("users").doc(decodedToken.uid).update({
-          lastActive: new Date().toISOString()
-        });
-
+      {
         // Parse User Agent
         const userAgent = request.headers.get("user-agent") || "";
         const parser = new UAParser(userAgent);
@@ -49,22 +45,27 @@ export async function POST(request: Request) {
         // Generate a random deviceId
         const deviceId = crypto.randomUUID();
 
-        await db.collection("users").doc(decodedToken.uid).collection("devices").doc(deviceId).set({
+        const now = new Date().toISOString();
+        const deviceData = {
           os: os.name ? `${os.name} ${os.version || ""}`.trim() : "Unknown OS",
           browser: browser.name ? `${browser.name} ${browser.version || ""}`.trim() : "Unknown Browser",
           deviceType: device.type || "desktop",
           ip: ip.split(",")[0].trim(),
           userAgent: userAgent,
-          createdAt: new Date().toISOString(),
-          lastActive: new Date().toISOString()
-        });
+          createdAt: now,
+          lastActive: now,
+        };
+        await sql.transaction(tx => [
+          tx.query("update users set last_active_at=$2,updated_at=$2,payload=payload || $3::jsonb where id=$1", [decodedToken.uid, now, JSON.stringify({ lastActive: now })]),
+          tx.query("insert into user_devices (id,user_id,os,browser,device_type,ip,last_active_at,payload) values ($1,$2,$3,$4,$5,$6,$7,$8::jsonb)", [deviceId, decodedToken.uid, deviceData.os, deviceData.browser, deviceData.deviceType, deviceData.ip, now, JSON.stringify(deviceData)]),
+        ]);
 
         // Set the deviceId cookie
         const cookieStore = await cookies();
         cookieStore.set({
           name: "deviceId",
           value: deviceId,
-          maxAge: expiresIn,
+          maxAge: Math.floor(expiresIn / 1000),
           httpOnly: true,
           secure: process.env.NODE_ENV === "production",
           sameSite: "lax",
@@ -80,7 +81,7 @@ export async function POST(request: Request) {
     const options = {
       name: "session",
       value: sessionCookie,
-      maxAge: expiresIn,
+      maxAge: Math.floor(expiresIn / 1000),
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax" as const,
