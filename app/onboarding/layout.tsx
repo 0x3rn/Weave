@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/firebase-admin-auth";
+import { verifyFirebaseSessionCookie } from "@/lib/firebase-auth-server";
 import { getUserById } from "@/lib/users";
 
 export default async function OnboardingLayout({
@@ -11,7 +11,7 @@ export default async function OnboardingLayout({
   const cookieStore = await cookies();
   const sessionCookie = cookieStore.get("session")?.value;
 
-  if (!sessionCookie || !auth) {
+  if (!sessionCookie) {
     redirect("/api/auth/logout");
   }
 
@@ -19,7 +19,7 @@ export default async function OnboardingLayout({
 
   try {
     // 1. Verify the session cookie cryptographically
-    const decodedClaims = await auth.verifySessionCookie(sessionCookie, true);
+    const decodedClaims = await verifyFirebaseSessionCookie(sessionCookie, true);
     
     // 2. Fetch the user's application profile
     const userData = await getUserById(decodedClaims.uid);

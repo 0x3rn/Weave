@@ -6,6 +6,11 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   {
+    plugins: {
+      react: nextVitals[0].plugins.react,
+      "react-hooks": nextVitals[0].plugins["react-hooks"],
+      "@typescript-eslint": nextTs[0].plugins["@typescript-eslint"],
+    },
     rules: {
       // Keep the existing baseline visible without blocking feature work while
       // these broad, non-behavioral cleanups are migrated incrementally.
@@ -22,6 +27,8 @@ const eslintConfig = defineConfig([
   globalIgnores([
     // Default ignores of eslint-config-next:
     ".next/**",
+    ".open-next/**",
+    ".wrangler/**",
     "out/**",
     "build/**",
     "next-env.d.ts",

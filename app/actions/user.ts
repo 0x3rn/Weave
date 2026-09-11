@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@/lib/firebase-admin-auth";
+import { verifyFirebaseSessionCookie } from "@/lib/firebase-auth-server";
 import { payload, sql } from "@/lib/neon";
 import { storeUpload } from "@/lib/neon-storage";
 import { cookies } from "next/headers";
@@ -8,8 +8,8 @@ import { revalidatePath } from "next/cache";
 
 export async function requireAuth() {
   const sessionCookie = (await cookies()).get("session")?.value;
-  if (!sessionCookie || !auth) throw new Error("Not authenticated");
-  return auth.verifySessionCookie(sessionCookie, true);
+  if (!sessionCookie) throw new Error("Not authenticated");
+  return verifyFirebaseSessionCookie(sessionCookie, true);
 }
 
 export async function getCurrentUserId(): Promise<string | null> {

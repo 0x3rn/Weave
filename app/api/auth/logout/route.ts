@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/firebase-admin-auth";
+import { revokeFirebaseRefreshTokens, verifyFirebaseSessionCookie } from "@/lib/firebase-auth-server";
 import { sql } from "@/lib/neon";
 
 export async function POST() {
@@ -9,9 +9,9 @@ export async function POST() {
     const sessionCookie = cookieStore.get("session")?.value;
     const deviceId = cookieStore.get("deviceId")?.value;
 
-    if (sessionCookie && auth) {
+    if (sessionCookie) {
       // Clear the session from Firebase backend
-      const decodedClaims = await auth.verifySessionCookie(sessionCookie).catch(() => null);
+      const decodedClaims = await verifyFirebaseSessionCookie(sessionCookie, false).catch(() => null);
       if (decodedClaims) {
         // Remove device tracking
         if (deviceId) {
@@ -21,7 +21,7 @@ export async function POST() {
             console.error("Failed to delete device on logout:", e);
           }
         }
-        await auth.revokeRefreshTokens(decodedClaims.sub);
+        await revokeFirebaseRefreshTokens(decodedClaims.sub);
       }
     }
 
@@ -49,7 +49,7 @@ export async function GET(request: Request) {
       : "/login";
     
     return NextResponse.redirect(new URL(redirectTo, request.url));
-  } catch (error) {
+  } catch {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 }

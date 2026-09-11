@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@/lib/firebase-admin-auth";
+import { createFirebaseUser, deleteFirebaseUser, getFirebaseUserByEmail } from "@/lib/firebase-auth-server";
 import { iso, payload, sql } from "@/lib/neon";
 
 export async function getInviteDetails(code: string) {
@@ -16,7 +16,6 @@ export async function getInviteDetails(code: string) {
 }
 
 export async function registerWithInvite(code: string, email: string, password: string) {
-  if (!auth) return { error: "Authentication is not initialized" };
   const normalizedEmail = email.trim().toLowerCase();
   if (!code || code.length > 200 || !/^\S+@\S+\.\S+$/.test(normalizedEmail) || password.length < 8 || password.length > 128) return { error: "Invalid registration details" };
 
@@ -32,11 +31,9 @@ export async function registerWithInvite(code: string, email: string, password: 
     if (expiresAt && Date.now() > new Date(expiresAt).getTime()) return { error: "This invitation has expired" };
     if (String(invite.email ?? inviteData.email ?? "").toLowerCase() !== normalizedEmail) return { error: "This invitation was issued for another email address" };
 
-    try {
-      await auth.getUserByEmail(normalizedEmail);
+    const existingUser = await getFirebaseUserByEmail(normalizedEmail);
+    if (existingUser) {
       return { error: "An account with this email already exists" };
-    } catch (error) {
-      if (!error || typeof error !== "object" || !("code" in error) || error.code !== "auth/user-not-found") throw error;
     }
 
     let application: Record<string, unknown> = {};
@@ -49,7 +46,7 @@ export async function registerWithInvite(code: string, email: string, password: 
     const startingHours = Number.isFinite(Number(settings.startingHours)) ? Math.max(0, Math.min(10_000, Number(settings.startingHours))) : 5;
     const isVerified = settings.badge === true;
 
-    const authUser = await auth.createUser({ email: normalizedEmail, password, emailVerified: true });
+    const authUser = await createFirebaseUser({ email: normalizedEmail, password, emailVerified: true });
     createdUid = authUser.uid;
     const now = new Date().toISOString();
     const userPayload = {
@@ -77,8 +74,8 @@ export async function registerWithInvite(code: string, email: string, password: 
     if (!rows.length) throw new Error("This invitation was already claimed or expired");
     return { success: true };
   } catch (error) {
-    if (createdUid && auth) {
-      try { await auth.deleteUser(createdUid); } catch (cleanupError) { console.error("Unable to roll back Firebase Auth user", cleanupError); }
+    if (createdUid) {
+      try { await deleteFirebaseUser(createdUid); } catch (cleanupError) { console.error("Unable to roll back Firebase Auth user", cleanupError); }
     }
     console.error("Error during registration", error);
     return { error: error instanceof Error ? error.message : "Registration failed" };

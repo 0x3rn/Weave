@@ -1,4 +1,4 @@
-import { auth } from "@/lib/firebase-admin-auth";
+import { createFirebaseSessionCookie, verifyFirebaseIdToken } from "@/lib/firebase-auth-server";
 import { sql } from "@/lib/neon";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
@@ -16,21 +16,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing ID token" }, { status: 400 });
     }
 
-    if (!auth) {
-      return NextResponse.json({ error: "Firebase Admin Auth not initialized" }, { status: 500 });
-    }
-
     // Set session expiration: 14 days if rememberMe, otherwise 1 day
     const expiresIn = rememberMe 
       ? 60 * 60 * 24 * 14 * 1000 // 14 days 
       : 60 * 60 * 24 * 1 * 1000; // 1 day
 
     // Create the session cookie
-    const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn });
+    const sessionCookie = await createFirebaseSessionCookie(idToken, expiresIn);
 
     // Verify token to get UID and update lastActive, plus device tracking
     try {
-      const decodedToken = await auth.verifyIdToken(idToken);
+      const decodedToken = await verifyFirebaseIdToken(idToken);
       {
         // Parse User Agent
         const userAgent = request.headers.get("user-agent") || "";
@@ -93,8 +89,10 @@ export async function POST(request: Request) {
     cookieStore.set(options);
 
     return NextResponse.json({ status: "success" }, { status: 200 });
-  } catch (error: any) {
-    console.error("Session creation error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("Session creation error:", error instanceof Error
+      ? { name: error.name, message: error.message, stack: error.stack }
+      : { value: String(error) });
+    return NextResponse.json({ error: "Unable to create session" }, { status: 500 });
   }
 }

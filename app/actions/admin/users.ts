@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@/lib/firebase-admin-auth";
+import { deleteFirebaseUser } from "@/lib/firebase-auth-server";
 import { sql } from "@/lib/neon";
 import { userFromRow } from "@/lib/users";
 import { requireAdminUser } from "./auth";
@@ -71,7 +71,7 @@ export async function deleteUserAccount(uid: string) {
   const rows = await sql.query("delete from users where id=$1 returning payload", [uid]);
   if (!rows.length) return { error: "User not found" };
   try {
-    if (auth) await auth.deleteUser(uid);
+    await deleteFirebaseUser(uid);
   } catch (error) {
     console.error("Firebase Auth cleanup failed after Neon account deletion", error);
     return { error: "Account data was deleted, but the Firebase Auth record still needs cleanup" };
