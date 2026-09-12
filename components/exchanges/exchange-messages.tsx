@@ -10,15 +10,17 @@ interface ExchangeMessagesProps {
   currentUserId: string;
   otherPartyName: string;
   otherPartyAvatar: string | null;
+  initialMessages?: ExchangeMessage[];
 }
 
 export default function ExchangeMessages({ 
   exchangeId, 
-  currentUserId, 
-  otherPartyName, 
-  otherPartyAvatar 
+  currentUserId,
+  otherPartyName,
+  otherPartyAvatar,
+  initialMessages = [],
 }: ExchangeMessagesProps) {
-  const [messages, setMessages] = useState<ExchangeMessage[]>([]);
+  const [messages, setMessages] = useState<ExchangeMessage[]>(initialMessages);
   const [newMessage, setNewMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);

@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  devIndicators: false,
   serverExternalPackages: ["firebase-admin", "jose", "jwks-rsa"],
   async headers() {
     return [{

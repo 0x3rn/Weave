@@ -1,4 +1,5 @@
 import { getExchange } from "@/app/actions/exchanges";
+import { getMessages, getOrCreateExchangeConversation } from "@/app/actions/messages";
 import { getCurrentUserId } from "@/app/actions/user";
 import { notFound, redirect } from "next/navigation";
 import ExchangeMessages from "@/components/exchanges/exchange-messages";
@@ -24,6 +25,18 @@ export default async function ExchangeMessagesPage({
   const { exchange, requester, provider } = result;
   const isRequester = userId === exchange.requesterId;
   const otherParty = isRequester ? provider : requester;
+  await getOrCreateExchangeConversation(exchange.id);
+  const messageResult = await getMessages(exchange.id);
+  const initialMessages = messageResult.success
+    ? messageResult.messages.map(message => ({
+        id: message.id,
+        exchangeId: exchange.id,
+        senderId: message.senderId,
+        text: message.content,
+        createdAt: message.createdAt,
+        isRead: message.readBy?.includes(userId) ?? false,
+      }))
+    : [];
 
   return (
     <div className="max-w-4xl">
@@ -37,6 +50,7 @@ export default async function ExchangeMessagesPage({
         currentUserId={userId}
         otherPartyName={otherParty.name}
         otherPartyAvatar={otherParty.avatar}
+        initialMessages={initialMessages}
       />
     </div>
   );
