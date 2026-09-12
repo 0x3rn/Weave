@@ -54,7 +54,7 @@ export function ExchangeTimeline({ exchange }: ExchangeTimelineProps) {
             <div key={step.id} className="flex flex-col items-center group">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-300 relative z-10 
                 ${step.isCompleted ? 'bg-primary text-primary-foreground border-2 border-primary' : 
-                  step.isActive ? (step.isWarning ? 'bg-amber-500 text-white border-2 border-amber-500' : step.isError ? 'bg-error text-white border-2 border-error' : 'bg-background border-2 border-primary text-primary') : 
+                  step.isActive ? (step.isWarning ? 'bg-warning text-warning-foreground border-2 border-warning' : step.isError ? 'bg-error text-error-foreground border-2 border-error' : 'bg-background border-2 border-primary text-primary') : 
                   'bg-background border-2 border-border text-muted group-hover:border-primary/50'}`}
               >
                 {step.isCompleted ? (

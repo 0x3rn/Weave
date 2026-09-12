@@ -99,7 +99,7 @@ export async function getExchange(exchangeId: string) {
   if (!row) return { success: false, error: "Exchange not found or unauthorized" };
   const exchange = exchangeFromRow(row);
   const [requester, provider] = await Promise.all([getUserById(exchange.requesterId), getUserById(exchange.providerId)]);
-  return { success: true, exchange, requester: { id: exchange.requesterId, name: requester?.fullName || requester?.username || "Unknown", avatar: requester?.photoURL || null, timezone: requester?.timeZone || "UTC" }, provider: { id: exchange.providerId, name: provider?.fullName || provider?.username || "Unknown", avatar: provider?.photoURL || null, timezone: provider?.timeZone || "UTC" } };
+  return { success: true, exchange, requester: { id: exchange.requesterId, username: requester?.username || "", name: requester?.fullName || requester?.username || "Unknown", avatar: requester?.photoURL || null, timezone: requester?.timeZone || "UTC" }, provider: { id: exchange.providerId, username: provider?.username || "", name: provider?.fullName || provider?.username || "Unknown", avatar: provider?.photoURL || null, timezone: provider?.timeZone || "UTC" } };
 }
 
 export async function requestRevision(exchangeId: string, message: string) {
@@ -114,7 +114,7 @@ export async function requestRevision(exchangeId: string, message: string) {
      activity as (insert into exchange_activity (id,exchange_id,actor_id,event_type,description,occurred_at,payload) select $6,id,$2,'revision_requested',$7,$4,$8::jsonb from updated returning id),
      notified as (insert into notifications (id,source_path,user_id,notification_type,title,message,is_read,is_archived,link,related_id,created_at,payload) select $9,$10,provider_id,'revision_requested','Revisions Requested','Revisions were requested for "'||title||'".',false,false,'/exchanges/'||id,id,$4,$11::jsonb from updated returning id)
      select id from updated`,
-    [exchangeId, userId, message.trim(), now, JSON.stringify({ status: "revision_requested", updatedAt: now }), activityId, `Requester asked for revisions: "${message.trim()}"`, JSON.stringify({ type: "revision_requested", description: `Requester asked for revisions: "${message.trim()}"`, timestamp: now }), notificationId, `notifications/${notificationId}`, JSON.stringify({ type: "revision_requested", title: "Revisions Requested", message: "Revisions were requested.", isRead: false, link: `/exchanges/${exchangeId}`, createdAt: now })],
+    [exchangeId, userId, message.trim(), now, JSON.stringify({ status: "revision_requested", providerSubmittedAt: null, updatedAt: now }), activityId, `Requester asked for revisions: "${message.trim()}"`, JSON.stringify({ type: "revision_requested", description: `Requester asked for revisions: "${message.trim()}"`, timestamp: now }), notificationId, `notifications/${notificationId}`, JSON.stringify({ type: "revision_requested", title: "Revisions Requested", message: "Revisions were requested.", isRead: false, link: `/exchanges/${exchangeId}`, createdAt: now })],
   );
   return rows.length ? { success: true } : { success: false, error: "Exchange must be in review and owned by the requester" };
 }
@@ -124,8 +124,12 @@ export async function acceptDelivery(exchangeId: string) {
   if (!userId) return { success: false, error: "Unauthorized" };
   try {
     const ids = Array.from({ length: 5 }, () => crypto.randomUUID());
-    const [row] = await sql.query("select complete_exchange_delivery($1,$2,$3,$4,$5,$6,$7,$8) as result", [userId, exchangeId, ids[0], ids[1], ids[2], ids[3], ids[4], new Date().toISOString()]);
-    return { success: true, status: String(row.result) };
+    const now = new Date().toISOString();
+    const [completionRows] = await sql.transaction(tx => [
+      tx.query("select complete_exchange_delivery($1,$2,$3,$4,$5,$6,$7,$8) as result", [userId, exchangeId, ids[0], ids[1], ids[2], ids[3], ids[4], now]),
+      tx.query("update ledger_entries set entry_status='Completed',payload=payload || '{\"status\":\"Completed\"}'::jsonb where exchange_id=$1 and entry_type='Reserved' and entry_status='Active' and exists(select 1 from exchanges where id=$1 and status='completed')", [exchangeId]),
+    ]);
+    return { success: true, status: String(completionRows[0]?.result) };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message.replace(/^.*error:\s*/i, "") : "Unable to accept delivery" };
   }

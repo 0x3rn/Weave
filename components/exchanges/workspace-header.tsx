@@ -11,6 +11,7 @@ interface WorkspaceHeaderProps {
   exchange: Exchange;
   otherParty: {
     id: string;
+    username: string;
     name: string;
     avatar: string | null;
     timezone: string;
@@ -67,7 +68,7 @@ export default function WorkspaceHeader({ exchange, otherParty, isRequester, has
             
             <div className="hidden sm:block">
               <p className="text-sm font-medium text-heading">{isRequester ? "Provider" : "Requester"}</p>
-              <Link href={`/profile/${otherParty.id}`} className="text-sm text-primary hover:underline font-bold">
+              <Link href={otherParty.username ? `/u/${otherParty.username}` : "#"} className="text-sm text-primary hover:underline font-bold">
                 {otherParty.name}
               </Link>
             </div>

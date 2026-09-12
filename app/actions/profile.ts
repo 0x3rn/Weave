@@ -55,7 +55,18 @@ export async function getUserExchanges(userId: string): Promise<Exchange[]> {
 
 export async function getUserReviews(userId: string): Promise<Review[]> {
   const rows = await sql.query("select * from reviews where target_user_id = $1 order by created_at desc limit 10", [userId]);
-  return rows.map(row => ({ id: row.id, ...payload<Record<string, unknown>>(row.payload), createdAt: iso(row.created_at) }) as Review);
+  return rows.map(row => {
+    const data = payload<Record<string, unknown>>(row.payload);
+    return {
+      id: String(row.id), exchangeId: String(row.exchange_id ?? ""), reviewerId: String(row.reviewer_id ?? ""), targetUserId: userId,
+      rating: Number(row.rating ?? 0), comment: String(row.comment ?? ""), isPositive: row.is_positive === true,
+      communication: Number(data.communication ?? 0) || undefined, quality: Number(data.quality ?? 0) || undefined,
+      timeliness: Number(data.timeliness ?? 0) || undefined, professionalism: Number(data.professionalism ?? 0) || undefined,
+      wouldCollaborateAgain: typeof data.wouldCollaborateAgain === "boolean" ? data.wouldCollaborateAgain : undefined,
+      skillEndorsements: Array.isArray(data.skillEndorsements) ? data.skillEndorsements.filter((skill): skill is string => typeof skill === "string") : [],
+      createdAt: iso(row.created_at),
+    };
+  });
 }
 
 export async function getSimilarProfessionals(userId: string, profession: string, limitCount = 3) {

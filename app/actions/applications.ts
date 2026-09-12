@@ -50,7 +50,7 @@ export async function getApplicationsForRequest(requestId: string) {
   const applications = rows.map(row => {
     const application = applicationFromRow(row);
     const applicant = row.user_row_id ? userFromRow({ id: row.user_row_id, email: row.email, username: row.username, full_name: row.full_name, photo_url: row.photo_url, trust_score: row.trust_score, payload: row.user_payload }) : null;
-    return { ...application, applicant: applicant ? { name: applicant.fullName || applicant.username || "Unknown User", avatar: applicant.photoURL || null, trustScore: applicant.trustScore || 0, stats: applicant.stats || { rating: 0, exchangesCompleted: 0 } } : null };
+    return { ...application, applicant: applicant ? { username: applicant.username || "", name: applicant.fullName || applicant.username || "Unknown User", avatar: applicant.photoURL || null, trustScore: applicant.trustScore || 0, stats: applicant.stats || { rating: 0, exchangesCompleted: 0 } } : null };
   });
   return { success: true, applications, request: { ...payload<Record<string, unknown>>(request.payload), id: request.id, requesterId: request.requester_id, title: request.title, status: request.status } };
 }

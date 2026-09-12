@@ -10,7 +10,11 @@ async function canRead(key: string, userId: string) {
   const exchangeMatch = /^exchanges\/([^/]+)\/[^/]+\/[A-Za-z0-9._-]+$/.exec(key);
   if (!exchangeMatch) return false;
   const [exchange] = await sql.query(
-    "select id from exchanges where id=$1 and (requester_id=$2 or provider_id=$2)",
+    `select e.id from exchanges e where e.id=$1 and (
+       e.requester_id=$2 or e.provider_id=$2 or exists(
+         select 1 from users u where u.id=$2 and (u.role='Admin' or coalesce((u.payload->>'isAdmin')::boolean,false))
+       )
+     )`,
     [exchangeMatch[1], userId],
   );
   return Boolean(exchange);

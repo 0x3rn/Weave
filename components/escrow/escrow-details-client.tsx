@@ -2,11 +2,10 @@
 
 import { useState } from "react";
 import { Escrow, Exchange, User } from "@/types";
-import { processDeposit, submitDeliverables, approveDeliverables } from "@/app/actions/escrow";
-import { Check, ShieldCheck, Upload, AlertTriangle, FileText, Download } from "lucide-react";
+import { processDeposit } from "@/app/actions/escrow";
+import { Check, Upload, AlertTriangle, FileText, Download } from "lucide-react";
 import toast from "react-hot-toast";
 import Link from "next/link";
-import ReleasePreviewModal from "./release-preview-modal";
 import DisputeModal from "./dispute-modal";
 
 interface Props {
@@ -18,7 +17,6 @@ interface Props {
 
 export default function EscrowDetailsClient({ escrow, exchange, usersMap, currentUserId }: Props) {
   const [isProcessing, setIsProcessing] = useState(false);
-  const [showReleaseModal, setShowReleaseModal] = useState(false);
   const [showDisputeModal, setShowDisputeModal] = useState(false);
 
   const me = escrow.participants[currentUserId];
@@ -33,28 +31,6 @@ export default function EscrowDetailsClient({ escrow, exchange, usersMap, curren
       toast.success("Deposit processed successfully!");
     } else {
       toast.error(res.error || "Failed to process deposit");
-    }
-  };
-
-  const handleSubmitDeliverables = async () => {
-    setIsProcessing(true);
-    const res = await submitDeliverables(escrow.id);
-    setIsProcessing(false);
-    if (res.success) {
-      toast.success("Deliverables submitted!");
-    } else {
-      toast.error(res.error || "Failed to submit deliverables");
-    }
-  };
-
-  const handleApprove = async () => {
-    setIsProcessing(true);
-    const res = await approveDeliverables(escrow.id, partnerId);
-    setIsProcessing(false);
-    if (res.success) {
-      toast.success("Approved successfully!");
-    } else {
-      toast.error(res.error || "Failed to approve");
     }
   };
 
@@ -82,7 +58,7 @@ export default function EscrowDetailsClient({ escrow, exchange, usersMap, curren
             </span>
           </div>
           <p className="text-muted">
-            Mutual Exchange between You and {usersMap[partnerId]?.fullName || "User"}
+            {exchange.isMutual ? "Mutual exchange" : "Exchange"} between You and {usersMap[partnerId]?.fullName || "User"}
           </p>
         </div>
 
@@ -93,7 +69,7 @@ export default function EscrowDetailsClient({ escrow, exchange, usersMap, curren
               Receipt
             </button>
           )}
-          {escrow.status !== "released" && escrow.status !== "cancelled" && (
+          {!["released", "refunded", "cancelled", "disputed"].includes(escrow.status) && (
             <button 
               onClick={() => setShowDisputeModal(true)}
               className="flex items-center gap-2 px-4 py-2 bg-error/10 text-error font-bold rounded-[var(--radius-button)] hover:bg-error/20 transition-colors"
@@ -127,6 +103,14 @@ export default function EscrowDetailsClient({ escrow, exchange, usersMap, curren
           {escrow.status !== "released" && (
             <div className="bg-primary/5 border border-primary/20 rounded-[var(--radius-card)] p-6">
               <h3 className="font-bold text-primary mb-2">Action Required</h3>
+
+              {escrow.status === "disputed" && (
+                <p className="text-sm text-heading">This exchange is frozen while the dispute is under review. Its Skill Hours cannot be released until a resolution is recorded.</p>
+              )}
+
+              {escrow.status === "refunded" && (
+                <p className="text-sm text-heading">The reserved Skill Hours have been refunded and this escrow is closed.</p>
+              )}
               
               {escrow.status === "pending_deposits" && me.depositStatus !== "received" && (
                 <div>
@@ -148,28 +132,20 @@ export default function EscrowDetailsClient({ escrow, exchange, usersMap, curren
               {escrow.status === "locked" && me.deliverablesStatus !== "submitted" && (
                 <div>
                   <p className="text-sm text-heading mb-4">Work is in progress. Submit your deliverables when ready.</p>
-                  <button 
-                    onClick={handleSubmitDeliverables}
-                    disabled={isProcessing}
-                    className="flex items-center gap-2 px-6 py-2 bg-primary text-surface font-bold rounded-[var(--radius-button)] hover:bg-primary-hover disabled:opacity-50"
+                  <Link
+                    href={`/exchanges/${exchange.id}/files`}
+                    className="inline-flex items-center gap-2 px-6 py-2 bg-primary text-surface font-bold rounded-[var(--radius-button)] hover:bg-primary-hover"
                   >
                     <Upload className="w-4 h-4" />
-                    Submit Deliverables
-                  </button>
+                    Open delivery workspace
+                  </Link>
                 </div>
               )}
 
               {escrow.status === "locked" && partner.deliverablesStatus === "submitted" && me.approvalStatus !== "approved" && (
                 <div>
                   <p className="text-sm text-heading mb-4">{usersMap[partnerId]?.fullName} has submitted their deliverables. Please review and approve.</p>
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => setShowReleaseModal(true)}
-                      className="px-6 py-2 bg-success text-surface font-bold rounded-[var(--radius-button)] hover:bg-success/90"
-                    >
-                      Review & Approve
-                    </button>
-                  </div>
+                  <Link href={`/exchanges/${exchange.id}/files`} className="inline-flex px-6 py-2 bg-success text-success-foreground font-bold rounded-[var(--radius-button)] hover:bg-success/90">Review delivery</Link>
                 </div>
               )}
 
@@ -314,16 +290,6 @@ export default function EscrowDetailsClient({ escrow, exchange, usersMap, curren
         </div>
 
       </div>
-
-      {showReleaseModal && (
-        <ReleasePreviewModal 
-          escrow={escrow}
-          me={me}
-          partner={partner}
-          onApprove={handleApprove}
-          onClose={() => setShowReleaseModal(false)}
-        />
-      )}
 
       {showDisputeModal && (
         <DisputeModal 

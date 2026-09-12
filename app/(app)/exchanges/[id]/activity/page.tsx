@@ -1,0 +1,8 @@
+import { getExchangeActivity } from "@/app/actions/exchange-workspace";
+import { Activity, CheckCircle2, Circle } from "lucide-react";
+import { notFound } from "next/navigation";
+
+export default async function ActivityPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params; const result = await getExchangeActivity(id); if (!result.success) notFound();
+  return <div className="mx-auto max-w-4xl space-y-6"><div><h2 className="text-2xl font-bold text-heading">Activity</h2><p className="mt-1 text-sm text-muted">A shared record of important exchange events.</p></div>{result.activity.length === 0 ? <div className="rounded-xl border border-dashed border-border bg-surface p-10 text-center"><Activity className="mx-auto h-10 w-10 text-muted" /><p className="mt-3 font-bold text-heading">No activity yet</p></div> : <ol className="relative ml-3 border-l border-border">{result.activity.map((event, index) => <li key={event.id} className="relative mb-7 ml-7"><span className="absolute -left-[39px] flex h-6 w-6 items-center justify-center rounded-full border border-border bg-surface">{index === 0 ? <CheckCircle2 className="h-4 w-4 text-primary" /> : <Circle className="h-3 w-3 text-muted" />}</span><div className="rounded-xl border border-border bg-surface p-4"><div className="flex flex-wrap items-center justify-between gap-2"><p className="font-bold capitalize text-heading">{event.type.replaceAll("_", " ")}</p><time className="text-xs text-muted">{new Date(event.timestamp).toLocaleString()}</time></div><p className="mt-1 text-sm text-body">{event.description}</p></div></li>)}</ol>}</div>;
+}

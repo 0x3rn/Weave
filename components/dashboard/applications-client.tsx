@@ -6,9 +6,11 @@ import { BadgeCheck, MessageSquare, Check, X, Star, Clock, AlertCircle } from "l
 import Link from "next/link";
 import { updateApplicationStatus } from "@/app/actions/applications";
 import toast from "react-hot-toast";
+import { useRouter } from "next/navigation";
 
 interface EnrichedApplication extends MarketplaceApplication {
   applicant: {
+    username: string;
     name: string;
     avatar: string | null;
     trustScore: number;
@@ -25,6 +27,7 @@ interface ApplicationsClientProps {
 }
 
 export default function ApplicationsClient({ request, initialApplications }: ApplicationsClientProps) {
+  const router = useRouter();
   const [applications, setApplications] = useState(initialApplications);
   const [processingId, setProcessingId] = useState<string | null>(null);
 
@@ -37,6 +40,9 @@ export default function ApplicationsClient({ request, initialApplications }: App
           apps.map(app => app.id === appId ? { ...app, status: newStatus as any } : app)
         );
         toast.success(`Application marked as ${newStatus}`);
+        if (newStatus === "accepted" && "exchangeId" in result && result.exchangeId) {
+          router.push(`/exchanges/${result.exchangeId}/start`);
+        }
       } else {
         toast.error(result.error || "Failed to update status");
       }
@@ -96,7 +102,7 @@ export default function ApplicationsClient({ request, initialApplications }: App
                           </div>
                         )}
                         <div>
-                          <Link href={`/profile/${app.applicantId}`} className="font-bold text-heading hover:text-primary transition-colors flex items-center gap-1">
+                          <Link href={app.applicant?.username ? `/u/${app.applicant.username}` : "#"} className="font-bold text-heading hover:text-primary transition-colors flex items-center gap-1">
                             {app.applicant?.name || "Unknown User"}
                           </Link>
                           <div className="text-xs text-muted mt-0.5">

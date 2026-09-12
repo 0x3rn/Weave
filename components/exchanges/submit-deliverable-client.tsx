@@ -144,9 +144,10 @@ export default function SubmitDeliverableClient({ exchange, isProvider, deliveri
     (isProvider ? !!exchange.providerSubmittedAt : !!exchange.requesterSubmittedAt) : 
     (deliveries.length > 0);
 
-  const canSubmit = isMutual ? 
-    (!hasSubmitted && exchange.status !== "completed" && exchange.status !== "cancelled") :
-    (isProvider && exchange.status !== "completed" && exchange.status !== "cancelled");
+  const canSubmitStatus = exchange.status === "in_progress" || exchange.status === "revision_requested";
+  const canSubmit = isMutual ?
+    (!hasSubmitted && canSubmitStatus) :
+    (isProvider && canSubmitStatus);
 
   // Filter deliveries based on Commit-Reveal:
   // If mutual, you can only see their deliveries if both have submitted.
@@ -348,7 +349,7 @@ export default function SubmitDeliverableClient({ exchange, isProvider, deliveri
                       <button
                         onClick={handleAcceptDelivery}
                         disabled={isAccepting || isRequestingRevision}
-                        className="flex-1 py-2.5 bg-success text-white font-bold rounded-[var(--radius-button)] hover:bg-success/90 transition-colors disabled:opacity-50 flex justify-center items-center gap-2"
+                        className="flex-1 py-2.5 bg-success text-success-foreground font-bold rounded-[var(--radius-button)] hover:bg-success/90 transition-colors disabled:opacity-50 flex justify-center items-center gap-2"
                       >
                         {isAccepting ? (
                           <><Loader2 className="w-4 h-4 animate-spin" /> Accepting...</>

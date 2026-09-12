@@ -137,15 +137,40 @@ export async function openDispute(escrowId: string, reason: string, details: str
   try {
     const userId = await getCurrentUserId();
     if (!userId) return { success: false, error: "Unauthorized" };
-    if (typeof reason !== "string" || typeof details !== "string" || !reason.trim() || reason.length > 500 || details.length > 5000) return { success: false, error: "Invalid dispute" };
+    if (typeof reason !== "string" || typeof details !== "string" || !reason.trim() || !details.trim() || reason.length > 500 || details.length > 5000) return { success: false, error: "Invalid dispute" };
     const owned = await ownedEscrow(escrowId, userId);
     if (!owned) return { success: false, error: "Escrow not found" };
     const now = new Date().toISOString();
+    if (owned.escrow.status === "disputed") return { success: false, error: "A dispute is already open" };
+    if (["released", "refunded"].includes(owned.escrow.status)) return { success: false, error: "This escrow can no longer be disputed" };
     owned.escrow.status = "disputed";
     owned.escrow.dispute = { reason: reason.trim(), details: details.trim(), openedAt: now, status: "investigating", evidenceUrls: [] };
     owned.escrow.timeline.push({ id: crypto.randomUUID(), type: "disputed", message: `Dispute opened: ${reason.trim()}`, timestamp: now, actorId: userId });
-    await saveEscrow(owned.row, owned.escrow);
+    const activityId = crypto.randomUUID();
+    const notificationId = crypto.randomUUID();
+    const updatedPayload = JSON.stringify({ ...owned.escrow, updatedAt: now });
+    const message = `A dispute was opened for \"${String(owned.row.payload && typeof owned.row.payload === "object" && "title" in owned.row.payload ? owned.row.payload.title : "your exchange")}\".`;
+    const rows = await sql.query(
+      `with updated_escrow as (
+         update escrows s set status='disputed',timeline=$2::jsonb,dispute=$3::jsonb,updated_at=$4,payload=$5::jsonb
+         where s.id=$1 and s.updated_at is not distinct from $6 and s.status not in ('released','refunded','disputed') and exists (
+           select 1 from exchanges e where e.id=s.exchange_id and (e.requester_id=$7 or e.provider_id=$7) and e.status in ('in_progress','in_review','revision_requested')
+         ) returning s.exchange_id
+       ), updated_exchange as (
+         update exchanges e set status='disputed',updated_at=$4,payload=e.payload || jsonb_build_object('status','disputed','dispute',$3::jsonb,'updatedAt',$4)
+         where e.id in(select exchange_id from updated_escrow) returning e.id,e.requester_id,e.provider_id
+       ), activity as (
+         insert into exchange_activity (id,exchange_id,actor_id,event_type,description,occurred_at,payload)
+         select $8,id,$7,'dispute_opened',$9,$4,$10::jsonb from updated_exchange returning id
+       ), notified as (
+         insert into notifications (id,source_path,user_id,notification_type,title,message,is_read,is_archived,link,related_id,created_at,payload)
+         select $11,$12,case when requester_id=$7 then provider_id else requester_id end,'request_update','Dispute Opened',$13,false,false,$14,id,$4,$15::jsonb from updated_exchange returning id
+       ) select id from updated_exchange`,
+      [escrowId, JSON.stringify(owned.escrow.timeline), JSON.stringify(owned.escrow.dispute), now, updatedPayload, owned.row.updated_at ?? null, userId, activityId, `Dispute opened: ${reason.trim()}`, JSON.stringify({ type: "dispute_opened", description: `Dispute opened: ${reason.trim()}`, timestamp: now }), notificationId, `notifications/${notificationId}`, message, `/exchanges/${owned.escrow.exchangeId}`, JSON.stringify({ type: "request_update", title: "Dispute Opened", message: "A dispute was opened for your exchange.", isRead: false, link: `/exchanges/${owned.escrow.exchangeId}`, createdAt: now })],
+    );
+    if (!rows.length) throw new Error("Exchange changed or cannot be disputed in its current state. Please refresh and try again.");
     revalidatePath(`/dashboard/escrow/${escrowId}`);
+    revalidatePath(`/exchanges/${owned.escrow.exchangeId}`);
     return { success: true };
   } catch (error) { return { success: false, error: error instanceof Error ? error.message : "Unable to open dispute" }; }
 }

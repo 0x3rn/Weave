@@ -111,7 +111,7 @@ export interface ExchangeDeliverable {
 
 export interface ExchangeActivity {
   id: string;
-  type: "created" | "proposal_accepted" | "files_uploaded" | "milestone_completed" | "revision_requested" | "completed" | "cancelled";
+  type: "created" | "proposal_accepted" | "files_uploaded" | "milestone_created" | "milestone_updated" | "milestone_completed" | "revision_requested" | "dispute_opened" | "dispute_resolved" | "completed" | "cancelled";
   description: string;
   timestamp: string; // ISO string
   actorId?: string;
@@ -146,6 +146,9 @@ export interface Exchange {
   deadline?: string; // ISO string
   revisionsIncluded?: number;
   revisionsUsed?: number;
+  cancellationReason?: string;
+  cancelledBy?: string;
+  cancelledAt?: string;
   
   // Escrow tracking
   escrowId?: string; // Links to the Dual Escrow Contract
@@ -233,6 +236,12 @@ export interface Review {
   rating: number; // 1-5
   comment: string;
   isPositive: boolean;
+  communication?: number;
+  quality?: number;
+  timeliness?: number;
+  professionalism?: number;
+  wouldCollaborateAgain?: boolean;
+  skillEndorsements?: string[];
   createdAt: string; // ISO string
 }
 

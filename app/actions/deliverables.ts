@@ -2,6 +2,7 @@
 
 import { payload, sql, iso } from "@/lib/neon";
 import { Exchange, ExchangeDeliverable } from "@/types";
+import { revalidatePath } from "next/cache";
 import { getCurrentUserId } from "./user";
 
 function exchangeFromRow(row: Record<string, unknown>): Exchange {
@@ -26,40 +27,15 @@ export async function submitDeliverable(exchangeId: string, files: { name: strin
       return { success: false, error: "Invalid delivery file" };
     }
 
-    const [exchangeRow] = await sql.query("select * from exchanges where id=$1", [exchangeId]);
-    if (!exchangeRow) return { success: false, error: "Exchange not found" };
-    const exchange = exchangeFromRow(exchangeRow);
-    if (!exchange.isMutual && exchange.providerId !== userId) return { success: false, error: "Only the provider can submit deliverables" };
-    if (exchange.isMutual && exchange.providerId !== userId && exchange.requesterId !== userId) return { success: false, error: "You are not part of this exchange" };
-
-    const [countRow] = await sql.query("select count(*)::int as count from exchange_deliveries where exchange_id=$1", [exchangeId]);
-    const version = Number(countRow?.count ?? 0) + 1;
     const now = new Date().toISOString();
-    const deliveryId = crypto.randomUUID();
-    const updates: Record<string, unknown> = { updatedAt: now };
-    let status = exchange.status;
-    if (exchange.isMutual) {
-      if (userId === exchange.providerId) updates.providerSubmittedAt = now;
-      else updates.requesterSubmittedAt = now;
-      const existing = payload<Record<string, unknown>>(exchangeRow.payload);
-      if ((updates.providerSubmittedAt || existing.providerSubmittedAt) && (updates.requesterSubmittedAt || existing.requesterSubmittedAt)) status = "in_review";
-    } else {
-      updates.providerSubmittedAt = now;
-      status = "in_review";
-    }
-    updates.status = status;
-    const delivery = { version, files, comments: comments.trim(), submittedBy: userId, uploadedAt: now };
-    const otherUserId = userId === exchange.providerId ? exchange.requesterId : exchange.providerId;
-    const activityId = crypto.randomUUID();
-    const notificationId = crypto.randomUUID();
-    const actorName = userId === exchange.providerId ? "Provider" : "Requester";
-    await sql.transaction(tx => [
-      tx.query("insert into exchange_deliveries (id,exchange_id,submitted_by,version,files,comments,submitted_at,payload) values ($1,$2,$3,$4,$5::jsonb,$6,$7,$8::jsonb)", [deliveryId, exchangeId, userId, version, JSON.stringify(files), comments.trim(), now, JSON.stringify(delivery)]),
-      tx.query("update exchanges set status=$2,updated_at=$3,payload=payload || $4::jsonb where id=$1 and (requester_id=$5 or provider_id=$5)", [exchangeId, status, now, JSON.stringify(updates), userId]),
-      tx.query("insert into exchange_activity (id,exchange_id,actor_id,event_type,description,occurred_at,payload) values ($1,$2,$3,'files_uploaded',$4,$5,$6::jsonb)", [activityId, exchangeId, userId, `${actorName} submitted deliverables (Version ${version}).`, now, JSON.stringify({ type: "files_uploaded", description: `${actorName} submitted deliverables (Version ${version}).`, timestamp: now })]),
-      tx.query("insert into notifications (id,source_path,user_id,notification_type,title,message,is_read,is_archived,link,related_id,created_at,payload) values ($1,$2,$3,'request_update','Work Submitted',$4,false,false,$5,$6,$7,$8::jsonb)", [notificationId, `users/${otherUserId}/notifications/${notificationId}`, otherUserId, `Deliverables have been submitted for '${exchange.title}'. Check your workspace.`, `/exchanges/${exchangeId}/files`, exchangeId, now, JSON.stringify({ type: "request_update", title: "Work Submitted", message: `Deliverables have been submitted for '${exchange.title}'. Check your workspace.`, isRead: false, link: `/exchanges/${exchangeId}/files`, createdAt: now })]),
-    ]);
-    return { success: true };
+    const ids = Array.from({ length: 3 }, () => crypto.randomUUID());
+    const [row] = await sql.query(
+      "select submit_exchange_delivery($1,$2,$3,$4,$5,$6::jsonb,$7,$8) as version",
+      [userId, exchangeId, ids[0], ids[1], ids[2], JSON.stringify(files), comments.trim(), now],
+    );
+    revalidatePath(`/exchanges/${exchangeId}`);
+    revalidatePath(`/exchanges/${exchangeId}/files`);
+    return { success: true, version: Number(row.version) };
   } catch (error) {
     console.error("Error submitting deliverable", error);
     return { success: false, error: error instanceof Error ? error.message : "Unable to submit deliverable" };
