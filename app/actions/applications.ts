@@ -2,6 +2,7 @@
 
 import { DEMO_APPLIED_REQUEST_IDS, USE_DEMO_MARKETPLACE } from "@/lib/demo-marketplace-data";
 import { iso, payload, sql } from "@/lib/neon";
+import { scheduleNotificationEmails } from "@/lib/notification-email";
 import { userFromRow } from "@/lib/users";
 import { MarketplaceApplication } from "@/types";
 import { createExchangeFromApplication } from "./exchanges";
@@ -31,11 +32,13 @@ export async function submitApplication(requestId: string, data: { coverMessage:
          select $3,id,$2,$4,$5,$6,$7,'pending',$8,$9,$10,$11,$11,$12::jsonb from eligible on conflict (request_id,applicant_id) do nothing returning id,request_id),
        updated as (update marketplace_requests set applicants_count=applicants_count+1,payload=jsonb_set(payload,'{applicantsCount}',to_jsonb(applicants_count+1)),updated_at=$11 where id in(select request_id from inserted) returning requester_id,title),
        notified as (insert into notifications (id,source_path,user_id,notification_type,title,message,is_read,is_archived,link,related_id,created_at,payload)
-         select $13,$14,requester_id,'request_update','New Application Received','Someone applied to your request: ' || title,false,false,$15,$1,$11,$16::jsonb from updated returning id)
+         select $13,$14,requester_id,'application_received','New Application Received','Someone applied to your request: ' || title,false,false,$15,$1,$11,$16::jsonb from updated returning id)
        select id from inserted`,
-      [requestId, userId, id, application.coverMessage, application.portfolioLinks, application.availability, application.estimatedHours, application.isMutualProposal, application.offeredHours, data.estimatedCompletionDate || null, now, JSON.stringify(application), notificationId, `notifications/${notificationId}`, `/dashboard/requests/${requestId}`, JSON.stringify({ type: "request_update", title: "New Application Received", message: "A new application was received.", isRead: false, link: `/dashboard/requests/${requestId}`, relatedId: requestId, createdAt: now })],
+      [requestId, userId, id, application.coverMessage, application.portfolioLinks, application.availability, application.estimatedHours, application.isMutualProposal, application.offeredHours, data.estimatedCompletionDate || null, now, JSON.stringify(application), notificationId, `notifications/${notificationId}`, `/dashboard/requests/${requestId}`, JSON.stringify({ type: "application_received", title: "New Application Received", message: "A new application was received.", isRead: false, link: `/dashboard/requests/${requestId}`, relatedId: requestId, createdAt: now })],
     );
-    return rows.length ? { success: true, applicationId: id } : { success: false, error: "Request is unavailable or you have already applied" };
+    if (!rows.length) return { success: false, error: "Request is unavailable or you have already applied" };
+    scheduleNotificationEmails([notificationId]);
+    return { success: true, applicationId: id };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to submit application" };
   }

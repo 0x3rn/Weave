@@ -1,253 +1,214 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { Notification, ExchangeRequest } from "@/types";
-import { updateExchangeRequest } from "@/app/actions/exchanges";
-import { markNotificationAsRead, bulkUpdateNotifications, bulkDeleteNotifications, markAllNotificationsAsRead } from "@/app/actions/notifications";
-import { 
-  Bell, Check, Trash2, Archive, Search, Filter, AlertCircle, 
-  Clock, Calendar, X
-} from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Archive, Bell, Check, RefreshCw, Search, Trash2, X } from "lucide-react";
+import Link from "next/link";
 import toast from "react-hot-toast";
-import NotificationCard from "./notification-card";
+import { Notification } from "@/types";
+import { bulkDeleteNotifications, bulkUpdateNotifications, getNotifications, markAllNotificationsAsRead, markNotificationAsRead } from "@/app/actions/notifications";
+import NotificationCard, { getCategoryIcon, getPriorityColor } from "./notification-card";
 
-interface NotificationsViewProps {
-  initialNotifications: Notification[];
-  initialRequests: ExchangeRequest[];
-  currentUserId: string;
+type Tab = "all" | "actionable" | "archive";
+type DateFilter = "All" | "Today" | "7 days" | "30 days";
+type Sort = "Newest" | "Oldest" | "Unread first" | "Priority";
+
+const categories = ["All", "Exchanges", "Marketplace", "Messages", "Ledger", "Reviews", "Trust Score", "Achievements", "Account", "Billing", "Community", "Security", "System"];
+const priorities = ["All", "Critical", "High", "Normal", "Low"];
+const priorityRank = { Critical: 4, High: 3, Normal: 2, Low: 1 } as const;
+
+function dayLabel(value: string) {
+  const date = new Date(value);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  if (date.toDateString() === today.toDateString()) return "Today";
+  if (date.toDateString() === yesterday.toDateString()) return "Yesterday";
+  return new Intl.DateTimeFormat("en-GB", { weekday: "long", month: "short", day: "numeric" }).format(date);
 }
 
-export default function NotificationsView({ initialNotifications, initialRequests, currentUserId }: NotificationsViewProps) {
-  const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
-  const [activeTab, setActiveTab] = useState<"all" | "actionable" | "mentions" | "archive">("all");
+export default function NotificationsView({ initialNotifications }: { initialNotifications: Notification[] }) {
+  const [notifications, setNotifications] = useState(initialNotifications);
+  const [activeTab, setActiveTab] = useState<Tab>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  
-  // Filters
   const [statusFilter, setStatusFilter] = useState<"All" | "Unread" | "Read">("All");
-  const [categoryFilter, setCategoryFilter] = useState<string>("All");
-  const [priorityFilter, setPriorityFilter] = useState<string>("All");
+  const [categoryFilter, setCategoryFilter] = useState("All");
+  const [priorityFilter, setPriorityFilter] = useState("All");
+  const [dateFilter, setDateFilter] = useState<DateFilter>("All");
+  const [sort, setSort] = useState<Sort>("Newest");
+  const [details, setDetails] = useState<Notification | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const categories = ["All", "Exchanges", "Marketplace", "Messages", "Ledger", "Reviews", "Trust Score", "Achievements", "Account", "Billing", "Community", "Security", "System"];
-  const priorities = ["All", "Critical", "High", "Normal", "Low"];
-
-  const handleRead = async (id: string) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
-    await markNotificationAsRead(id);
-  };
-
-  const toggleSelect = (id: string) => {
-    const newSet = new Set(selectedIds);
-    if (newSet.has(id)) newSet.delete(id);
-    else newSet.add(id);
-    setSelectedIds(newSet);
-  };
-
-  const selectAll = () => {
-    if (selectedIds.size === filteredNotifications.length) {
-      setSelectedIds(newSet => { newSet.clear(); return newSet; });
-    } else {
-      setSelectedIds(new Set(filteredNotifications.map(n => n.id)));
+  const refresh = useCallback(async (showError = false) => {
+    setIsRefreshing(true);
+    try {
+      const result = await getNotifications();
+      if (result.success && result.notifications) setNotifications(result.notifications);
+      else if (showError) toast.error(result.error || "Unable to refresh notifications");
+    } catch {
+      if (showError) toast.error("Unable to refresh notifications");
+    } finally {
+      setIsRefreshing(false);
     }
-  };
+  }, []);
 
-  const handleBulkAction = async (action: "read" | "archive" | "delete") => {
-    if (selectedIds.size === 0) return;
-    const ids = Array.from(selectedIds);
+  useEffect(() => {
+    const timer = window.setInterval(() => document.visibilityState === "visible" && void refresh(), 30_000);
+    return () => window.clearInterval(timer);
+  }, [refresh]);
 
-    if (action === "read") {
-      setNotifications(prev => prev.map(n => ids.includes(n.id) ? { ...n, isRead: true } : n));
-      await bulkUpdateNotifications(ids, { isRead: true });
-      toast.success("Marked as read");
-    } else if (action === "archive") {
-      setNotifications(prev => prev.map(n => ids.includes(n.id) ? { ...n, isArchived: true } : n));
-      await bulkUpdateNotifications(ids, { isArchived: true });
-      toast.success("Archived");
-    } else if (action === "delete") {
-      setNotifications(prev => prev.filter(n => !ids.includes(n.id)));
-      await bulkDeleteNotifications(ids);
-      toast.success("Deleted");
-    }
-    
-    setSelectedIds(new Set());
-  };
-
-  const today = new Date();
-  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
-  const startOfWeek = startOfToday - (7 * 24 * 60 * 60 * 1000);
-
-  const unreadCount = notifications.filter(n => !n.isRead && !n.isArchived).length;
-  const todayCount = notifications.filter(n => !n.isArchived && new Date(n.createdAt).getTime() >= startOfToday).length;
-  const weekCount = notifications.filter(n => !n.isArchived && new Date(n.createdAt).getTime() >= startOfWeek).length;
-  const actionableCount = notifications.filter(n => !n.isArchived && n.actionLabel).length;
-
-  const filteredNotifications = useMemo(() => {
-    return notifications.filter(n => {
-      // Tab filter
-      if (activeTab === "all" && n.isArchived) return false;
-      if (activeTab === "archive" && !n.isArchived) return false;
-      if (activeTab === "actionable" && (n.isArchived || !n.actionLabel)) return false;
-      if (activeTab === "mentions") return false; // Mentions not implemented
-
-      // Search filter
-      if (searchQuery && !n.title.toLowerCase().includes(searchQuery.toLowerCase()) && !n.message.toLowerCase().includes(searchQuery.toLowerCase())) {
+  const replaceAfterAction = async (next: Notification[], action: () => Promise<{ success: boolean; error?: string }>, successMessage?: string) => {
+    const previous = notifications;
+    setNotifications(next);
+    try {
+      const result = await action();
+      if (!result.success) {
+        setNotifications(previous);
+        toast.error(result.error || "Unable to update notifications");
         return false;
       }
+    } catch {
+      setNotifications(previous);
+      toast.error("Unable to update notifications");
+      return false;
+    }
+    if (successMessage) toast.success(successMessage);
+    return true;
+  };
 
-      // Status filter
-      if (statusFilter === "Unread" && n.isRead) return false;
-      if (statusFilter === "Read" && !n.isRead) return false;
+  const handleRead = async (id: string) => {
+    const next = notifications.map(item => item.id === id ? { ...item, isRead: true } : item);
+    await replaceAfterAction(next, () => markNotificationAsRead(id));
+  };
 
-      // Category filter
-      if (categoryFilter !== "All" && n.category !== categoryFilter) return false;
+  const handleArchive = async (id: string) => {
+    const item = notifications.find(notification => notification.id === id);
+    if (!item) return;
+    const archived = !item.isArchived;
+    const next = notifications.map(notification => notification.id === id ? { ...notification, isArchived: archived } : notification);
+    await replaceAfterAction(next, () => bulkUpdateNotifications([id], { isArchived: archived }), archived ? "Notification archived" : "Notification restored");
+  };
 
-      // Priority filter
-      if (priorityFilter !== "All" && n.priority !== priorityFilter) return false;
-
+  const filteredNotifications = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    const cutoffDays = dateFilter === "7 days" ? 7 : dateFilter === "30 days" ? 30 : 0;
+    const cutoff = cutoffDays ? Date.now() - cutoffDays * 86_400_000 : 0;
+    const today = new Date();
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+    const result = notifications.filter(item => {
+      if (activeTab === "all" && item.isArchived) return false;
+      if (activeTab === "archive" && !item.isArchived) return false;
+      if (activeTab === "actionable" && (item.isArchived || item.isRead || !item.actionLabel || !item.link || !["Critical", "High"].includes(item.priority || ""))) return false;
+      if (query && !`${item.title} ${item.message} ${item.category || ""}`.toLowerCase().includes(query)) return false;
+      if (statusFilter === "Unread" && item.isRead) return false;
+      if (statusFilter === "Read" && !item.isRead) return false;
+      if (categoryFilter !== "All" && item.category !== categoryFilter) return false;
+      if (priorityFilter !== "All" && item.priority !== priorityFilter) return false;
+      const createdAt = new Date(item.createdAt).getTime();
+      if (dateFilter === "Today" && createdAt < startOfToday) return false;
+      if (cutoff && createdAt < cutoff) return false;
       return true;
     });
-  }, [notifications, activeTab, searchQuery, statusFilter, categoryFilter, priorityFilter]);
+    return result.sort((a, b) => {
+      if (sort === "Oldest") return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      if (sort === "Unread first" && a.isRead !== b.isRead) return a.isRead ? 1 : -1;
+      if (sort === "Priority") {
+        const difference = (priorityRank[b.priority || "Low"] || 0) - (priorityRank[a.priority || "Low"] || 0);
+        if (difference) return difference;
+      }
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+  }, [activeTab, categoryFilter, dateFilter, notifications, priorityFilter, searchQuery, sort, statusFilter]);
+
+  const grouped = useMemo(() => filteredNotifications.reduce<Record<string, Notification[]>>((groups, item) => {
+    const label = dayLabel(item.createdAt);
+    groups[label] = [...(groups[label] || []), item];
+    return groups;
+  }, {}), [filteredNotifications]);
+
+  const unreadCount = notifications.filter(item => !item.isRead && !item.isArchived).length;
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const todayCount = notifications.filter(item => !item.isArchived && new Date(item.createdAt).getTime() >= startOfToday).length;
+  const weekCount = notifications.filter(item => !item.isArchived && new Date(item.createdAt).getTime() >= Date.now() - 7 * 86_400_000).length;
+  const actionableCount = notifications.filter(item => !item.isArchived && !item.isRead && item.actionLabel && item.link && ["Critical", "High"].includes(item.priority || "")).length;
+
+  const toggleSelect = (id: string) => setSelectedIds(previous => {
+    const next = new Set(previous);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+
+  const selectAll = () => setSelectedIds(previous => previous.size === filteredNotifications.length ? new Set() : new Set(filteredNotifications.map(item => item.id)));
+
+  const handleBulkAction = async (action: "read" | "archive" | "delete") => {
+    const ids = [...selectedIds];
+    if (!ids.length) return;
+    let next = notifications;
+    let request: () => Promise<{ success: boolean; error?: string }>;
+    if (action === "read") {
+      next = notifications.map(item => ids.includes(item.id) ? { ...item, isRead: true } : item);
+      request = () => bulkUpdateNotifications(ids, { isRead: true });
+    } else if (action === "archive") {
+      next = notifications.map(item => ids.includes(item.id) ? { ...item, isArchived: activeTab !== "archive" } : item);
+      request = () => bulkUpdateNotifications(ids, { isArchived: activeTab !== "archive" });
+    } else {
+      next = notifications.filter(item => !ids.includes(item.id));
+      request = () => bulkDeleteNotifications(ids);
+    }
+    if (await replaceAfterAction(next, request, action === "archive" && activeTab === "archive" ? "Notifications restored" : `Notifications ${action === "read" ? "marked as read" : `${action}d`}`)) setSelectedIds(new Set());
+  };
+
+  const markAllRead = async () => {
+    const next = notifications.map(item => item.isArchived ? item : { ...item, isRead: true });
+    await replaceAfterAction(next, markAllNotificationsAsRead, "All caught up");
+  };
 
   return (
-    <div className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8 flex flex-col lg:flex-row gap-8">
-      {/* Left Sidebar - Filters & Navigation */}
-      <div className="w-full lg:w-64 shrink-0 space-y-6">
-        <div>
-          <h1 className="text-3xl font-black text-heading mb-1">Notifications</h1>
-          <p className="text-sm text-muted">Everything happening across your Weave account in one place.</p>
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 overflow-x-hidden px-4 py-8 sm:px-6 lg:flex-row lg:px-8">
+      <aside className="w-full shrink-0 space-y-6 lg:w-64">
+        <div><h1 className="mb-1 text-3xl font-black text-heading">Notifications</h1><p className="text-sm text-muted">Updates and actions across your Weave account.</p></div>
+        <nav className="flex flex-col gap-1" aria-label="Notification views">
+          {([['all', 'All notifications'], ['actionable', 'Action required'], ['archive', 'Archive']] as const).map(([value, label]) => (
+            <button key={value} type="button" onClick={() => { setActiveTab(value); setSelectedIds(new Set()); }} className={`flex items-center justify-between rounded-[var(--radius-button)] px-4 py-2.5 text-left text-sm font-bold transition-colors ${activeTab === value ? "bg-primary/10 text-primary" : "text-muted hover:bg-surface-secondary hover:text-heading"}`}>
+              {label}{value === "actionable" && actionableCount > 0 && <span className="rounded-full bg-error px-2 py-0.5 text-[10px] text-white">{actionableCount}</span>}
+            </button>
+          ))}
+        </nav>
+        <div className="grid grid-cols-2 gap-3 border-t border-border pt-4 lg:grid-cols-1">
+          <FilterSelect label="Status" value={statusFilter} options={["All", "Unread", "Read"]} onChange={value => setStatusFilter(value as "All" | "Unread" | "Read")} />
+          <FilterSelect label="Category" value={categoryFilter} options={categories} onChange={setCategoryFilter} />
+          <FilterSelect label="Priority" value={priorityFilter} options={priorities} onChange={setPriorityFilter} />
+          <FilterSelect label="Date" value={dateFilter} options={["All", "Today", "7 days", "30 days"]} onChange={value => setDateFilter(value as DateFilter)} />
+          <FilterSelect label="Sort" value={sort} options={["Newest", "Oldest", "Unread first", "Priority"]} onChange={value => setSort(value as Sort)} />
+        </div>
+      </aside>
+
+      <main className="min-w-0 flex-1 space-y-6">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          {[['Unread', unreadCount], ['Today', todayCount], ['This week', weekCount], ['Action required', actionableCount]].map(([label, count]) => <div key={label} className="rounded-[var(--radius-card)] border border-border bg-surface p-4"><span className="text-sm font-medium text-muted">{label}</span><span className="block text-2xl font-black text-heading">{count}</span></div>)}
         </div>
 
-        {/* Navigation Tabs */}
-        <div className="flex flex-col gap-1">
-          <button onClick={() => setActiveTab("all")} className={`text-left px-4 py-2.5 rounded-[var(--radius-button)] text-sm font-bold transition-colors ${activeTab === "all" ? "bg-primary/10 text-primary" : "text-muted hover:text-heading hover:bg-surface-secondary"}`}>
-            All Notifications
-          </button>
-          <button onClick={() => setActiveTab("actionable")} className={`text-left px-4 py-2.5 rounded-[var(--radius-button)] text-sm font-bold transition-colors flex items-center justify-between ${activeTab === "actionable" ? "bg-primary/10 text-primary" : "text-muted hover:text-heading hover:bg-surface-secondary"}`}>
-            Action Required
-            {actionableCount > 0 && <span className="bg-error text-surface text-[10px] px-2 py-0.5 rounded-full">{actionableCount}</span>}
-          </button>
-          <button disabled onClick={() => setActiveTab("mentions")} className={`text-left px-4 py-2.5 rounded-[var(--radius-button)] text-sm font-bold transition-colors flex items-center justify-between opacity-50 cursor-not-allowed ${activeTab === "mentions" ? "bg-primary/10 text-primary" : "text-muted"}`}>
-            Mentions <span className="text-[10px] uppercase bg-surface-secondary px-2 rounded">Soon</span>
-          </button>
-          <button onClick={() => setActiveTab("archive")} className={`text-left px-4 py-2.5 rounded-[var(--radius-button)] text-sm font-bold transition-colors ${activeTab === "archive" ? "bg-primary/10 text-primary" : "text-muted hover:text-heading hover:bg-surface-secondary"}`}>
-            Archive
-          </button>
-        </div>
-
-        {/* Filters */}
-        <div className="space-y-4 pt-4 border-t border-border">
-          <div>
-            <label className="text-xs font-bold text-heading uppercase tracking-wider mb-2 block">Status</label>
-            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as any)} className="w-full bg-surface border border-border rounded-[var(--radius-button)] p-2 text-sm text-body focus:ring-1 focus:ring-primary">
-              <option value="All">All</option>
-              <option value="Unread">Unread</option>
-              <option value="Read">Read</option>
-            </select>
-          </div>
-          <div>
-            <label className="text-xs font-bold text-heading uppercase tracking-wider mb-2 block">Category</label>
-            <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} className="w-full bg-surface border border-border rounded-[var(--radius-button)] p-2 text-sm text-body focus:ring-1 focus:ring-primary">
-              {categories.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="text-xs font-bold text-heading uppercase tracking-wider mb-2 block">Priority</label>
-            <select value={priorityFilter} onChange={e => setPriorityFilter(e.target.value)} className="w-full bg-surface border border-border rounded-[var(--radius-button)] p-2 text-sm text-body focus:ring-1 focus:ring-primary">
-              {priorities.map(p => <option key={p} value={p}>{p}</option>)}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 space-y-6">
-        
-        {/* Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-surface border border-border p-4 rounded-[var(--radius-card)] flex flex-col justify-center">
-            <span className="text-sm font-medium text-muted">Unread</span>
-            <span className="text-2xl font-black text-heading">{unreadCount}</span>
-          </div>
-          <div className="bg-surface border border-border p-4 rounded-[var(--radius-card)] flex flex-col justify-center">
-            <span className="text-sm font-medium text-muted">Today</span>
-            <span className="text-2xl font-black text-heading">{todayCount}</span>
-          </div>
-          <div className="bg-surface border border-border p-4 rounded-[var(--radius-card)] flex flex-col justify-center">
-            <span className="text-sm font-medium text-muted">This Week</span>
-            <span className="text-2xl font-black text-heading">{weekCount}</span>
-          </div>
-          <div className="bg-surface border border-border p-4 rounded-[var(--radius-card)] flex flex-col justify-center">
-            <span className="text-sm font-medium text-muted">Action Required</span>
-            <span className="text-2xl font-black text-error">{actionableCount}</span>
+        <div className="flex flex-col gap-3 rounded-[var(--radius-card)] border border-border bg-surface p-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative w-full sm:w-72"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" /><input value={searchQuery} onChange={event => setSearchQuery(event.target.value)} placeholder="Search notifications" className="w-full rounded-[var(--radius-button)] bg-surface-secondary py-2 pl-9 pr-4 text-sm text-body outline-none ring-primary/50 focus:ring-2" /></div>
+          <div className="flex items-center gap-2 overflow-x-auto">
+            {selectedIds.size ? <><span className="mr-1 whitespace-nowrap text-sm font-medium text-primary">{selectedIds.size} selected</span><IconButton title="Mark as read" onClick={() => handleBulkAction("read")}><Check /></IconButton><IconButton title={activeTab === "archive" ? "Restore" : "Archive"} onClick={() => handleBulkAction("archive")}><Archive /></IconButton><IconButton title="Delete" onClick={() => handleBulkAction("delete")} danger><Trash2 /></IconButton></> : <><button type="button" onClick={markAllRead} disabled={!unreadCount} className="whitespace-nowrap text-sm font-bold text-primary hover:text-primary-hover disabled:opacity-40">Mark all as read</button><button type="button" onClick={() => refresh(true)} disabled={isRefreshing} aria-label="Refresh notifications" className="rounded p-2 text-muted hover:bg-surface-secondary hover:text-heading"><RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} /></button></>}
           </div>
         </div>
 
-        {/* Toolbar */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-surface border border-border p-3 rounded-[var(--radius-card)]">
-          <div className="relative w-full sm:w-64 shrink-0">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-            <input 
-              type="text" 
-              placeholder="Search notifications..." 
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-surface-secondary border-none rounded-[var(--radius-button)] text-sm focus:ring-2 focus:ring-primary/50 text-body"
-            />
-          </div>
+        {!!filteredNotifications.length && <label className="inline-flex items-center gap-2 text-sm text-muted"><input type="checkbox" checked={selectedIds.size === filteredNotifications.length} onChange={selectAll} className="h-4 w-4 accent-primary" /> Select all shown</label>}
+        {!filteredNotifications.length ? <div className="rounded-[var(--radius-card)] border border-border bg-surface p-12 text-center"><Bell className="mx-auto mb-4 h-12 w-12 text-border" /><h2 className="text-lg font-bold text-heading">Nothing to see here</h2><p className="mt-2 text-muted">Try another filter or check back later.</p></div> : Object.entries(grouped).map(([label, items]) => <section key={label} className="space-y-2"><h2 className="text-xs font-bold uppercase tracking-wider text-muted">{label}</h2><div className="overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface">{items.map(item => <div key={item.id} className="flex border-b border-border last:border-0"><div className="p-4 pr-0"><input type="checkbox" checked={selectedIds.has(item.id)} onChange={() => toggleSelect(item.id)} aria-label={`Select ${item.title}`} className="mt-2 h-4 w-4 accent-primary" /></div><div className="min-w-0 flex-1"><NotificationCard notification={item} compact onRead={handleRead} onArchive={handleArchive} onOpen={setDetails} /></div></div>)}</div></section>)}
+      </main>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0">
-            {selectedIds.size > 0 ? (
-              <>
-                <span className="text-sm font-medium text-primary mr-2 whitespace-nowrap">{selectedIds.size} selected</span>
-                <button onClick={() => handleBulkAction("read")} className="p-2 text-muted hover:text-primary bg-surface-secondary rounded transition-colors" title="Mark as read"><Check className="w-4 h-4" /></button>
-                <button onClick={() => handleBulkAction("archive")} className="p-2 text-muted hover:text-warning bg-surface-secondary rounded transition-colors" title="Archive"><Archive className="w-4 h-4" /></button>
-                <button onClick={() => handleBulkAction("delete")} className="p-2 text-muted hover:text-error bg-surface-secondary rounded transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
-              </>
-            ) : (
-              <button 
-                onClick={async () => {
-                  setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-                  await markAllNotificationsAsRead();
-                  toast.success("All caught up!");
-                }}
-                className="text-sm font-bold text-primary hover:text-primary-hover transition-colors whitespace-nowrap"
-              >
-                Mark all as read
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Timeline */}
-        <div className="space-y-3">
-          {filteredNotifications.length === 0 ? (
-            <div className="bg-surface border border-border rounded-[var(--radius-card)] p-12 text-center">
-              <Bell className="w-12 h-12 text-border mx-auto mb-4" />
-              <h3 className="text-lg font-bold text-heading">Nothing to see here</h3>
-              <p className="text-muted mt-2">Try adjusting your filters or tab selection.</p>
-            </div>
-          ) : (
-            <div className="bg-surface border border-border rounded-[var(--radius-card)] overflow-hidden">
-              {filteredNotifications.map(notif => (
-                <div key={notif.id} className="flex border-b border-border last:border-0 relative hover:bg-surface-secondary transition-colors group">
-                  <div className="p-4 flex items-start">
-                    <input 
-                      type="checkbox" 
-                      checked={selectedIds.has(notif.id)}
-                      onChange={() => toggleSelect(notif.id)}
-                      className="w-4 h-4 mt-2 accent-primary"
-                    />
-                  </div>
-                  <div className="flex-1 py-4 pr-4">
-                    <NotificationCard notification={notif} onRead={handleRead} compact />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-        
-      </div>
+      {details && <div className="fixed inset-0 z-[60] flex justify-end bg-black/35" role="presentation" onMouseDown={event => event.target === event.currentTarget && setDetails(null)}><aside role="dialog" aria-modal="true" aria-label="Notification details" className="h-full w-full max-w-md overflow-y-auto border-l border-border bg-background p-6 shadow-2xl"><div className="mb-8 flex items-center justify-between"><h2 className="text-xl font-black text-heading">Notification details</h2><button type="button" onClick={() => setDetails(null)} aria-label="Close details" className="rounded-full p-2 text-muted hover:bg-surface-secondary"><X className="h-5 w-5" /></button></div><div className="flex items-start gap-4"><div className={`rounded-full p-3 ${getPriorityColor(details.priority)}`}>{getCategoryIcon(details.category)}</div><div><p className="text-xs font-bold uppercase tracking-wider text-muted">{details.category || "System"} · {details.priority || "Normal"}</p><h3 className="mt-2 text-xl font-bold text-heading">{details.title}</h3><p className="mt-3 leading-7 text-body">{details.message}</p><p className="mt-4 text-sm text-muted">{new Intl.DateTimeFormat("en-GB", { dateStyle: "long", timeStyle: "short" }).format(new Date(details.createdAt))}</p></div></div><div className="mt-8 flex flex-wrap gap-3">{details.link?.startsWith("/") && !details.link.startsWith("//") && details.actionLabel && <Link href={details.link} onClick={() => { if (!details.isRead) void handleRead(details.id); setDetails(null); }} className="rounded-[var(--radius-button)] bg-primary px-5 py-2.5 text-sm font-bold text-white hover:bg-primary-hover">{details.actionLabel}</Link>}{!details.isRead && <button type="button" onClick={() => { void handleRead(details.id); setDetails({ ...details, isRead: true }); }} className="rounded-[var(--radius-button)] border border-border px-5 py-2.5 text-sm font-bold text-heading hover:bg-surface-secondary">Mark as read</button>}</div></aside></div>}
     </div>
   );
+}
+
+function FilterSelect({ label, value, options, onChange }: { label: string; value: string; options: readonly string[]; onChange: (value: string) => void }) {
+  return <label><span className="mb-2 block text-xs font-bold uppercase tracking-wider text-heading">{label}</span><select value={value} onChange={event => onChange(event.target.value)} className="w-full rounded-[var(--radius-button)] border border-border bg-surface p-2 text-sm text-body focus:ring-1 focus:ring-primary">{options.map(option => <option key={option}>{option}</option>)}</select></label>;
+}
+
+function IconButton({ title, onClick, danger = false, children }: { title: string; onClick: () => void; danger?: boolean; children: React.ReactElement<{ className?: string }> }) {
+  return <button type="button" title={title} aria-label={title} onClick={onClick} className={`rounded bg-surface-secondary p-2 transition-colors ${danger ? "text-muted hover:text-error" : "text-muted hover:text-primary"}`}>{children}</button>;
 }

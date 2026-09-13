@@ -7,14 +7,15 @@ export const metadata = {
   title: "Exchange Workspace | Weave"
 };
 
-export default async function ConversationPage({ params }: { params: { id: string } }) {
+export default async function ConversationPage({ params }: { params: Promise<{ id: string }> }) {
   const userId = await getCurrentUserId();
   if (!userId) redirect("/login");
+  const { id } = await params;
 
   const result = await getConversations();
   const conversations = result.success ? (result.conversations || []) : [];
 
-  const activeConversation = conversations.find(c => c.id === params.id);
+  const activeConversation = conversations.find(c => c.id === id);
 
   if (!activeConversation) {
     // Fallback if not found (maybe they just created it or are not a participant)

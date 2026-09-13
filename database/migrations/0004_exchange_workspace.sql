@@ -83,8 +83,8 @@ begin
       jsonb_build_object('type','cancelled','description','Exchange cancelled before work began. Skill Hours were refunded.','reason',p_reason,'timestamp',p_now));
   insert into notifications (id,source_path,user_id,notification_type,title,message,is_read,is_archived,link,related_id,created_at,payload)
     values
-      (p_requester_notification_id,'notifications/'||p_requester_notification_id,v_exchange.requester_id,'request_update','Exchange Cancelled','The exchange "'||v_exchange.title||'" was cancelled and reserved Skill Hours were refunded.',false,false,'/exchanges/'||p_exchange_id,p_exchange_id,p_now,jsonb_build_object('type','request_update','title','Exchange Cancelled','message','Reserved Skill Hours were refunded.','isRead',false,'link','/exchanges/'||p_exchange_id,'createdAt',p_now)),
-      (p_provider_notification_id,'notifications/'||p_provider_notification_id,v_exchange.provider_id,'request_update','Exchange Cancelled','The exchange "'||v_exchange.title||'" was cancelled and reserved Skill Hours were refunded.',false,false,'/exchanges/'||p_exchange_id,p_exchange_id,p_now,jsonb_build_object('type','request_update','title','Exchange Cancelled','message','Reserved Skill Hours were refunded.','isRead',false,'link','/exchanges/'||p_exchange_id,'createdAt',p_now));
+      (p_requester_notification_id,'notifications/'||p_requester_notification_id,v_exchange.requester_id,'exchange_cancelled','Exchange Cancelled','The exchange "'||v_exchange.title||'" was cancelled and reserved Skill Hours were refunded.',false,false,'/exchanges/'||p_exchange_id,p_exchange_id,p_now,jsonb_build_object('type','exchange_cancelled','title','Exchange Cancelled','message','Reserved Skill Hours were refunded.','isRead',false,'link','/exchanges/'||p_exchange_id,'createdAt',p_now)),
+      (p_provider_notification_id,'notifications/'||p_provider_notification_id,v_exchange.provider_id,'exchange_cancelled','Exchange Cancelled','The exchange "'||v_exchange.title||'" was cancelled and reserved Skill Hours were refunded.',false,false,'/exchanges/'||p_exchange_id,p_exchange_id,p_now,jsonb_build_object('type','exchange_cancelled','title','Exchange Cancelled','message','Reserved Skill Hours were refunded.','isRead',false,'link','/exchanges/'||p_exchange_id,'createdAt',p_now));
   return p_exchange_id;
 end;
 $$;
@@ -147,9 +147,9 @@ begin
       jsonb_build_object('type','files_uploaded','description',v_actor_label||' submitted deliverables (Version '||v_version||').','timestamp',p_now));
 
   insert into notifications (id,source_path,user_id,notification_type,title,message,is_read,is_archived,link,related_id,created_at,payload)
-    values (p_notification_id,'users/'||v_other_user_id||'/notifications/'||p_notification_id,v_other_user_id,'request_update','Work Submitted',
+    values (p_notification_id,'users/'||v_other_user_id||'/notifications/'||p_notification_id,v_other_user_id,'file_uploaded','Work Submitted',
       'Deliverables have been submitted for '''||v_exchange.title||'''. Check your workspace.',false,false,'/exchanges/'||p_exchange_id||'/files',p_exchange_id,p_now,
-      jsonb_build_object('type','request_update','title','Work Submitted','message','Deliverables have been submitted. Check your workspace.','isRead',false,'link','/exchanges/'||p_exchange_id||'/files','createdAt',p_now));
+      jsonb_build_object('type','file_uploaded','title','Work Submitted','message','Deliverables have been submitted. Check your workspace.','isRead',false,'link','/exchanges/'||p_exchange_id||'/files','createdAt',p_now));
 
   return v_version;
 end;
@@ -237,8 +237,8 @@ begin
     values (p_activity_id,p_exchange_id,p_admin_id,'dispute_resolved','Dispute resolved: '||v_outcome||'.',p_now,jsonb_build_object('type','dispute_resolved','description','Dispute resolved: '||v_outcome||'.','timestamp',p_now));
   insert into notifications (id,source_path,user_id,notification_type,title,message,is_read,is_archived,link,related_id,created_at,payload)
     values
-      (p_provider_notification_id,'users/'||v_exchange.provider_id||'/notifications/'||p_provider_notification_id,v_exchange.provider_id,'request_update','Dispute Resolved','The dispute for "'||v_exchange.title||'" was resolved ('||v_outcome||').',false,false,'/exchanges/'||p_exchange_id,p_exchange_id,p_now,jsonb_build_object('type','request_update','title','Dispute Resolved','message','Your dispute was resolved.','isRead',false,'link','/exchanges/'||p_exchange_id,'createdAt',p_now)),
-      (p_requester_notification_id,'users/'||v_exchange.requester_id||'/notifications/'||p_requester_notification_id,v_exchange.requester_id,'request_update','Dispute Resolved','The dispute for "'||v_exchange.title||'" was resolved ('||v_outcome||').',false,false,'/exchanges/'||p_exchange_id,p_exchange_id,p_now,jsonb_build_object('type','request_update','title','Dispute Resolved','message','Your dispute was resolved.','isRead',false,'link','/exchanges/'||p_exchange_id,'createdAt',p_now));
+      (p_provider_notification_id,'users/'||v_exchange.provider_id||'/notifications/'||p_provider_notification_id,v_exchange.provider_id,'dispute_resolved','Dispute Resolved','The dispute for "'||v_exchange.title||'" was resolved ('||v_outcome||').',false,false,'/exchanges/'||p_exchange_id,p_exchange_id,p_now,jsonb_build_object('type','dispute_resolved','title','Dispute Resolved','message','Your dispute was resolved.','isRead',false,'link','/exchanges/'||p_exchange_id,'createdAt',p_now)),
+      (p_requester_notification_id,'users/'||v_exchange.requester_id||'/notifications/'||p_requester_notification_id,v_exchange.requester_id,'dispute_resolved','Dispute Resolved','The dispute for "'||v_exchange.title||'" was resolved ('||v_outcome||').',false,false,'/exchanges/'||p_exchange_id,p_exchange_id,p_now,jsonb_build_object('type','dispute_resolved','title','Dispute Resolved','message','Your dispute was resolved.','isRead',false,'link','/exchanges/'||p_exchange_id,'createdAt',p_now));
 
   return v_outcome;
 end;

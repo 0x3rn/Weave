@@ -5,6 +5,7 @@ import { getCurrentUserId } from "./user";
 import { Conversation, Exchange, Message } from "@/types";
 import { userFromRow } from "@/lib/users";
 import { revalidatePath } from "next/cache";
+import { scheduleNotificationEmails } from "@/lib/notification-email";
 
 type ConversationRow = Record<string, unknown> & { id: string; payload: unknown };
 
@@ -106,10 +107,21 @@ export async function sendMessage(conversationId: string, content: string, type:
     for (const recipient of recipients) unread[String(recipient.user_id)] = (unread[String(recipient.user_id)] ?? 0) + 1;
     const now = new Date().toISOString();
     const messageId = crypto.randomUUID();
+    const senderRows = await sql.query("select full_name,username from users where id=$1", [userId]);
+    const senderName = String(senderRows[0]?.full_name || senderRows[0]?.username || "Someone");
+    const recipientNotifications = recipients.map(recipient => ({ recipientId: String(recipient.user_id), notificationId: crypto.randomUUID() }));
     await sql.transaction(tx => [
       tx.query("insert into messages (id,conversation_id,sender_id,message_type,content,metadata,read_by,created_at,payload) values ($1,$2,$3,$4,$5,$6::jsonb,$7,$8,$9::jsonb)", [messageId, conversationId, userId, type, content.trim(), JSON.stringify(metadata ?? null), [userId], now, JSON.stringify({})]),
       tx.query("update conversations set last_message=$2,last_message_at=$3,unread_counts=$4::jsonb,updated_at=$3 where id=$1", [conversationId, type === "text" ? content.trim() : `Sent a ${type}`, now, JSON.stringify(unread)]),
+      ...recipientNotifications.map(({ recipientId, notificationId }) => {
+        const preview = type === "text" ? content.trim().slice(0, 160) : `Sent a ${type}`;
+        return tx.query(
+          "insert into notifications (id,source_path,user_id,notification_type,title,message,is_read,is_archived,link,related_id,created_at,payload) values ($1,$2,$3,'message_received',$4,$5,false,false,$6,$7,$8,$9::jsonb)",
+          [notificationId, `messages/${messageId}/${recipientId}`, recipientId, `New message from ${senderName}`, preview, `/messages/${conversationId}`, conversationId, now, JSON.stringify({ type: "message_received", title: `New message from ${senderName}`, message: preview, isRead: false, link: `/messages/${conversationId}`, relatedId: conversationId, createdAt: now })],
+        );
+      }),
     ]);
+    scheduleNotificationEmails(recipientNotifications.map(item => item.notificationId));
     revalidatePath(`/messages/${conversationId}`);
     return { success: true };
   } catch (error) {

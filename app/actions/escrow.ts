@@ -1,6 +1,7 @@
 "use server";
 
 import { iso, payload, sql } from "@/lib/neon";
+import { scheduleNotificationEmails } from "@/lib/notification-email";
 import { Escrow, EscrowEvent, EscrowParticipant, Exchange } from "@/types";
 import { revalidatePath } from "next/cache";
 import { getCurrentUserId } from "./user";
@@ -164,11 +165,12 @@ export async function openDispute(escrowId: string, reason: string, details: str
          select $8,id,$7,'dispute_opened',$9,$4,$10::jsonb from updated_exchange returning id
        ), notified as (
          insert into notifications (id,source_path,user_id,notification_type,title,message,is_read,is_archived,link,related_id,created_at,payload)
-         select $11,$12,case when requester_id=$7 then provider_id else requester_id end,'request_update','Dispute Opened',$13,false,false,$14,id,$4,$15::jsonb from updated_exchange returning id
+         select $11,$12,case when requester_id=$7 then provider_id else requester_id end,'dispute_opened','Dispute Opened',$13,false,false,$14,id,$4,$15::jsonb from updated_exchange returning id
        ) select id from updated_exchange`,
-      [escrowId, JSON.stringify(owned.escrow.timeline), JSON.stringify(owned.escrow.dispute), now, updatedPayload, owned.row.updated_at ?? null, userId, activityId, `Dispute opened: ${reason.trim()}`, JSON.stringify({ type: "dispute_opened", description: `Dispute opened: ${reason.trim()}`, timestamp: now }), notificationId, `notifications/${notificationId}`, message, `/exchanges/${owned.escrow.exchangeId}`, JSON.stringify({ type: "request_update", title: "Dispute Opened", message: "A dispute was opened for your exchange.", isRead: false, link: `/exchanges/${owned.escrow.exchangeId}`, createdAt: now })],
+      [escrowId, JSON.stringify(owned.escrow.timeline), JSON.stringify(owned.escrow.dispute), now, updatedPayload, owned.row.updated_at ?? null, userId, activityId, `Dispute opened: ${reason.trim()}`, JSON.stringify({ type: "dispute_opened", description: `Dispute opened: ${reason.trim()}`, timestamp: now }), notificationId, `notifications/${notificationId}`, message, `/exchanges/${owned.escrow.exchangeId}`, JSON.stringify({ type: "dispute_opened", title: "Dispute Opened", message: "A dispute was opened for your exchange.", isRead: false, link: `/exchanges/${owned.escrow.exchangeId}`, createdAt: now })],
     );
     if (!rows.length) throw new Error("Exchange changed or cannot be disputed in its current state. Please refresh and try again.");
+    scheduleNotificationEmails([notificationId]);
     revalidatePath(`/dashboard/escrow/${escrowId}`);
     revalidatePath(`/exchanges/${owned.escrow.exchangeId}`);
     return { success: true };

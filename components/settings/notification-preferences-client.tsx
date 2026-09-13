@@ -19,7 +19,7 @@ const DEFAULT_PREFS: NotificationPreferences = {
   security: true, // Always true
   deliveryMethod: {
     inApp: true,
-    email: true,
+    email: false,
   }
 };
 
@@ -119,7 +119,7 @@ export default function NotificationPreferencesClient({ initialPreferences }: Pr
           />
           <ToggleRow 
             title="Email" 
-            description="Receive an email digest for important updates."
+            description="Receive important notifications by email."
             checked={prefs.deliveryMethod.email}
             onChange={() => toggleDelivery("email")}
           />

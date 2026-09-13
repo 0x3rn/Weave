@@ -17,7 +17,7 @@ export async function getDashboardData() {
     sql.query("select * from exchanges where (requester_id=$1 or provider_id=$1) and status in ('in_progress','pending_proposal') order by updated_at desc", [uid]),
     sql.query("select * from exchange_requests where sender_id=$1 or receiver_id=$1 order by created_at desc", [uid]),
     sql.query("select * from ledger_entries where user_id=$1 order by occurred_at desc limit 5", [uid]),
-    sql.query("select * from notifications where user_id=$1 order by created_at desc limit 10", [uid]),
+    sql.query("select * from notifications where user_id=$1 and is_archived=false and in_app_enabled=true order by created_at desc limit 10", [uid]),
   ]);
   user.hasPortfolio = portfolio.length > 0;
   const profileCompletion = calculateProfileCompletion(user);
@@ -40,7 +40,12 @@ export async function getDashboardData() {
   })) as SkillLedgerEntry[];
   const notifications = notificationRows.map(row => ({
     ...payload<Record<string, unknown>>(row.payload), id: String(row.id), userId: String(row.user_id ?? ""), type: String(row.notification_type ?? "system") as Notification["type"],
-    title: String(row.title ?? ""), message: String(row.message ?? ""), isRead: row.is_read === true, createdAt: iso(row.created_at),
+    category: row.category ? String(row.category) as Notification["category"] : undefined,
+    priority: row.priority ? String(row.priority) as Notification["priority"] : undefined,
+    title: String(row.title ?? ""), message: String(row.message ?? ""), isRead: row.is_read === true,
+    isArchived: row.is_archived === true, link: row.link ? String(row.link) : undefined,
+    actionLabel: row.action_label ? String(row.action_label) : undefined,
+    relatedId: row.related_id ? String(row.related_id) : undefined, createdAt: iso(row.created_at),
   })) as Notification[];
 
   let matches: User[] = [];

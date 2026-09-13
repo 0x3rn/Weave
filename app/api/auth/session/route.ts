@@ -1,5 +1,6 @@
 import { createFirebaseSessionCookie, verifyFirebaseIdToken } from "@/lib/firebase-auth-server";
 import { sql } from "@/lib/neon";
+import { scheduleNotificationEmails } from "@/lib/notification-email";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { UAParser } from "ua-parser-js";
@@ -36,17 +37,18 @@ export async function POST(request: Request) {
         const device = parser.getDevice();
         
         // Extract IP (Next.js request standard headers or x-forwarded-for)
-        const ip = request.headers.get("x-forwarded-for") || "Unknown IP";
+        const ip = request.headers.get("cf-connecting-ip") || request.headers.get("x-forwarded-for") || "Unknown IP";
 
         // Generate a random deviceId
         const deviceId = crypto.randomUUID();
 
         const now = new Date().toISOString();
+        const notificationId = crypto.randomUUID();
         const deviceData = {
           os: os.name ? `${os.name} ${os.version || ""}`.trim() : "Unknown OS",
           browser: browser.name ? `${browser.name} ${browser.version || ""}`.trim() : "Unknown Browser",
           deviceType: device.type || "desktop",
-          ip: ip.split(",")[0].trim(),
+          ip: ip.split(",")[0].trim().slice(0, 64),
           userAgent: userAgent,
           createdAt: now,
           lastActive: now,
@@ -54,7 +56,10 @@ export async function POST(request: Request) {
         await sql.transaction(tx => [
           tx.query("update users set last_active_at=$2,updated_at=$2,payload=payload || $3::jsonb where id=$1", [decodedToken.uid, now, JSON.stringify({ lastActive: now })]),
           tx.query("insert into user_devices (id,user_id,os,browser,device_type,ip,last_active_at,payload) values ($1,$2,$3,$4,$5,$6,$7,$8::jsonb)", [deviceId, decodedToken.uid, deviceData.os, deviceData.browser, deviceData.deviceType, deviceData.ip, now, JSON.stringify(deviceData)]),
+          tx.query("insert into notifications (id,source_path,user_id,notification_type,title,message,is_read,is_archived,link,created_at,payload) values ($1,$2,$3,'security_alert','New sign-in detected',$4,false,false,'/settings/security',$5,$6::jsonb)", [notificationId, `security/sign-in/${deviceId}`, decodedToken.uid, `${deviceData.browser} on ${deviceData.os} signed in from ${deviceData.ip}.`, now, JSON.stringify({ type: "security_alert", title: "New sign-in detected", message: `${deviceData.browser} on ${deviceData.os} signed in from ${deviceData.ip}.`, isRead: false, link: "/settings/security", createdAt: now })]),
+          tx.query("insert into notifications (id,source_path,user_id,notification_type,title,message,is_read,is_archived,link,created_at,payload) select $1,$2,id,'profile_incomplete','Complete your profile','Finish your profile so members can understand your skills and experience.',false,false,'/profile',$3,$4::jsonb from users where id=$5 and coalesce(profile_completion,case when payload->>'profileCompletion' ~ '^[0-9]+$' then (payload->>'profileCompletion')::integer else 0 end,0)<100 on conflict (source_path) do nothing", [`profile-incomplete/${decodedToken.uid}`, `account/profile-incomplete/${decodedToken.uid}`, now, JSON.stringify({ type: "profile_incomplete", title: "Complete your profile", message: "Finish your profile so members can understand your skills and experience.", isRead: false, link: "/profile", createdAt: now }), decodedToken.uid]),
         ]);
+        scheduleNotificationEmails([notificationId, `profile-incomplete/${decodedToken.uid}`]);
 
         // Set the deviceId cookie
         const cookieStore = await cookies();

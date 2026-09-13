@@ -355,7 +355,7 @@ export interface MarketplaceFilters {
   sort?: string;
 }
 
-export type NotificationType = "exchange_request" | "request_update" | "system" | "application_received" | "application_accepted" | "exchange_started" | "milestone_completed" | "file_uploaded" | "revision_requested" | "review_waiting" | "exchange_completed" | "new_match" | "saved_request_updated" | "request_expiring" | "new_professional" | "hours_earned" | "hours_reserved" | "hours_released" | "admin_adjustment" | "new_review" | "skill_endorsement" | "trust_score_increased" | "achievement_unlocked" | "verification_approved" | "profile_incomplete" | "subscription_renewed" | "payment_failed" | "security_alert" | "community_update";
+export type NotificationType = "exchange_request" | "request_update" | "system" | "application_received" | "application_accepted" | "exchange_started" | "milestone_completed" | "milestone_added" | "milestone_updated" | "file_uploaded" | "revision_requested" | "review_waiting" | "exchange_completed" | "exchange_cancelled" | "dispute_opened" | "dispute_resolved" | "message_received" | "new_match" | "saved_request_updated" | "request_expiring" | "new_professional" | "hours_earned" | "hours_reserved" | "hours_released" | "admin_adjustment" | "new_review" | "skill_endorsement" | "trust_score_increased" | "achievement_unlocked" | "verification_approved" | "profile_incomplete" | "subscription_renewed" | "payment_failed" | "security_alert" | "community_update";
 
 export type NotificationCategory = "Exchanges" | "Marketplace" | "Messages" | "Ledger" | "Reviews" | "Trust Score" | "Achievements" | "Account" | "Billing" | "Community" | "Security" | "System";
 

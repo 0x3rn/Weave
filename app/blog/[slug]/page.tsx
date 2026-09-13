@@ -16,7 +16,7 @@ export const metadata = {
   title: "Why Skill-Based Collaboration Could Be the Future of Freelancing | Weave Blog",
 };
 
-export default function BlogPostTemplate({ params }: { params: { slug: string } }) {
+export default function BlogPostTemplate() {
   // Mock data for the template
   const relatedArticles = [
     {

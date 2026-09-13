@@ -86,8 +86,16 @@ begin
   update marketplace_requests set status='in_progress',updated_at=p_now,payload=payload || jsonb_build_object('status','in_progress','updatedAt',p_now) where id=v_request.id;
   insert into exchange_activity (id,exchange_id,actor_id,event_type,description,occurred_at,payload) values (p_activity_id,p_exchange_id,p_actor_id,'created','Exchange created and Skill Hours escrowed.',p_now,jsonb_build_object('type','created','description','Exchange created and Skill Hours escrowed.','timestamp',p_now));
   insert into notifications (id,source_path,user_id,notification_type,title,message,is_read,is_archived,link,related_id,created_at,payload)
-    values (p_notification_id,'notifications/'||p_notification_id,v_app.applicant_id,'request_update','Proposal Accepted!','Your application for '''||v_request.title||''' was accepted. Your workspace is ready.',false,false,'/exchanges/'||p_exchange_id,p_exchange_id,p_now,
-      jsonb_build_object('type','request_update','title','Proposal Accepted!','message','Your application for '''||v_request.title||''' was accepted. Your workspace is ready.','isRead',false,'link','/exchanges/'||p_exchange_id,'createdAt',p_now));
+    values (p_notification_id,'notifications/'||p_notification_id,v_app.applicant_id,'application_accepted','Proposal Accepted!','Your application for '''||v_request.title||''' was accepted. Your workspace is ready.',false,false,'/exchanges/'||p_exchange_id,p_exchange_id,p_now,
+      jsonb_build_object('type','application_accepted','title','Proposal Accepted!','message','Your application for '''||v_request.title||''' was accepted. Your workspace is ready.','isRead',false,'link','/exchanges/'||p_exchange_id,'createdAt',p_now));
+  insert into notifications (id,source_path,user_id,notification_type,title,message,is_read,is_archived,link,related_id,created_at,payload)
+    values (p_requester_ledger_id||'-notification','ledger/'||p_requester_ledger_id||'/notification',p_actor_id,'hours_reserved','Skill Hours reserved',v_required||' Skill Hours were reserved for "'||v_request.title||'".',false,false,'/wallet/ledger',p_exchange_id,p_now,
+      jsonb_build_object('type','hours_reserved','title','Skill Hours reserved','message',v_required||' Skill Hours were reserved for this exchange.','isRead',false,'link','/wallet/ledger','relatedId',p_exchange_id,'createdAt',p_now));
+  if v_mutual then
+    insert into notifications (id,source_path,user_id,notification_type,title,message,is_read,is_archived,link,related_id,created_at,payload)
+      values (p_provider_ledger_id||'-notification','ledger/'||p_provider_ledger_id||'/notification',v_app.applicant_id,'hours_reserved','Skill Hours reserved',v_mutual_hours||' Skill Hours were reserved for "'||v_request.title||'".',false,false,'/wallet/ledger',p_exchange_id,p_now,
+        jsonb_build_object('type','hours_reserved','title','Skill Hours reserved','message',v_mutual_hours||' Skill Hours were reserved for this exchange.','isRead',false,'link','/wallet/ledger','relatedId',p_exchange_id,'createdAt',p_now));
+  end if;
   return p_exchange_id;
 end;
 $$;
@@ -152,8 +160,14 @@ begin
   v_description := case when v_exchange.is_mutual then 'Both parties accepted deliveries. Exchange completed.' else 'Requester accepted the delivery. Escrow has been released.' end;
   insert into exchange_activity (id,exchange_id,actor_id,event_type,description,occurred_at,payload) values (p_activity_id,p_exchange_id,p_actor_id,'completed',v_description,p_now,jsonb_build_object('type','completed','description',v_description,'timestamp',p_now));
   insert into notifications (id,source_path,user_id,notification_type,title,message,is_read,is_archived,link,related_id,created_at,payload) values (p_provider_notification_id,'notifications/'||p_provider_notification_id,v_exchange.provider_id,'exchange_completed','Exchange Completed!','Your work for "'||v_exchange.title||'" was accepted. '||v_req_amount||' Skill Hours have been added to your ledger.',false,false,'/exchanges/'||p_exchange_id,p_exchange_id,p_now,jsonb_build_object('type','exchange_completed','title','Exchange Completed!','message','Your work was accepted.','isRead',false,'link','/exchanges/'||p_exchange_id,'createdAt',p_now));
+  if v_req_amount > 0 then
+    insert into notifications (id,source_path,user_id,notification_type,title,message,is_read,is_archived,link,related_id,created_at,payload) values (p_provider_ledger_id||'-notification','ledger/'||p_provider_ledger_id||'/notification',v_exchange.provider_id,'hours_earned','Skill Hours earned',v_req_amount||' Skill Hours were added to your ledger.',false,false,'/wallet/ledger',p_exchange_id,p_now,jsonb_build_object('type','hours_earned','title','Skill Hours earned','message',v_req_amount||' Skill Hours were added to your ledger.','isRead',false,'link','/wallet/ledger','relatedId',p_exchange_id,'createdAt',p_now));
+  end if;
   if v_exchange.is_mutual then
     insert into notifications (id,source_path,user_id,notification_type,title,message,is_read,is_archived,link,related_id,created_at,payload) values (p_requester_notification_id,'notifications/'||p_requester_notification_id,v_exchange.requester_id,'exchange_completed','Exchange Completed!','The mutual exchange "'||v_exchange.title||'" is complete. '||v_prov_amount||' Skill Hours have been added to your ledger.',false,false,'/exchanges/'||p_exchange_id,p_exchange_id,p_now,jsonb_build_object('type','exchange_completed','title','Exchange Completed!','message','The mutual exchange is complete.','isRead',false,'link','/exchanges/'||p_exchange_id,'createdAt',p_now));
+    if v_prov_amount > 0 then
+      insert into notifications (id,source_path,user_id,notification_type,title,message,is_read,is_archived,link,related_id,created_at,payload) values (p_requester_ledger_id||'-notification','ledger/'||p_requester_ledger_id||'/notification',v_exchange.requester_id,'hours_earned','Skill Hours earned',v_prov_amount||' Skill Hours were added to your ledger.',false,false,'/wallet/ledger',p_exchange_id,p_now,jsonb_build_object('type','hours_earned','title','Skill Hours earned','message',v_prov_amount||' Skill Hours were added to your ledger.','isRead',false,'link','/wallet/ledger','relatedId',p_exchange_id,'createdAt',p_now));
+    end if;
   end if;
   return 'completed';
 end;

@@ -1,6 +1,7 @@
 "use server";
 
 import { iso, payload, sql } from "@/lib/neon";
+import { scheduleNotificationEmails } from "@/lib/notification-email";
 import type { Exchange, ExchangeActivity, ExchangeMilestone } from "@/types";
 import { revalidatePath } from "next/cache";
 import { getCurrentUserId } from "./user";
@@ -103,11 +104,12 @@ export async function createExchangeMilestone(exchangeId: string, input: { title
      activity as (insert into exchange_activity (id,exchange_id,actor_id,event_type,description,occurred_at,payload)
        select $9,$1,$2,'milestone_created','Milestone added: '||$5,$8,jsonb_build_object('type','milestone_created','description','Milestone added: '||$5,'timestamp',$8) from inserted returning id),
      notified as (insert into notifications (id,source_path,user_id,notification_type,title,message,is_read,is_archived,link,related_id,created_at,payload)
-       select $10,'notifications/'||$10,case when requester_id=$2 then provider_id else requester_id end,'request_update','Milestone Added','A milestone was added to "'||title||'".',false,false,'/exchanges/'||id||'/milestones',id,$8,jsonb_build_object('type','request_update','title','Milestone Added','message','A milestone was added.','isRead',false,'link','/exchanges/'||id||'/milestones','createdAt',$8) from eligible where exists(select 1 from inserted) returning id)
+       select $10,'notifications/'||$10,case when requester_id=$2 then provider_id else requester_id end,'milestone_added','Milestone Added','A milestone was added to "'||title||'".',false,false,'/exchanges/'||id||'/milestones',id,$8,jsonb_build_object('type','milestone_added','title','Milestone Added','message','A milestone was added.','isRead',false,'link','/exchanges/'||id||'/milestones','createdAt',$8) from eligible where exists(select 1 from inserted) returning id)
      select id from inserted`,
     [exchangeId, userId, mutableStatuses, milestoneId, title, description || null, dueDate?.toISOString() ?? null, now, activityId, notificationId],
   );
   if (!rows.length) return { success: false, error: "Exchange cannot be updated" };
+  scheduleNotificationEmails([notificationId]);
   await updateProgress(exchangeId);
   revalidatePath(`/exchanges/${exchangeId}`);
   return { success: true, milestoneId };
@@ -126,11 +128,12 @@ export async function updateExchangeMilestone(exchangeId: string, milestoneId: s
      activity as (insert into exchange_activity (id,exchange_id,actor_id,event_type,description,occurred_at,payload)
        select $7,$1,$2,case when $5='completed' then 'milestone_completed' else 'milestone_updated' end,'Milestone "'||title||'" marked '||replace($5,'_',' '),$6,jsonb_build_object('type',case when $5='completed' then 'milestone_completed' else 'milestone_updated' end,'description','Milestone "'||title||'" marked '||replace($5,'_',' '),'timestamp',$6) from updated returning id),
      notified as (insert into notifications (id,source_path,user_id,notification_type,title,message,is_read,is_archived,link,related_id,created_at,payload)
-       select $8,'notifications/'||$8,case when requester_id=$2 then provider_id else requester_id end,'request_update','Milestone Updated','A milestone in "'||title||'" is now '||replace($5,'_',' ')||'.',false,false,'/exchanges/'||id||'/milestones',id,$6,jsonb_build_object('type','request_update','title','Milestone Updated','message','A milestone was updated.','isRead',false,'link','/exchanges/'||id||'/milestones','createdAt',$6) from eligible where exists(select 1 from updated) returning id)
+       select $8,'notifications/'||$8,case when requester_id=$2 then provider_id else requester_id end,case when $5='completed' then 'milestone_completed' else 'milestone_updated' end,'Milestone Updated','A milestone in "'||title||'" is now '||replace($5,'_',' ')||'.',false,false,'/exchanges/'||id||'/milestones',id,$6,jsonb_build_object('type',case when $5='completed' then 'milestone_completed' else 'milestone_updated' end,'title','Milestone Updated','message','A milestone was updated.','isRead',false,'link','/exchanges/'||id||'/milestones','createdAt',$6) from eligible where exists(select 1 from updated) returning id)
      select title from updated`,
     [exchangeId, userId, mutableStatuses, milestoneId, status, now, activityId, notificationId],
   );
   if (!rows.length) return { success: false, error: "Milestone was not found or already has that status" };
+  scheduleNotificationEmails([notificationId]);
   await updateProgress(exchangeId);
   revalidatePath(`/exchanges/${exchangeId}`);
   return { success: true };
@@ -201,6 +204,7 @@ export async function cancelExchange(exchangeId: string, reason: string) {
   try {
     const ids = Array.from({ length: 5 }, () => crypto.randomUUID());
     await sql.query("select cancel_exchange_before_work($1,$2,$3,$4,$5,$6,$7,$8,$9)", [userId, exchangeId, ...ids, cleanReason, new Date().toISOString()]);
+    scheduleNotificationEmails([ids[3], ids[4]]);
     revalidatePath(`/exchanges/${exchangeId}`);
     revalidatePath("/exchanges");
     revalidatePath("/dashboard");

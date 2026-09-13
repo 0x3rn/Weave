@@ -17,6 +17,7 @@ function notificationFromRow(row: Record<string, unknown>): Notification {
     isRead: row.is_read === true,
     isArchived: row.is_archived === true,
     link: row.link ? String(row.link) : undefined,
+    actionLabel: row.action_label ? String(row.action_label) : undefined,
     relatedId: row.related_id ? String(row.related_id) : undefined,
     createdAt: iso(row.created_at),
   };
@@ -26,7 +27,7 @@ export async function getNotifications() {
   try {
     const userId = await getCurrentUserId();
     if (!userId) return { success: false, error: "Unauthorized", notifications: [] };
-    const rows = await sql.query("select * from notifications where user_id=$1 order by created_at desc", [userId]);
+    const rows = await sql.query("select * from notifications where user_id=$1 and in_app_enabled=true order by created_at desc limit 500", [userId]);
     return { success: true, notifications: rows.map(row => notificationFromRow(row)) };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Unable to load notifications", notifications: [] };
@@ -43,14 +44,14 @@ export async function markNotificationAsRead(notificationId: string) {
 export async function getUnreadNotificationsCount() {
   const userId = await getCurrentUserId();
   if (!userId) return { success: false, error: "Unauthorized", count: 0 };
-  const [row] = await sql.query("select count(*)::int as count from notifications where user_id=$1 and is_read=false and is_archived=false", [userId]);
+  const [row] = await sql.query("select count(*)::int as count from notifications where user_id=$1 and is_read=false and is_archived=false and in_app_enabled=true", [userId]);
   return { success: true, count: Number(row?.count ?? 0) };
 }
 
 export async function markAllNotificationsAsRead() {
   const userId = await getCurrentUserId();
   if (!userId) return { success: false, error: "Unauthorized" };
-  const rows = await sql.query("update notifications set is_read=true,payload=payload || '{\"isRead\":true}'::jsonb where user_id=$1 and is_read=false returning id", [userId]);
+  const rows = await sql.query("update notifications set is_read=true,payload=payload || '{\"isRead\":true}'::jsonb where user_id=$1 and is_read=false and is_archived=false and in_app_enabled=true returning id", [userId]);
   return { success: true, count: rows.length };
 }
 
@@ -81,7 +82,25 @@ export async function updateNotificationPreferences(preferences: NotificationPre
   const userId = await getCurrentUserId();
   if (!userId) return { success: false, error: "Unauthorized" };
   if (!preferences || typeof preferences !== "object" || JSON.stringify(preferences).length > 20_000) return { success: false, error: "Invalid notification preferences" };
-  const safePreferences = { ...preferences, security: true };
+  const booleanKeys = ["exchangeActivity", "marketplace", "messages", "reviews", "community"] as const;
+  if (booleanKeys.some(key => typeof preferences[key] !== "boolean") ||
+      !preferences.deliveryMethod ||
+      typeof preferences.deliveryMethod.inApp !== "boolean" ||
+      typeof preferences.deliveryMethod.email !== "boolean") {
+    return { success: false, error: "Invalid notification preferences" };
+  }
+  const safePreferences: NotificationPreferences = {
+    exchangeActivity: preferences.exchangeActivity,
+    marketplace: preferences.marketplace,
+    messages: preferences.messages,
+    reviews: preferences.reviews,
+    community: preferences.community,
+    security: true,
+    deliveryMethod: {
+      inApp: preferences.deliveryMethod.inApp,
+      email: preferences.deliveryMethod.email,
+    },
+  };
   const rows = await sql.query("update users set payload=payload || $2::jsonb,updated_at=now() where id=$1 returning id", [userId, JSON.stringify({ notificationPreferences: safePreferences })]);
   return rows.length ? { success: true } : { success: false, error: "User not found" };
 }

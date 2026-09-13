@@ -3,6 +3,7 @@
 import { getDemoMarketplaceData, getDemoMarketplaceRequest, USE_DEMO_MARKETPLACE } from "@/lib/demo-marketplace-data";
 import { calculateTrustScore } from "@/lib/user-metrics";
 import { iso, payload, sql } from "@/lib/neon";
+import { scheduleNotificationEmails } from "@/lib/notification-email";
 import { getUserById, userFromRow } from "@/lib/users";
 import { MarketplaceFilters, MarketplaceRequest } from "@/types";
 import { getCurrentUserId } from "./user";
@@ -103,7 +104,17 @@ export async function createMarketplaceRequest(data: Partial<MarketplaceRequest>
       status: "open", applicantsCount: 0, createdAt: now, updatedAt: now, isMutual: data.isMutual === true,
       offeredSkills: cleanStringArray(data.offeredSkills) ?? [], offeredDeliverables: Array.isArray(data.offeredDeliverables) ? data.offeredDeliverables.slice(0, 50) : [], offeredHours: data.offeredHours || "TBD",
     };
-    await sql.query("insert into marketplace_requests (id,requester_id,title,description,category,skills_required,deliverables,attachments,estimated_hours,exchange_type,timeline,status,is_mutual,applicants_count,created_at,updated_at,payload) values ($1,$2,$3,$4,$5,$6,$7::jsonb,$8::jsonb,$9,$10,$11,'open',$12,0,$13,$13,$14::jsonb)", [id, userId, title, description, category, skillsRequired, JSON.stringify(deliverables), JSON.stringify(attachments), request.estimatedHours, request.exchangeType, request.timeline, request.isMutual, now, JSON.stringify(request)]);
+    const matches = skillsRequired.length
+      ? await sql.query("select id from users where id<>$1 and coalesce(account_status,payload->>'status','active')='active' and payload->'skillsLookingFor' ?| $2::text[] limit 100", [userId, skillsRequired])
+      : [];
+    const matchNotifications = matches.map(match => ({ recipientId: String(match.id), notificationId: crypto.randomUUID() }));
+    await sql.transaction([
+      sql.query("insert into marketplace_requests (id,requester_id,title,description,category,skills_required,deliverables,attachments,estimated_hours,exchange_type,timeline,status,is_mutual,applicants_count,created_at,updated_at,payload) values ($1,$2,$3,$4,$5,$6,$7::jsonb,$8::jsonb,$9,$10,$11,'open',$12,0,$13,$13,$14::jsonb)", [id, userId, title, description, category, skillsRequired, JSON.stringify(deliverables), JSON.stringify(attachments), request.estimatedHours, request.exchangeType, request.timeline, request.isMutual, now, JSON.stringify(request)]),
+      ...matchNotifications.map(({ recipientId, notificationId }) => {
+        return sql.query("insert into notifications (id,source_path,user_id,notification_type,title,message,is_read,is_archived,link,related_id,created_at,payload) values ($1,$2,$3,'new_match','New marketplace match',$4,false,false,$5,$6,$7,$8::jsonb)", [notificationId, `marketplace/${id}/match/${recipientId}`, recipientId, `A new request, ${title}, matches skills you want to use.`, `/marketplace/${id}`, id, now, JSON.stringify({ type: "new_match", title: "New marketplace match", message: `A new request, ${title}, matches skills you want to use.`, isRead: false, link: `/marketplace/${id}`, relatedId: id, createdAt: now })]);
+      }),
+    ]);
+    scheduleNotificationEmails(matchNotifications.map(item => item.notificationId));
     return { success: true, id };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Unable to create request" };
@@ -137,7 +148,15 @@ export async function updateMarketplaceRequest(id: string, data: Partial<Marketp
       updatedAt: now,
     };
     if (JSON.stringify(updated).length > 100_000) throw new Error("Request is too large");
-    await sql.query("update marketplace_requests set title=$3,description=$4,category=$5,skills_required=$6,deliverables=$7::jsonb,estimated_hours=$8,exchange_type=$9,timeline=$10,is_mutual=$11,updated_at=$12,payload=$13::jsonb where id=$1 and requester_id=$2", [id, userId, updated.title, updated.description, updated.category, updated.skillsRequired, JSON.stringify(updated.deliverables), updated.estimatedHours, updated.exchangeType, updated.timeline, updated.isMutual, now, JSON.stringify(updated)]);
+    const savedBy = await sql.query("select user_id from saved_items where target_id=$1 and user_id<>$2 limit 100", [id, userId]);
+    const updateNotifications = savedBy.map(saved => ({ recipientId: String(saved.user_id), notificationId: crypto.randomUUID() }));
+    await sql.transaction([
+      sql.query("update marketplace_requests set title=$3,description=$4,category=$5,skills_required=$6,deliverables=$7::jsonb,estimated_hours=$8,exchange_type=$9,timeline=$10,is_mutual=$11,updated_at=$12,payload=$13::jsonb where id=$1 and requester_id=$2", [id, userId, updated.title, updated.description, updated.category, updated.skillsRequired, JSON.stringify(updated.deliverables), updated.estimatedHours, updated.exchangeType, updated.timeline, updated.isMutual, now, JSON.stringify(updated)]),
+      ...updateNotifications.map(({ recipientId, notificationId }) => {
+        return sql.query("insert into notifications (id,source_path,user_id,notification_type,title,message,is_read,is_archived,link,related_id,created_at,payload) values ($1,$2,$3,'saved_request_updated','Saved request updated',$4,false,false,$5,$6,$7,$8::jsonb)", [notificationId, `marketplace/${id}/updated/${now}/${recipientId}`, recipientId, `${updated.title} was updated.`, `/marketplace/${id}`, id, now, JSON.stringify({ type: "saved_request_updated", title: "Saved request updated", message: `${updated.title} was updated.`, isRead: false, link: `/marketplace/${id}`, relatedId: id, createdAt: now })]);
+      }),
+    ]);
+    scheduleNotificationEmails(updateNotifications.map(item => item.notificationId));
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Unable to update request" };

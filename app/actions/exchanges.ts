@@ -1,6 +1,7 @@
 "use server";
 
 import { iso, payload, sql } from "@/lib/neon";
+import { scheduleNotificationEmails } from "@/lib/notification-email";
 import { getUserById } from "@/lib/users";
 import { Exchange, ExchangeRequest } from "@/types";
 import { getCurrentUserId } from "./user";
@@ -37,12 +38,14 @@ export async function createExchangeRequest(data: Omit<ExchangeRequest, "id" | "
       `with recipient as (select id from users where id=$2), inserted as (
         insert into exchange_requests (id,sender_id,receiver_id,skill_needed,date_options,time_needed,hours_needed,message,status,created_at,updated_at,payload)
         select $1,$3,$2,$4,$5::jsonb,$6,$7,$8,'pending',$9,$9,$10::jsonb from recipient returning id
-      ), notified as (insert into notifications (id,source_path,user_id,notification_type,title,message,is_read,is_archived,related_id,created_at,payload)
-        select $11,$12,$2,'exchange_request','New Exchange Request',$13,false,false,$1,$9,$14::jsonb from inserted returning id)
+      ), notified as (insert into notifications (id,source_path,user_id,notification_type,title,message,is_read,is_archived,link,related_id,created_at,payload)
+        select $11,$12,$2,'exchange_request','New Exchange Request',$13,false,false,'/dashboard',$1,$9,$14::jsonb from inserted returning id)
       select id from inserted`,
       [id, data.receiverId, userId, request.skillNeeded, JSON.stringify(data.dateOptions), data.timeNeeded ?? null, data.hoursNeeded ?? null, data.message?.trim() ?? null, now, JSON.stringify(request), notificationId, `notifications/${notificationId}`, notification.message, JSON.stringify(notification)],
     );
-    return rows.length ? { success: true, id } : { success: false, error: "Recipient not found" };
+    if (!rows.length) return { success: false, error: "Recipient not found" };
+    scheduleNotificationEmails([notificationId]);
+    return { success: true, id };
   } catch (error) { return { success: false, error: error instanceof Error ? error.message : "Unable to create exchange request" }; }
 }
 
@@ -66,8 +69,9 @@ export async function updateExchangeRequest(requestId: string, status: string, m
     const nextPayload = { ...payload<Record<string, unknown>>(row.payload), ...changes };
     await sql.transaction(tx => [
       tx.query("update exchange_requests set status=$3,time_needed=$4,hours_needed=$5,date_options=$6::jsonb,updated_at=$7,payload=$8::jsonb where id=$1 and receiver_id=$2", [requestId, userId, status, nextPayload.timeNeeded ?? row.time_needed, nextPayload.hoursNeeded ?? row.hours_needed, JSON.stringify(nextPayload.dateOptions ?? row.date_options), now, JSON.stringify(nextPayload)]),
-      tx.query("insert into notifications (id,source_path,user_id,notification_type,title,message,is_read,is_archived,related_id,created_at,payload) values ($1,$2,$3,'request_update',$4,$5,false,false,$6,$7,$8::jsonb)", [notificationId, `notifications/${notificationId}`, request.senderId, `Request ${status === "reviewing" ? "Update" : status}`, notificationMessage, requestId, now, JSON.stringify({ type: "request_update", title: `Request ${status}`, message: notificationMessage, isRead: false, relatedId: requestId, createdAt: now })]),
+      tx.query("insert into notifications (id,source_path,user_id,notification_type,title,message,is_read,is_archived,link,related_id,created_at,payload) values ($1,$2,$3,'request_update',$4,$5,false,false,'/dashboard',$6,$7,$8::jsonb)", [notificationId, `notifications/${notificationId}`, request.senderId, `Request ${status === "reviewing" ? "Update" : status}`, notificationMessage, requestId, now, JSON.stringify({ type: "request_update", title: `Request ${status}`, message: notificationMessage, isRead: false, link: "/dashboard", relatedId: requestId, createdAt: now })]),
     ]);
+    scheduleNotificationEmails([notificationId]);
     return { success: true };
   } catch (error) { return { success: false, error: error instanceof Error ? error.message : "Unable to update request" }; }
 }
@@ -84,8 +88,9 @@ export async function createExchangeFromApplication(applicationId: string) {
   const userId = await getCurrentUserId();
   if (!userId) return { success: false, error: "Unauthorized" };
   try {
-    const ids = Array.from({ length: 7 }, () => crypto.randomUUID());
+    const ids = Array.from({ length: 6 }, () => crypto.randomUUID());
     const [row] = await sql.query("select create_exchange_from_application($1,$2,$3,$4,$5,$6,$7,$8,$9) as exchange_id", [userId, applicationId, ids[0], ids[1], ids[2], ids[3], ids[4], ids[5], new Date().toISOString()]);
+    scheduleNotificationEmails([ids[5], `${ids[2]}-notification`, `${ids[3]}-notification`]);
     return { success: true, exchangeId: String(row.exchange_id) };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message.replace(/^.*error:\s*/i, "") : "Failed to create exchange" };
@@ -116,7 +121,9 @@ export async function requestRevision(exchangeId: string, message: string) {
      select id from updated`,
     [exchangeId, userId, message.trim(), now, JSON.stringify({ status: "revision_requested", providerSubmittedAt: null, updatedAt: now }), activityId, `Requester asked for revisions: "${message.trim()}"`, JSON.stringify({ type: "revision_requested", description: `Requester asked for revisions: "${message.trim()}"`, timestamp: now }), notificationId, `notifications/${notificationId}`, JSON.stringify({ type: "revision_requested", title: "Revisions Requested", message: "Revisions were requested.", isRead: false, link: `/exchanges/${exchangeId}`, createdAt: now })],
   );
-  return rows.length ? { success: true } : { success: false, error: "Exchange must be in review and owned by the requester" };
+  if (!rows.length) return { success: false, error: "Exchange must be in review and owned by the requester" };
+  scheduleNotificationEmails([notificationId]);
+  return { success: true };
 }
 
 export async function acceptDelivery(exchangeId: string) {
@@ -129,7 +136,9 @@ export async function acceptDelivery(exchangeId: string) {
       tx.query("select complete_exchange_delivery($1,$2,$3,$4,$5,$6,$7,$8) as result", [userId, exchangeId, ids[0], ids[1], ids[2], ids[3], ids[4], now]),
       tx.query("update ledger_entries set entry_status='Completed',payload=payload || '{\"status\":\"Completed\"}'::jsonb where exchange_id=$1 and entry_type='Reserved' and entry_status='Active' and exists(select 1 from exchanges where id=$1 and status='completed')", [exchangeId]),
     ]);
-    return { success: true, status: String(completionRows[0]?.result) };
+    const status = String(completionRows[0]?.result);
+    if (status === "completed") scheduleNotificationEmails([ids[3], ids[4], `${ids[1]}-notification`, `${ids[2]}-notification`]);
+    return { success: true, status };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message.replace(/^.*error:\s*/i, "") : "Unable to accept delivery" };
   }

@@ -1,6 +1,7 @@
 "use server";
 
 import { iso, payload, sql } from "@/lib/neon";
+import { scheduleNotificationEmails } from "@/lib/notification-email";
 import { revalidatePath } from "next/cache";
 import { getCurrentUserId } from "./user";
 
@@ -34,6 +35,8 @@ export async function submitReview(exchangeId: string, targetUserId: string, inp
 
     const reviewId = crypto.randomUUID();
     const notificationId = crypto.randomUUID();
+    const trustNotificationId = crypto.randomUUID();
+    const endorsementNotificationId = crypto.randomUUID();
     const now = new Date().toISOString();
     const average = scores.reduce((sum, score) => sum + score, 0) / scores.length;
     const scoreDelta = average >= 4.75 ? 5 : average >= 4 ? 2 : average >= 3 ? 0 : average >= 2 ? -5 : -10;
@@ -56,10 +59,19 @@ export async function submitReview(exchangeId: string, targetUserId: string, inp
        ), notified as (
          insert into notifications (id,source_path,user_id,notification_type,title,message,is_read,is_archived,link,related_id,created_at,payload)
          select $11,$12,$3,'new_review','New Review Received',$13,false,false,$14,$1,$8,$15::jsonb from inserted returning id
+       ), trust_notified as (
+         insert into notifications (id,source_path,user_id,notification_type,title,message,is_read,is_archived,link,related_id,created_at,payload)
+         select $16,$17,$3,'trust_score_increased','Trust Score increased',$18,false,false,'/profile',$1,$8,$19::jsonb from updated where $10>0 returning id
+       ), endorsement_notified as (
+         insert into notifications (id,source_path,user_id,notification_type,title,message,is_read,is_archived,link,related_id,created_at,payload)
+         select $20,$21,$3,'skill_endorsement','Skills endorsed',$22,false,false,'/profile',$1,$8,$23::jsonb from inserted where cardinality($24::text[])>0 returning id
        ) select id from inserted`,
-      [exchangeId, userId, targetUserId, reviewId, input.rating, comment, isPositive, now, reviewPayload, scoreDelta, notificationId, `users/${targetUserId}/notifications/${notificationId}`, message, "/reviews", notificationPayload],
+      [exchangeId, userId, targetUserId, reviewId, input.rating, comment, isPositive, now, reviewPayload, scoreDelta, notificationId, `users/${targetUserId}/notifications/${notificationId}`, message, "/reviews", notificationPayload,
+        trustNotificationId, `users/${targetUserId}/notifications/${trustNotificationId}`, `Your Trust Score increased by ${scoreDelta} points.`, JSON.stringify({ type: "trust_score_increased", title: "Trust Score increased", message: `Your Trust Score increased by ${scoreDelta} points.`, isRead: false, link: "/profile", relatedId: exchangeId, createdAt: now }),
+        endorsementNotificationId, `users/${targetUserId}/notifications/${endorsementNotificationId}`, `${skillEndorsements.length} skill${skillEndorsements.length === 1 ? " was" : "s were"} endorsed.`, JSON.stringify({ type: "skill_endorsement", title: "Skills endorsed", message: `${skillEndorsements.length} skill${skillEndorsements.length === 1 ? " was" : "s were"} endorsed.`, isRead: false, link: "/profile", relatedId: exchangeId, createdAt: now }), skillEndorsements],
     );
     if (!rows.length) return { success: false, error: "Exchange is not reviewable or you have already reviewed it" };
+    scheduleNotificationEmails([notificationId, trustNotificationId, endorsementNotificationId]);
     revalidatePath(`/exchanges/${exchangeId}`);
     revalidatePath("/reviews");
     return { success: true };

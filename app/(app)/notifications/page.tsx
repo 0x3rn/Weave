@@ -1,5 +1,4 @@
 import { getNotifications } from "@/app/actions/notifications";
-import { getExchangeRequests } from "@/app/actions/exchanges";
 import { getCurrentUserId } from "@/app/actions/user";
 import { redirect } from "next/navigation";
 import NotificationsView from "@/components/notifications/notifications-view";
@@ -16,14 +15,8 @@ export default async function NotificationsPage() {
     redirect("/api/auth/logout");
   }
   
-  const [notifResult, sentReqs, receivedReqs] = await Promise.all([
-    getNotifications(),
-    getExchangeRequests(userId, "sender"),
-    getExchangeRequests(userId, "receiver")
-  ]);
+  const notifResult = await getNotifications();
   
   const notifications = notifResult.success ? notifResult.notifications : [];
-  const requests = [...(sentReqs.requests || []), ...(receivedReqs.requests || [])];
-
-  return <NotificationsView initialNotifications={notifications} initialRequests={requests} currentUserId={userId} />;
+  return <NotificationsView initialNotifications={notifications} />;
 }
