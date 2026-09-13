@@ -27,6 +27,11 @@ export default function ApplyClient({ request }: ApplyClientProps) {
   // Mutual Exchange fields
   const isMutual = !!request.isMutual;
   const [offeredDeliverables, setOfferedDeliverables] = useState<string[]>([""]);
+  const [hourDifferenceChoice, setHourDifferenceChoice] = useState<"waive" | "increase_deliverables">("waive");
+  const [differenceDeliverables, setDifferenceDeliverables] = useState<string[]>([""]);
+  const requesterOfferHours = Number(String(request.offeredHours || "").match(/\d+/)?.[0] || 0);
+  const proposedHours = Number(estimatedHours || 0);
+  const hourDifference = isMutual && proposedHours > 0 ? Math.abs(proposedHours - requesterOfferHours) : 0;
   
   const [portfolioLinkInput, setPortfolioLinkInput] = useState("");
   const [portfolioLinks, setPortfolioLinks] = useState<string[]>([]);
@@ -77,7 +82,9 @@ export default function ApplyClient({ request }: ApplyClientProps) {
       agreedToTerms,
       isMutualProposal: isMutual,
       ...(isMutual && { offeredDeliverables: cleanDeliverables }),
-      ...(isMutual && { offeredHours: Number(estimatedHours) })
+      ...(isMutual && { offeredHours: Number(estimatedHours) }),
+      ...(isMutual && hourDifference > 0 && { hourDifferenceChoice }),
+      ...(isMutual && hourDifference > 0 && hourDifferenceChoice === "increase_deliverables" && { differenceDeliverables: differenceDeliverables.map(item => item.trim()).filter(Boolean) })
     });
 
     setIsSubmitting(false);
@@ -282,6 +289,29 @@ export default function ApplyClient({ request }: ApplyClientProps) {
             />
           </div>
         </div>
+
+        {isMutual && proposedHours > 0 && requesterOfferHours > 0 && (
+          <div className="rounded-xl border border-border bg-surface-secondary/50 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div><h3 className="font-bold text-heading">Skill Hour balance</h3><p className="mt-1 text-sm text-muted">Your work: {proposedHours} hours · Their offer: {requesterOfferHours} hours</p></div>
+              <span className={`rounded-full px-3 py-1 text-sm font-bold ${hourDifference ? "bg-amber-500/10 text-amber-600" : "bg-success/10 text-success"}`}>{hourDifference ? `${hourDifference} hour difference` : "Balanced"}</span>
+            </div>
+            {hourDifference > 0 && <div className="mt-4 space-y-3">
+              <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-surface p-3">
+                <input type="radio" name="difference" checked={hourDifferenceChoice === "waive"} onChange={() => setHourDifferenceChoice("waive")} className="mt-1 accent-primary" />
+                <span><span className="block text-sm font-bold text-heading">Waive the difference</span><span className="text-xs text-muted">Keep each side’s stated hours in the final contract.</span></span>
+              </label>
+              <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-surface p-3">
+                <input type="radio" name="difference" checked={hourDifferenceChoice === "increase_deliverables"} onChange={() => setHourDifferenceChoice("increase_deliverables")} className="mt-1 accent-primary" />
+                <span><span className="block text-sm font-bold text-heading">Increase deliverables</span><span className="text-xs text-muted">Add the work listed below to the lower-hour side so both obligations match.</span></span>
+              </label>
+              {hourDifferenceChoice === "increase_deliverables" && <div className="space-y-2 pl-7">
+                {differenceDeliverables.map((item, index) => <div key={index} className="flex gap-2"><input required value={item} onChange={event => setDifferenceDeliverables(items => items.map((value, itemIndex) => itemIndex === index ? event.target.value : value))} maxLength={500} placeholder="Additional deliverable needed" className="flex-1 rounded-[var(--radius-input)] border border-input bg-background px-3 py-2 text-sm text-body outline-none focus:border-primary" /><button type="button" onClick={() => setDifferenceDeliverables(items => items.length === 1 ? items : items.filter((_, itemIndex) => itemIndex !== index))} className="rounded-lg p-2 text-muted hover:bg-error/10 hover:text-error" aria-label="Remove added deliverable"><X className="h-4 w-4" /></button></div>)}
+                <button type="button" onClick={() => setDifferenceDeliverables(items => [...items, ""])} className="flex items-center gap-1 text-sm font-bold text-primary"><Plus className="h-4 w-4" />Add another</button>
+              </div>}
+            </div>}
+          </div>
+        )}
 
         {/* Portfolio Links */}
         <div>

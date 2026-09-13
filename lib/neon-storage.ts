@@ -86,6 +86,18 @@ const extensionByType: Record<string, string> = {
   "image/webp": "webp",
   "application/pdf": "pdf",
   "application/zip": "zip",
+  "text/plain": "txt",
+  "text/markdown": "md",
+  "application/json": "json",
+  "text/css": "css",
+  "text/javascript": "js",
+  "application/javascript": "js",
+  "text/typescript": "ts",
+  "application/typescript": "ts",
+};
+
+const typeByExtension: Record<string, string> = {
+  txt: "text/plain", md: "text/markdown", json: "application/json", css: "text/css", js: "text/javascript", jsx: "text/javascript", ts: "text/typescript", tsx: "text/typescript",
 };
 
 function hasSupportedSignature(bytes: Uint8Array, type: string) {
@@ -94,20 +106,28 @@ function hasSupportedSignature(bytes: Uint8Array, type: string) {
   if (type === "image/png") return bytes.length > 8 && bytes.slice(0, 8).every((byte, index) => byte === [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a][index]);
   if (type === "image/webp") return text.slice(0, 4) === "RIFF" && text.slice(8, 12) === "WEBP";
   if (type === "application/pdf") return text.slice(0, 5) === "%PDF-";
-  return type === "application/zip" && bytes.length > 4 && bytes[0] === 0x50 && bytes[1] === 0x4b && bytes[2] === 0x03 && bytes[3] === 0x04;
+  if (type === "application/zip") return bytes.length > 4 && bytes[0] === 0x50 && bytes[1] === 0x4b && bytes[2] === 0x03 && bytes[3] === 0x04;
+  if (type.startsWith("text/") || type === "application/json" || type === "application/javascript" || type === "application/typescript") {
+    if (bytes.includes(0)) return false;
+    try { new TextDecoder("utf-8", { fatal: true }).decode(bytes); return true; } catch { return false; }
+  }
+  return false;
 }
 
 export async function storeUpload(userId: string, file: File, folder: string) {
   if (!userId || !(file instanceof File)) throw new Error("Invalid upload");
   if (file.size === 0 || file.size > 5 * 1024 * 1024) throw new Error("File too large. Maximum size is 5MB.");
-  if (!(file.type in extensionByType)) throw new Error("Unsupported file type");
+  const suppliedType = file.type.toLowerCase();
+  const originalExtension = file.name.split(".").at(-1)?.toLowerCase() || "";
+  const contentType = suppliedType in extensionByType ? suppliedType : typeByExtension[originalExtension];
+  if (!contentType || !(contentType in extensionByType)) throw new Error("Unsupported file type");
   const bytes = new Uint8Array(await file.arrayBuffer());
-  if (!hasSupportedSignature(bytes, file.type)) throw new Error("File contents do not match a supported format");
+  if (!hasSupportedSignature(bytes, contentType)) throw new Error("File contents do not match a supported format");
 
   const publicFolder = folder === "avatars" || folder === "portfolio";
   const exchangeMatch = /^exchanges\/([A-Za-z0-9_-]{1,128})$/.exec(folder);
   if (!publicFolder && !exchangeMatch && folder !== "deliverables" && folder !== "misc") throw new Error("Unsupported file destination");
-  const filename = `${crypto.randomUUID()}.${extensionByType[file.type]}`;
+  const filename = `${crypto.randomUUID()}.${extensionByType[contentType]}`;
   const key = publicFolder
     ? `${folder}/${userId}/${filename}`
     : exchangeMatch
@@ -117,7 +137,7 @@ export async function storeUpload(userId: string, file: File, folder: string) {
     bucket: publicFolder ? publicBucket() : privateBucket(),
     key,
     body: bytes,
-    contentType: file.type,
+    contentType,
     cacheControl: publicFolder ? "public, max-age=31536000, immutable" : "private, no-store",
   });
   return publicFolder ? publicObjectUrl(key) : `/api/storage/private/${key.split("/").map(encodeURIComponent).join("/")}`;

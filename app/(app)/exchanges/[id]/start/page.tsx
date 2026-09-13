@@ -1,13 +1,19 @@
-import { getExchange } from "@/app/actions/exchanges";
+import { getExchange, getExchangeContract } from "@/app/actions/exchanges";
+import { getCurrentUserId } from "@/app/actions/user";
+import ContractApprovalClient from "@/components/exchanges/contract-approval-client";
 import { ArrowRight, CheckCircle2, Clock3, Lock, MessageSquare, PartyPopper } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 export default async function StartPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const result = await getExchange(id);
+  const [result, contractResult, userId] = await Promise.all([getExchange(id), getExchangeContract(id), getCurrentUserId()]);
   if (!result.success || !result.exchange) notFound();
   const { exchange } = result;
+  if (exchange.status === "pending_proposal") {
+    if (!contractResult.success || !contractResult.contract || !userId) notFound();
+    return <ContractApprovalClient exchange={exchange} contract={contractResult.contract} userId={userId} />;
+  }
   return <div className="mx-auto max-w-3xl py-4 text-center">
     <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10"><PartyPopper className="h-8 w-8 text-primary" /></div>
     <h2 className="mt-5 text-3xl font-bold text-heading">The exchange is ready</h2><p className="mx-auto mt-2 max-w-xl text-muted">Your proposal is accepted, Skill Hours are reserved, and the private workspace for “{exchange.title}” is open.</p>

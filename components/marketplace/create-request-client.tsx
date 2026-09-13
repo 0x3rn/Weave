@@ -344,7 +344,9 @@ export default function CreateRequestClient({ userBalance = 0 }: { userBalance?:
                   <div>
                     <label className="block text-sm font-bold text-heading mb-2">The Skills I Can Provide (Comma separated)</label>
                     <input
-                      type="text"
+                      type="number"
+                      min="1"
+                      max="10000"
                       value={offeredSkills}
                       onChange={(e) => setOfferedSkills(e.target.value)}
                       placeholder="e.g. React Development, Copywriting"
@@ -360,7 +362,7 @@ export default function CreateRequestClient({ userBalance = 0 }: { userBalance?:
                       type="text"
                       value={offeredHours}
                       onChange={(e) => setOfferedHours(e.target.value)}
-                      placeholder="e.g. 5, 10-15"
+                      placeholder="e.g. 5"
                       className="w-full bg-surface border border-border rounded-[var(--radius-button)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-body"
                       required={isMutual}
                       disabled={isSubmitting}

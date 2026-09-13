@@ -110,7 +110,7 @@ export default function BlogPostTemplate() {
             <article className="lg:col-span-9 prose prose-lg prose-headings:text-heading prose-headings:font-bold prose-p:text-body prose-p:leading-relaxed prose-a:text-primary max-w-none">
               
               <p>
-                Every freelancer knows the feeling. You have a great idea for a side project, or perhaps you want to elevate your current services. You need help—maybe a designer to polish your UI, or a developer to build your marketing site. But you look at your immediate cash flow and think, <em className="text-heading font-serif">"I can't afford to hire someone right now."</em>
+                Every freelancer knows the feeling. You have a great idea for a side project, or perhaps you want to elevate your current services. You need help, perhaps a designer to polish your UI or a developer to build your marketing site. But you look at your immediate cash flow and think, <em className="text-heading font-serif">"I can't afford to hire someone right now."</em>
               </p>
 
               <p>

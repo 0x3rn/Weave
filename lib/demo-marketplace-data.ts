@@ -26,7 +26,7 @@ function req(partial: any): MarketplaceRequest {
 export const DEMO_REQUESTS: MarketplaceRequest[] = [
   req({
     id: "demo-req-fullstack",
-    title: "Full-Stack Web App for Task Management — React + Firebase",
+    title: "Full-Stack Web App for Task Management: React + Firebase",
     requesterId: "demo-user-sarah",
     requesterName: "Sarah Mitchell",
     requesterAvatar: "https://i.pravatar.cc/150?img=47",
@@ -274,14 +274,14 @@ export const DEMO_PROFESSIONALS = [
   {
     id: "demo-pro-olivia", username: "oliviabennett", name: "Olivia Bennett",
     avatar: "https://i.pravatar.cc/150?img=1",
-    headline: "Senior Product Designer — design systems & UX strategy",
+    headline: "Senior Product Designer | Design systems & UX strategy",
     isVerified: true, trustScore: 96, rating: 4.9, completedExchanges: 47,
     topSkills: ["UI Design", "Figma", "Prototyping"], availability: "20-30 hours/week",
   },
   {
     id: "demo-pro-ethan", username: "ethanwalker", name: "Ethan Walker",
     avatar: "https://i.pravatar.cc/150?img=3",
-    headline: "Full-Stack Developer — React, Next.js & Firebase",
+    headline: "Full-Stack Developer | React, Next.js & Firebase",
     isVerified: false, trustScore: 92, rating: 4.8, completedExchanges: 63,
     topSkills: ["React", "Next.js", "Firebase"], availability: "Full-time",
   },
@@ -302,28 +302,28 @@ export const DEMO_PROFESSIONALS = [
   {
     id: "demo-pro-sofia", username: "sofiarossi", name: "Sofia Rossi",
     avatar: "https://i.pravatar.cc/150?img=5",
-    headline: "Brand Designer — logos, identity systems & guidelines",
+    headline: "Brand Designer | Logos, identity systems & guidelines",
     isVerified: true, trustScore: 94, rating: 5.0, completedExchanges: 52,
     topSkills: ["Logo Design", "Brand Identity", "Typography"], availability: "Flexible",
   },
   {
     id: "demo-pro-lucas", username: "lucasmeyer", name: "Lucas Meyer",
     avatar: "https://i.pravatar.cc/150?img=6",
-    headline: "Data Analyst — Python, SQL & visualization",
+    headline: "Data Analyst | Python, SQL & visualization",
     isVerified: false, trustScore: 85, rating: 4.5, completedExchanges: 31,
     topSkills: ["Python", "SQL", "Data Visualization"], availability: "15-20 hours/week",
   },
   {
     id: "demo-pro-amara", username: "amaraokafor", name: "Amara Okafor",
     avatar: "https://i.pravatar.cc/150?img=7",
-    headline: "AI Engineer — LLMs, RAG & production ML",
+    headline: "AI Engineer | LLMs, RAG & production ML",
     isVerified: true, trustScore: 95, rating: 4.9, completedExchanges: 41,
     topSkills: ["Machine Learning", "LLMs", "Python"], availability: "Full-time",
   },
   {
     id: "demo-pro-jack", username: "jackwilson", name: "Jack Wilson",
     avatar: "https://i.pravatar.cc/150?img=8",
-    headline: "Marketing Specialist — growth & email campaigns",
+    headline: "Marketing Specialist | Growth & email campaigns",
     isVerified: false, trustScore: 81, rating: 4.4, completedExchanges: 22,
     topSkills: ["Social Media", "Email Marketing"], availability: "10 hours/week",
   },

@@ -24,6 +24,9 @@ function exchangeFromRow(row: Record<string, unknown>): Exchange {
     isMutual: row.is_mutual === true,
     deadline: iso(row.deadline_at),
     progress: Number(row.progress ?? 0),
+    reviewRound: Number(row.review_round ?? 1),
+    revealAt: iso(row.reveal_at) || null,
+    filesReleasedAt: iso(row.files_released_at) || null,
     createdAt: iso(row.created_at),
     completedAt: iso(row.completed_at) || null,
     updatedAt: iso(row.updated_at),
@@ -56,7 +59,7 @@ export async function getMyExchanges() {
      from exchanges e
      join users u on u.id=case when e.requester_id=$1 then e.provider_id else e.requester_id end
      where e.requester_id=$1 or e.provider_id=$1
-     order by case when e.status in ('in_progress','in_review','revision_requested','disputed') then 0 else 1 end,e.updated_at desc`,
+     order by case when e.status in ('pending_proposal','in_progress','in_review','revision_requested','disputed') then 0 else 1 end,e.updated_at desc`,
     [userId],
   );
   return {

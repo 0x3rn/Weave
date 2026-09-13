@@ -14,7 +14,7 @@ export async function getDashboardData() {
 
   const [portfolio, exchangeRows, requestRows, ledgerRows, notificationRows] = await Promise.all([
     sql.query("select id from portfolio_items where user_id=$1 limit 1", [uid]),
-    sql.query("select * from exchanges where (requester_id=$1 or provider_id=$1) and status in ('in_progress','pending_proposal') order by updated_at desc", [uid]),
+    sql.query("select * from exchanges where (requester_id=$1 or provider_id=$1) and status in ('pending_proposal','in_progress','in_review','revision_requested','disputed') order by updated_at desc", [uid]),
     sql.query("select * from exchange_requests where sender_id=$1 or receiver_id=$1 order by created_at desc", [uid]),
     sql.query("select * from ledger_entries where user_id=$1 order by occurred_at desc limit 5", [uid]),
     sql.query("select * from notifications where user_id=$1 and is_archived=false and in_app_enabled=true order by created_at desc limit 10", [uid]),

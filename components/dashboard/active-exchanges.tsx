@@ -65,10 +65,10 @@ export default function ActiveExchanges({ exchanges, currentUserId }: { exchange
                   </td>
                   <td className="px-6 py-4 text-right">
                     <Link 
-                      href={`/exchanges/${exchange.id}`}
+                      href={`/exchanges/${exchange.id}${exchange.status === "pending_proposal" ? "/start" : ""}`}
                       className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-semibold bg-background border border-border rounded-[var(--radius-button)] hover:border-primary hover:text-primary transition-all"
                     >
-                      Workspace
+                      {exchange.status === "pending_proposal" ? "Review contract" : "Workspace"}
                     </Link>
                   </td>
                 </tr>

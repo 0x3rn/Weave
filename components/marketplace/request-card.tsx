@@ -20,7 +20,7 @@ export function RequestCard({ request, isSavedInitial = false, isApplied = false
   
   // Determine if this is a "new" request (posted within last 48h)
   const isNew = Date.now() - new Date(request.createdAt).getTime() < 48 * 60 * 60 * 1000;
-  // Determine if this is a "featured" request (high applicants / high trust — visually distinct)
+  // Determine if this is a "featured" request (high applicants / high trust, visually distinct)
   const isFeatured = (request.applicantsCount || 0) >= 10;
 
   return (

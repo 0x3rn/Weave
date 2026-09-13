@@ -366,7 +366,7 @@ export default function LedgerClient({ initialData }: LedgerClientProps) {
                           {tx.description}
                         </td>
                         <td className="p-4 text-sm text-muted whitespace-nowrap">
-                          {tx.exchangeId || "—"}
+                          {tx.exchangeId || "Not linked"}
                         </td>
                         <td className="p-4 text-sm whitespace-nowrap text-right">
                           <span className={`font-bold ${isPositive ? 'text-success' : 'text-heading'}`}>

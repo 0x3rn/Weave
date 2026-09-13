@@ -153,7 +153,7 @@ export default function EscrowPolicyPage() {
               <div className="bg-surface-secondary border border-border p-6 rounded-[var(--radius-card)] mt-12 text-center">
                 <h3 className="text-xl font-bold text-heading mt-0 mb-3">Summary</h3>
                 <p className="mb-0 text-sm leading-relaxed">
-                  Weave's escrow system exists to strengthen trust—not to replace it. By encouraging accountability from both parties before work begins, escrow helps create a safer environment for professional collaboration. Combined with Skill Hours, member reputation, verification, and transparent communication, escrow is one of several tools designed to support a fair, respectful, and reliable marketplace for everyone.
+                  Weave's escrow system exists to strengthen trust, not to replace it. By encouraging accountability from both parties before work begins, escrow helps create a safer environment for professional collaboration. Combined with Skill Hours, member reputation, verification, and transparent communication, escrow is one of several tools designed to support a fair, respectful, and reliable marketplace for everyone.
                 </p>
               </div>
 

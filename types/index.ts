@@ -107,11 +107,42 @@ export interface ExchangeDeliverable {
   comments?: string;
   submittedBy?: string; // userId of the submitter (for mutual exchanges)
   uploadedAt: string; // ISO string
+  reviewRound?: number;
+  isCurrent?: boolean;
+}
+
+export interface ExchangeReviewState {
+  round: number;
+  phase: "commit" | "review" | "waiting_decisions" | "revision" | "released" | "closed";
+  myDecision?: "accept" | "revision";
+  submittedDecisionCount: number;
+  requiredDecisionCount: number;
+  canReview: boolean;
+  filesReleased: boolean;
+  revisionFeedback: { reviewerId: string; feedback: string }[];
+}
+
+export interface ExchangeContract {
+  exchangeId: string;
+  version: number;
+  exchangeType: "standard" | "mutual";
+  requesterId: string;
+  providerId: string;
+  requesterDeliverables: string[];
+  providerDeliverables: string[];
+  requesterPaysHours: number;
+  providerPaysHours: number;
+  hourDifference: number;
+  differenceResolution: "none" | "waived" | "deliverables_increased";
+  deadline?: string;
+  revisionsIncluded: number;
+  fingerprint: string;
+  approvedBy: string[];
 }
 
 export interface ExchangeActivity {
   id: string;
-  type: "created" | "proposal_accepted" | "files_uploaded" | "milestone_created" | "milestone_updated" | "milestone_completed" | "revision_requested" | "dispute_opened" | "dispute_resolved" | "completed" | "cancelled";
+  type: "created" | "contract_proposed" | "contract_approved" | "proposal_accepted" | "files_uploaded" | "milestone_created" | "milestone_updated" | "milestone_completed" | "revision_requested" | "dispute_opened" | "dispute_resolved" | "completed" | "cancelled";
   description: string;
   timestamp: string; // ISO string
   actorId?: string;
@@ -141,6 +172,13 @@ export interface Exchange {
   requesterSubmittedAt?: string | null;
   providerAcceptedAt?: string | null;
   requesterAcceptedAt?: string | null;
+  reviewRound?: number;
+  revealAt?: string | null;
+  filesReleasedAt?: string | null;
+  pendingSubmissions?: string[];
+  contractApprovals?: string[];
+  contractFingerprint?: string;
+  revisionFeedback?: { reviewerId: string; feedback: string }[];
 
   timelineDays?: number;
   deadline?: string; // ISO string
@@ -332,6 +370,8 @@ export interface MarketplaceApplication {
   isMutualProposal?: boolean;
   offeredDeliverables?: string[];
   offeredHours?: number;
+  hourDifferenceChoice?: "waive" | "increase_deliverables";
+  differenceDeliverables?: string[];
   
   estimatedCompletionDate?: string; // ISO string
   agreedToTerms: boolean;

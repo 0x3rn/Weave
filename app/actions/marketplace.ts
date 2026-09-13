@@ -95,14 +95,18 @@ export async function createMarketplaceRequest(data: Partial<MarketplaceRequest>
     const skillsRequired = cleanStringArray(data.skillsRequired) ?? [];
     const deliverables = Array.isArray(data.deliverables) && data.deliverables.length <= 50 ? data.deliverables : [];
     const attachments = Array.isArray(data.attachments) && data.attachments.length <= 20 ? data.attachments : [];
+    const isMutual = data.isMutual === true;
+    const offeredHoursNumber = Number(String(data.offeredHours ?? "").trim());
+    const offeredDeliverables = Array.isArray(data.offeredDeliverables) ? data.offeredDeliverables.map(item => String(item).trim()).filter(Boolean).slice(0, 50) : [];
+    if (isMutual && (!Number.isInteger(offeredHoursNumber) || offeredHoursNumber < 1 || offeredHoursNumber > 10_000 || offeredDeliverables.length === 0)) throw new Error("Mutual exchanges require numeric offered hours and at least one deliverable");
     if (JSON.stringify({ deliverables, attachments }).length > 50_000) throw new Error("Request attachments or deliverables are too large");
     const request = {
       title, requesterId: userId, requesterName: user.fullName || user.username || "Unknown", requesterAvatar: user.photoURL || "", requesterTrustScore: user.trustScore || 50,
       requesterVerification: user.isVerified || false, description, deliverables, category, skillsRequired,
       estimatedHours: cleanString(data.estimatedHours, "TBD", 100), exchangeType: cleanString(data.exchangeType, "One-time", 100), timeline: cleanString(data.timeline, "Flexible", 200),
       preferredExperience: cleanString(data.preferredExperience, "Any", 100), preferredTimeZone: cleanString(data.preferredTimeZone, user.timeZone || "", 100), attachments,
-      status: "open", applicantsCount: 0, createdAt: now, updatedAt: now, isMutual: data.isMutual === true,
-      offeredSkills: cleanStringArray(data.offeredSkills) ?? [], offeredDeliverables: Array.isArray(data.offeredDeliverables) ? data.offeredDeliverables.slice(0, 50) : [], offeredHours: data.offeredHours || "TBD",
+      status: "open", applicantsCount: 0, createdAt: now, updatedAt: now, isMutual,
+      offeredSkills: cleanStringArray(data.offeredSkills) ?? [], offeredDeliverables, offeredHours: isMutual ? String(offeredHoursNumber) : "",
     };
     const matches = skillsRequired.length
       ? await sql.query("select id from users where id<>$1 and coalesce(account_status,payload->>'status','active')='active' and payload->'skillsLookingFor' ?| $2::text[] limit 100", [userId, skillsRequired])
@@ -147,6 +151,9 @@ export async function updateMarketplaceRequest(id: string, data: Partial<Marketp
       offeredHours: data.offeredHours ?? existing.offeredHours,
       updatedAt: now,
     };
+    const updatedOfferedHours = Number(String(updated.offeredHours ?? "").trim());
+    if (updated.isMutual && (!Number.isInteger(updatedOfferedHours) || updatedOfferedHours < 1 || updatedOfferedHours > 10_000 || !updated.offeredDeliverables?.length)) throw new Error("Mutual exchanges require numeric offered hours and at least one deliverable");
+    updated.offeredHours = updated.isMutual ? String(updatedOfferedHours) : "";
     if (JSON.stringify(updated).length > 100_000) throw new Error("Request is too large");
     const savedBy = await sql.query("select user_id from saved_items where target_id=$1 and user_id<>$2 limit 100", [id, userId]);
     const updateNotifications = savedBy.map(saved => ({ recipientId: String(saved.user_id), notificationId: crypto.randomUUID() }));

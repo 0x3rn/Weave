@@ -1,5 +1,5 @@
 import { getExchange } from "@/app/actions/exchanges";
-import { getDeliverables } from "@/app/actions/deliverables";
+import { getDeliverables, getExchangeReviewState } from "@/app/actions/deliverables";
 import { getCurrentUserId } from "@/app/actions/user";
 import { notFound, redirect } from "next/navigation";
 import SubmitDeliverableClient from "@/components/exchanges/submit-deliverable-client";
@@ -16,9 +16,10 @@ export default async function ExchangeFilesPage({
     redirect("/api/auth/logout");
   }
 
-  const [exchangeResult, deliveriesResult] = await Promise.all([
+  const [exchangeResult, deliveriesResult, reviewResult] = await Promise.all([
     getExchange(id),
-    getDeliverables(id)
+    getDeliverables(id),
+    getExchangeReviewState(id),
   ]);
 
   if (!exchangeResult.success || !exchangeResult.exchange) {
@@ -28,6 +29,7 @@ export default async function ExchangeFilesPage({
   const { exchange } = exchangeResult;
   const isProvider = userId === exchange.providerId;
   const deliveries = deliveriesResult.deliveries || [];
+  if (!reviewResult.success || !reviewResult.state) notFound();
 
   return (
     <SubmitDeliverableClient 
@@ -35,6 +37,7 @@ export default async function ExchangeFilesPage({
       isProvider={isProvider} 
       deliveries={deliveries} 
       userId={userId}
+      reviewState={reviewResult.state}
     />
   );
 }

@@ -114,7 +114,7 @@ export default function CommunityGuidelinesPage() {
               <p>Skill Hours are the foundation of the Weave marketplace. Use them responsibly. Do not Attempt to exploit the Skill Hour system, Create fake exchanges, Artificially inflate balances, Coordinate fraudulent transactions, Abuse platform rewards, or Circumvent marketplace safeguards.</p>
 
               <h2>Escrow Expectations</h2>
-              <p>If your exchange requires escrow: Submit deposits honestly, Complete agreed work, Confirm completion promptly, and Participate in dispute resolution respectfully if necessary. Do not misuse escrow to pressure, threaten, or manipulate another member. Escrow exists to promote accountability—not conflict.</p>
+              <p>If your exchange requires escrow: Submit deposits honestly, Complete agreed work, Confirm completion promptly, and Participate in dispute resolution respectfully if necessary. Do not misuse escrow to pressure, threaten, or manipulate another member. Escrow exists to promote accountability, not conflict.</p>
 
               <h2>Keep the Marketplace Safe</h2>
               <p>Help us maintain a trustworthy community. Report members who engage in Fraud, Identity theft, Scams, Fake profiles, Spam, Harassment, Abuse, Intellectual property violations, or Security concerns. False reports intended to harm another member may themselves violate these Guidelines.</p>
@@ -147,7 +147,7 @@ export default function CommunityGuidelinesPage() {
               <div className="bg-surface-secondary border border-border p-6 rounded-[var(--radius-card)] mt-12 text-center">
                 <h3 className="text-xl font-bold text-heading mt-0 mb-3">Final Note</h3>
                 <p className="mb-0 text-sm leading-relaxed">
-                  Weave is more than a marketplace—it is a professional community built on trust. Every profile, every conversation, every review, and every Skill Hour exchange contributes to the culture we create together. By treating others with honesty, professionalism, and respect, we can build a network where independent professionals collaborate with confidence and create opportunities that extend far beyond a single project.
+                  Weave is more than a marketplace. It is a professional community built on trust. Every profile, every conversation, every review, and every Skill Hour exchange contributes to the culture we create together. By treating others with honesty, professionalism, and respect, we can build a network where independent professionals collaborate with confidence and create opportunities that extend far beyond a single project.
                 </p>
               </div>
 

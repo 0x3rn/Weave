@@ -129,8 +129,10 @@ export default function ApplicationsClient({ request, initialApplications }: App
                     {/* Proposal */}
                     <td className="px-6 py-4">
                       <div className="text-sm text-heading font-medium mb-1">
-                        {app.estimatedHours} Hours
+                        {app.estimatedHours} Hours for their work
                       </div>
+                      {request.isMutual && <div className="mb-1 text-xs font-medium text-primary">Your offer: {request.offeredHours} hours · Difference: {Math.abs(app.estimatedHours - Number(String(request.offeredHours || "0").match(/\d+/)?.[0] || 0))} · {app.hourDifferenceChoice === "increase_deliverables" ? "added deliverables requested" : "difference waived"}</div>}
+                      {app.hourDifferenceChoice === "increase_deliverables" && app.differenceDeliverables?.length ? <ul className="mb-2 list-inside list-disc text-xs text-muted">{app.differenceDeliverables.map(item => <li key={item}>{item}</li>)}</ul> : null}
                       <div className="text-xs text-muted max-w-[200px] truncate" title={app.coverMessage}>
                         {app.coverMessage}
                       </div>
@@ -192,13 +194,13 @@ export default function ApplicationsClient({ request, initialApplications }: App
                             <button
                               disabled={processingId === app.id}
                               onClick={() => {
-                                if (confirm("Are you sure you want to accept this proposal and begin the exchange?")) {
+                                if (confirm("Select this proposal and create the final contract for both participants to approve?")) {
                                   handleUpdateStatus(app.id, 'accepted');
                                 }
                               }}
                               className="px-3 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold rounded-lg transition-colors shadow-sm disabled:opacity-50"
                             >
-                              Accept Proposal
+                              Create Contract
                             </button>
                           </>
                         )}

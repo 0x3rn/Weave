@@ -335,7 +335,9 @@ export default function EditRequestClient({ request }: { request: MarketplaceReq
                   <div>
                     <label className="block text-sm font-bold text-heading mb-2">The Skills I Can Provide (Comma separated)</label>
                     <input
-                      type="text"
+                      type="number"
+                      min="1"
+                      max="10000"
                       value={offeredSkills}
                       onChange={(e) => setOfferedSkills(e.target.value)}
                       placeholder="e.g. React Development, Copywriting"

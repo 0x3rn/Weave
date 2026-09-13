@@ -24,10 +24,11 @@ export default async function ExchangeOverviewPage({
   }
 
   const { exchange, requester, provider } = result;
+  if (exchange.status === "pending_proposal") redirect(`/exchanges/${id}/start`);
   const isRequester = userId === exchange.requesterId;
   const nextAction = exchange.status === "in_review"
-    ? isRequester ? "Review the submitted work and accept it or request a revision." : "Your work is awaiting the requester's review."
-    : exchange.status === "revision_requested" ? isRequester ? "The provider is preparing a revised delivery." : "Address the requested changes and submit a new version."
+    ? exchange.isMutual ? "Review the other participant's work and submit your private decision." : isRequester ? "Review the submitted work and accept it or request a revision." : "Your work is awaiting the requester's review."
+    : exchange.status === "revision_requested" ? exchange.pendingSubmissions?.includes(userId) ? "Address the revealed feedback and commit a revised submission." : "Waiting for the requested revisions before review reopens."
     : exchange.status === "disputed" ? "The exchange is frozen while the dispute is reviewed."
     : isRequester ? "Track progress, answer questions, and review milestones." : "Confirm the scope, add milestones, and submit your work when ready.";
   const health = exchange.status === "disputed" ? { label: "Needs attention", className: "text-error bg-error/10", icon: AlertTriangle } : exchange.deadline && new Date(exchange.deadline).getTime() < Date.now() && exchange.status !== "completed" ? { label: "Past deadline", className: "text-amber-600 bg-amber-500/10", icon: Clock } : { label: "On track", className: "text-success bg-success/10", icon: CheckCircle };
