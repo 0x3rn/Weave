@@ -13,15 +13,56 @@ export async function getLedgerData() {
 
   const userData = await getUserById(userId);
   if (!userData) throw new Error("User not found");
-  const rows = await sql.query("select * from ledger_entries where user_id=$1 order by occurred_at desc", [userId]);
-  const transactions = rows.map(row => ({
-    ...payload<Record<string, unknown>>(row.payload),
-    id: String(row.id), userId: String(row.user_id ?? ""), exchangeId: row.exchange_id ? String(row.exchange_id) : undefined,
-    linkedUserId: row.related_user_id ? String(row.related_user_id) : undefined, type: String(row.entry_type ?? "Adjustment") as LedgerTransaction["type"],
-    status: String(row.entry_status ?? "Completed") as LedgerTransaction["status"], amount: Number(row.amount ?? 0), balanceBefore: Number(row.balance_before ?? 0),
-    balanceAfter: Number(row.balance_after ?? 0), description: String(row.description ?? ""), notes: row.notes ? String(row.notes) : undefined, date: iso(row.occurred_at),
-  })) as LedgerTransaction[];
+  const [rows, pendingRows] = await Promise.all([sql.query(
+    `select le.*, e.status as exchange_status,
+      related.full_name as related_user_name, related.username as related_username, related.photo_url as related_user_avatar,
+      latest.requested_entry->>'entry_status' as requested_status
+    from ledger_entries le
+    left join exchanges e on e.id=le.exchange_id
+    left join users related on related.id=le.related_user_id
+    left join lateral (
+      select requested_entry from ledger_entry_events where ledger_entry_id=le.id order by occurred_at desc,id desc limit 1
+    ) latest on true
+    where le.user_id=$1 order by le.occurred_at desc`,
+    [userId],
+  ), sql.query(
+    `select e.id,e.title,e.requester_id,e.provider_id,e.requester_escrow_hours,e.provider_escrow_hours, requester.full_name as requester_name,provider.full_name as provider_name from exchanges e join users requester on requester.id=e.requester_id join users provider on provider.id=e.provider_id where e.status='in_review' and $1 in(e.requester_id,e.provider_id)`,
+    [userId],
+  )]);
+  const terminalStatuses = new Set(["completed", "cancelled"]);
+  const transactions = rows.map(row => {
+    const rawType = String(row.entry_type ?? "Adjustment");
+    const type = rawType === "admin_credit" || rawType === "admin_debit" ? "Admin Correction" : rawType;
+    const exchangeStatus = String(row.exchange_status ?? "");
+    let status = String(row.requested_status ?? row.entry_status ?? "Completed");
+    if (rawType === "Reserved" && status === "Active" && terminalStatuses.has(exchangeStatus)) {
+      status = exchangeStatus === "cancelled" ? "Cancelled" : "Completed";
+    } else if (rawType === "Reserved" && status === "Active" && exchangeStatus === "disputed") {
+      status = "Disputed";
+    }
+    return {
+      ...payload<Record<string, unknown>>(row.payload),
+      id: String(row.id), userId: String(row.user_id ?? ""), exchangeId: row.exchange_id ? String(row.exchange_id) : undefined,
+      linkedUserId: row.related_user_id ? String(row.related_user_id) : undefined,
+      linkedUserName: row.related_user_name ? String(row.related_user_name) : row.related_username ? String(row.related_username) : undefined,
+      linkedUserAvatar: row.related_user_avatar ? String(row.related_user_avatar) : undefined,
+      type: type as LedgerTransaction["type"], status: status as LedgerTransaction["status"], amount: Number(row.amount ?? 0), balanceBefore: Number(row.balance_before ?? 0),
+      balanceAfter: Number(row.balance_after ?? 0), description: String(row.description ?? ""), notes: row.notes ? String(row.notes) : undefined, date: iso(row.occurred_at),
+    };
+  }) as LedgerTransaction[];
 
+  const pendingReleases = pendingRows.map(row => {
+    const isProvider = String(row.provider_id) === userId;
+    const amount = Number(isProvider ? row.requester_escrow_hours : row.provider_escrow_hours) || 0;
+    return {
+      id: `pending-release-${String(row.id)}`, userId, date: new Date().toISOString(), type: "Released" as const,
+      description: `Pending release: ${String(row.title)}`, exchangeId: String(row.id), amount,
+      balanceBefore: userData.skillHours || 0, balanceAfter: (userData.skillHours || 0) + amount, status: "Pending" as const,
+      linkedUserId: isProvider ? String(row.requester_id) : String(row.provider_id),
+      linkedUserName: isProvider ? String(row.requester_name ?? "Partner") : String(row.provider_name ?? "Partner"),
+      notes: "Waiting for all required review decisions before Skill Hours are released.",
+    };
+  }).filter(tx => tx.amount > 0);
   // 3. Compute Stats & Insights
   const now = new Date();
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -29,7 +70,6 @@ export async function getLedgerData() {
   let earned30Days = 0;
   let spent30Days = 0;
   let reservedBalance = 0;
-  let pendingBalance = 0;
   
   let totalExchangeHours = 0;
   let exchangeCount = 0;
@@ -48,9 +88,6 @@ export async function getLedgerData() {
     // Calculate balances based on status and type
     if (tx.status === "Active" && tx.type === "Reserved") {
       reservedBalance += Math.abs(tx.amount);
-    }
-    if (tx.status === "Pending") {
-      pendingBalance += Math.abs(tx.amount); // Simplification
     }
 
     // Calculate 30 day metrics
@@ -140,18 +177,13 @@ export async function getLedgerData() {
   const stats = {
     currentBalance: userData?.skillHours || 0,
     reservedBalance,
-    pendingBalance,
-    lifetimeEarned: userData?.stats?.skillHoursEarned || 0,
-    lifetimeSpent: userData?.stats?.skillHoursSpent || 0,
+    pendingBalance: pendingReleases.reduce((total, tx) => total + tx.amount, 0),
+    lifetimeEarned: transactions.filter(tx => tx.status === "Completed" && ["Earned", "Bonus", "Welcome Credit"].includes(tx.type)).reduce((total, tx) => total + Math.max(tx.amount, 0), 0),
+    lifetimeSpent: transactions.filter(tx => tx.status === "Completed" && tx.type === "Reserved").reduce((total, tx) => total + Math.abs(tx.amount), 0),
     earned30Days,
     spent30Days,
     netChange30Days: earned30Days - spent30Days,
-    completedExchanges30Days: transactions.filter(tx => 
-      new Date(tx.date) >= thirtyDaysAgo && 
-      tx.status === "Completed" && 
-      tx.exchangeId && 
-      (tx.type === "Earned" || tx.type === "Spent")
-    ).length,
+    completedExchanges30Days: new Set(transactions.filter(tx => new Date(tx.date) >= thirtyDaysAgo && tx.status === "Completed" && tx.exchangeId && (tx.type === "Earned" || tx.type === "Spent")).map(tx => tx.exchangeId)).size,
     trustScoreChange30Days: Number((userData.stats as unknown as Record<string, unknown>)?.trustScoreChange30Days || 0),
     ratingsReceived30Days: Number((userData.stats as unknown as Record<string, unknown>)?.reviewsCount30Days || 0)
   };
@@ -250,6 +282,7 @@ export async function getLedgerData() {
 
   return {
     transactions,
+    pendingReleases,
     stats,
     insights,
     chartData7Days,

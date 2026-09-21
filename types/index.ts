@@ -213,17 +213,40 @@ export interface Conversation {
   unreadCount: Record<string, number>; // Map of userId -> count
   createdAt: string; // ISO string
   updatedAt: string; // ISO string
+  isArchived?: boolean;
+  isMuted?: boolean;
+}
+
+export type MessageType = "text" | "file" | "system_event" | "rich_card";
+
+export interface MessageAttachment {
+  id: string;
+  name: string;
+  contentType: string;
+  sizeBytes: number;
+  url: string;
+  createdAt: string;
+}
+
+export interface MessageReaction {
+  emoji: string;
+  userIds: string[];
 }
 
 export interface Message {
   id: string;
   conversationId: string;
-  senderId: string; // userId or "system"
-  type: "text" | "file" | "system_event" | "rich_card";
-  content: string; // Markdown supported
-  metadata?: any; // e.g. file URL, size, milestoneId
-  readBy: string[]; // array of userIds
-  createdAt: string; // ISO string
+  senderId: string;
+  type: MessageType;
+  content: string;
+  metadata?: Record<string, unknown>;
+  readBy: string[];
+  createdAt: string;
+  editedAt?: string;
+  replyTo?: { id: string; content: string; senderName: string };
+  attachments?: MessageAttachment[];
+  reactions?: MessageReaction[];
+  isPinned?: boolean;
 }
 
 export type EscrowStatus = "pending_deposits" | "locked" | "revision_required" | "disputed" | "released" | "cancelled" | "refunded";
@@ -439,7 +462,7 @@ export type TransactionType =
   | "Admin Correction"
   | "Transfer Reversal";
 
-export type TransactionStatus = "Completed" | "Pending" | "Active" | "Failed" | "Disputed";
+export type TransactionStatus = "Completed" | "Pending" | "Active" | "Failed" | "Disputed" | "Cancelled";
 
 export interface LedgerTransaction {
   id: string;

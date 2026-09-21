@@ -52,8 +52,13 @@ export async function submitApplication(requestId: string, data: { coverMessage:
       [requestId, userId, id, application.coverMessage, application.portfolioLinks, application.availability, application.estimatedHours, application.isMutualProposal, application.offeredHours, application.hourDifferenceChoice, JSON.stringify(application.differenceDeliverables), data.estimatedCompletionDate || null, now, JSON.stringify(application), notificationId, `notifications/${notificationId}`, `/dashboard/requests/${requestId}`, JSON.stringify({ type: "application_received", title: "New Application Received", message: "A new application was received.", isRead: false, link: `/dashboard/requests/${requestId}`, relatedId: requestId, createdAt: now })],
     );
     if (!rows.length) return { success: false, error: "Request is unavailable or you have already applied" };
+    const conversationId = `application_${id}`;
+    await sql.transaction([
+      sql.query("insert into conversations(id,conversation_type,context_id,unread_counts,created_at,updated_at,payload) values($1,'application',$2,$3::jsonb,$4,$4,$5::jsonb) on conflict(id) do nothing", [conversationId, id, JSON.stringify({ [requestRow.requester_id]: 0, [userId]: 0 }), now, JSON.stringify({ type: "application", contextId: id, requestId })]),
+      sql.query("insert into conversation_participants(conversation_id,user_id) values($1,$2),($1,$3) on conflict do nothing", [conversationId, requestRow.requester_id, userId]),
+    ]);
     scheduleNotificationEmails([notificationId]);
-    return { success: true, applicationId: id };
+    return { success: true, applicationId: id, conversationId };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to submit application" };
   }

@@ -16,6 +16,7 @@ import {
 interface LedgerClientProps {
   initialData: {
     transactions: LedgerTransaction[];
+    pendingReleases: LedgerTransaction[];
     stats: any;
     insights: any;
     chartData7Days: any[];
@@ -46,12 +47,13 @@ const STATUS_CONFIG: Record<TransactionStatus, string> = {
   "Pending": "text-muted bg-surface-secondary border-border border",
   "Active": "text-warning bg-warning/10",
   "Failed": "text-error bg-error/10",
-  "Disputed": "text-error bg-error/10"
+  "Disputed": "text-error bg-error/10",
+  "Cancelled": "text-muted bg-surface-secondary border-border border"
 };
 
 export default function LedgerClient({ initialData }: LedgerClientProps) {
   const { 
-    transactions, stats, insights, 
+    transactions, pendingReleases, stats, insights,
     chartData7Days, chartData30Days, chartData6Months, 
     chartData1Year, chartDataThisYear, chartDataAllTime 
   } = initialData;
@@ -62,6 +64,24 @@ export default function LedgerClient({ initialData }: LedgerClientProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTx, setSelectedTx] = useState<LedgerTransaction | null>(null);
   const [chartTimeframe, setChartTimeframe] = useState<string>("30 Days");
+  const selectedTypeConfig = selectedTx ? (TYPE_CONFIG[selectedTx.type] ?? TYPE_CONFIG.Adjustment) : null;
+  const SelectedTransactionIcon = selectedTypeConfig?.icon ?? FileText;
+
+  const downloadCsv = () => {
+    const quote = (value: unknown) => `"${String(value ?? "").replaceAll('"', '""')}"`;
+    const csv = [
+      ["Transaction ID", "Date", "Type", "Description", "Exchange ID", "Hours", "Balance Before", "Balance After", "Status", "Partner", "Notes"],
+      ...transactions.map(tx => [tx.id, tx.date, tx.type, tx.description, tx.exchangeId, tx.amount, tx.balanceBefore, tx.balanceAfter, tx.status, tx.linkedUserName, tx.notes]),
+    ].map(row => row.map(quote).join(",")).join("\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `weave-skill-hour-ledger-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const printStatement = () => window.print();
 
   const currentChartData = chartTimeframe === "7 Days" ? chartData7Days :
                            chartTimeframe === "30 Days" ? chartData30Days :
@@ -99,7 +119,6 @@ export default function LedgerClient({ initialData }: LedgerClientProps) {
   });
 
   const activeReservations = transactions.filter(tx => tx.type === "Reserved" && tx.status === "Active");
-  const pendingReleases = transactions.filter(tx => tx.status === "Pending");
 
   return (
     <div className="flex-1 pb-16">
@@ -116,16 +135,16 @@ export default function LedgerClient({ initialData }: LedgerClientProps) {
           </div>
           
           <div className="flex flex-wrap items-center gap-3">
-            <button className="px-4 py-2 border border-border text-heading bg-background hover:bg-surface-secondary rounded-[var(--radius-button)] transition-colors flex items-center gap-2 text-sm font-medium shadow-subtle">
+            <button onClick={printStatement} className="px-4 py-2 border border-border text-heading bg-background hover:bg-surface-secondary rounded-[var(--radius-button)] transition-colors flex items-center gap-2 text-sm font-medium shadow-subtle">
               <Printer className="w-4 h-4" /> Print Statement
             </button>
-            <button className="px-4 py-2 border border-border text-heading bg-background hover:bg-surface-secondary rounded-[var(--radius-button)] transition-colors flex items-center gap-2 text-sm font-medium shadow-subtle">
+            <button onClick={downloadCsv} className="px-4 py-2 border border-border text-heading bg-background hover:bg-surface-secondary rounded-[var(--radius-button)] transition-colors flex items-center gap-2 text-sm font-medium shadow-subtle">
               <ArrowDownToLine className="w-4 h-4" /> Download CSV
             </button>
-            <button className="px-4 py-2 border border-border text-heading bg-background hover:bg-surface-secondary rounded-[var(--radius-button)] transition-colors flex items-center gap-2 text-sm font-medium shadow-subtle">
+            <a href="/help" className="px-4 py-2 border border-border text-heading bg-background hover:bg-surface-secondary rounded-[var(--radius-button)] transition-colors flex items-center gap-2 text-sm font-medium shadow-subtle">
               <HelpCircle className="w-4 h-4" /> Help
-            </button>
-            <button className="px-4 py-2 bg-primary text-background hover:bg-primary-hover rounded-[var(--radius-button)] transition-colors flex items-center gap-2 text-sm font-bold shadow-[0_0_15px_rgba(88,199,109,0.3)]">
+            </a>
+            <button onClick={printStatement} className="px-4 py-2 bg-primary text-background hover:bg-primary-hover rounded-[var(--radius-button)] transition-colors flex items-center gap-2 text-sm font-bold shadow-[0_0_15px_rgba(88,199,109,0.3)]">
               <FileText className="w-4 h-4" /> Export Statement
             </button>
           </div>
@@ -290,6 +309,7 @@ export default function LedgerClient({ initialData }: LedgerClientProps) {
                     <option value="Active">Active</option>
                     <option value="Failed">Failed</option>
                     <option value="Disputed">Disputed</option>
+                    <option value="Cancelled">Cancelled</option>
                   </select>
                   <CheckCircle2 className="w-4 h-4 text-muted absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
@@ -340,7 +360,7 @@ export default function LedgerClient({ initialData }: LedgerClientProps) {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {filteredTransactions.map(tx => {
-                    const typeCfg = TYPE_CONFIG[tx.type];
+                    const typeCfg = TYPE_CONFIG[tx.type] ?? TYPE_CONFIG.Adjustment;
                     const Icon = typeCfg.icon;
                     const isSelected = selectedTx?.id === tx.id;
                     const isPositive = tx.amount > 0;
@@ -427,8 +447,8 @@ export default function LedgerClient({ initialData }: LedgerClientProps) {
               <div className="p-6 space-y-6">
                 
                 <div className="flex items-start gap-4 pb-6 border-b border-border">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${TYPE_CONFIG[selectedTx.type].bg} ${TYPE_CONFIG[selectedTx.type].color}`}>
-                    <TYPE_CONFIG.Earned.icon className="w-6 h-6" />
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${selectedTypeConfig?.bg} ${selectedTypeConfig?.color}`}>
+                    <SelectedTransactionIcon className="w-6 h-6" />
                   </div>
                   <div>
                     <h4 className="text-xl font-bold text-heading">{selectedTx.amount > 0 ? '+' : ''}{selectedTx.amount} Skill Hours</h4>
@@ -504,13 +524,13 @@ export default function LedgerClient({ initialData }: LedgerClientProps) {
               
               <div className="p-5 border-t border-border bg-background rounded-b-[var(--radius-card)] space-y-3">
                 {selectedTx.exchangeId && (
-                  <button className="w-full py-2.5 bg-primary hover:bg-primary-hover text-background font-bold flex items-center justify-center gap-2 rounded-[var(--radius-button)] transition-all shadow-[0_0_15px_rgba(88,199,109,0.3)]">
+                  <a href={`/exchanges/${selectedTx.exchangeId}`} className="w-full py-2.5 bg-primary hover:bg-primary-hover text-background font-bold flex items-center justify-center gap-2 rounded-[var(--radius-button)] transition-all shadow-[0_0_15px_rgba(88,199,109,0.3)]">
                     View Exchange <ExternalLink className="w-4 h-4" />
-                  </button>
+                  </a>
                 )}
-                <button className="w-full py-2.5 bg-surface border border-border hover:bg-surface-secondary text-heading font-semibold rounded-[var(--radius-button)] transition-all shadow-subtle">
+                <a href="/support/contact" className="block w-full py-2.5 bg-surface border border-border hover:bg-surface-secondary text-heading font-semibold rounded-[var(--radius-button)] transition-all shadow-subtle text-center">
                   Contact Support
-                </button>
+                </a>
               </div>
             </div>
           )}
@@ -593,13 +613,11 @@ export default function LedgerClient({ initialData }: LedgerClientProps) {
                   </div>
                   <div>
                     <h4 className="font-bold text-heading">Status: Verified</h4>
-                    <p className="text-xs text-muted">All hashes match. Blockchain integrity maintained.</p>
+                    <p className="text-xs text-muted">Ledger entries are preserved and lifecycle changes are auditable.</p>
                   </div>
                 </div>
                 <p className="text-sm text-body leading-relaxed mt-4">
-                  Every Skill Hour transaction is permanently recorded and cannot be edited or deleted by members. 
-                  Administrative corrections are separately logged to preserve a complete, undeniable audit trail.
-                  If Weave is trust, this ledger is the proof.
+                  Every Skill Hour movement is recorded with its balance before and after values. Administrative corrections and legacy lifecycle transitions are separately logged for review.
                 </p>
               </div>
             </div>
@@ -612,7 +630,7 @@ export default function LedgerClient({ initialData }: LedgerClientProps) {
                 <h3 className="font-bold text-heading flex items-center gap-2">
                   <FileText className="w-4 h-4 text-primary" /> Monthly Report
                 </h3>
-                <button className="text-primary hover:text-primary-hover font-medium text-sm flex items-center gap-1 hover:underline">
+                <button onClick={printStatement} className="text-primary hover:text-primary-hover font-medium text-sm flex items-center gap-1 hover:underline">
                   <Download className="w-4 h-4" /> PDF
                 </button>
               </div>

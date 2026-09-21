@@ -1,141 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Conversation, Exchange, Escrow } from "@/types";
+import { Conversation, Escrow, Exchange } from "@/types";
 import { getExchangeQuickContext } from "@/app/actions/messages";
-import { ShieldCheck, Clock, CheckCircle2, AlertCircle } from "lucide-react";
+import { CheckCircle2, Clock, ShieldCheck, AlertCircle, MessageSquare, FileText } from "lucide-react";
 
-interface Props {
-  conversation?: Conversation;
-  currentUserId: string;
-}
+interface Props { conversation?: Conversation; currentUserId: string; }
 
-export default function ExchangeQuickPanel({ conversation, currentUserId }: Props) {
-  void currentUserId;
+export default function ExchangeQuickPanel({ conversation }: Props) {
   const [exchange, setExchange] = useState<Exchange | null>(null);
   const [escrow, setEscrow] = useState<Escrow | null>(null);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      if (conversation?.type === "exchange" && conversation.contextId) {
-        const result = await getExchangeQuickContext(conversation.contextId);
-        if (result.success) {
-          setExchange(result.exchange as Exchange | null);
-          setEscrow(result.escrow as Escrow | null);
-        }
-      }
-    };
-    fetchData();
-  }, [conversation]);
-
-  if (!conversation || conversation.type !== "exchange" || !exchange) {
-    return (
-      <div className="p-6 text-center text-muted">
-        <p className="text-sm">No active exchange context.</p>
-      </div>
-    );
-  }
-
-  // Calculate Health
-  const isHealthy = escrow ? escrow.status !== "disputed" : exchange.status !== "disputed" && exchange.status !== "cancelled";
-
-  return (
-    <div className="h-full flex flex-col overflow-y-auto">
-      <div className="p-6 border-b border-border bg-surface-secondary/30">
-        <h3 className="text-sm font-bold text-heading uppercase tracking-wider mb-4">Project Health</h3>
-        
-        <div className="bg-surface border border-border p-4 rounded-[var(--radius-card)] mb-4">
-          <div className="flex items-center gap-2 mb-2">
-            <div className={`w-2.5 h-2.5 rounded-full ${isHealthy ? "bg-success" : "bg-error"}`}></div>
-            <span className="text-sm font-bold text-heading">{isHealthy ? "Healthy" : "Needs Attention"}</span>
-          </div>
-          <p className="text-xs text-muted">Active collaboration in progress.</p>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-surface border border-border p-3 rounded-[var(--radius-button)]">
-            <span className="text-xs text-muted block mb-1">Messages</span>
-            <span className="text-sm font-bold text-heading">--</span>
-          </div>
-          <div className="bg-surface border border-border p-3 rounded-[var(--radius-button)]">
-            <span className="text-xs text-muted block mb-1">Files</span>
-            <span className="text-sm font-bold text-heading">--</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="p-6 border-b border-border space-y-4">
-        <h3 className="text-sm font-bold text-heading uppercase tracking-wider flex items-center gap-2">
-          <ShieldCheck className="w-4 h-4 text-primary" />
-          Escrow Protection
-        </h3>
-        
-        {escrow ? (
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-muted">Status</span>
-              <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
-                escrow.status === "locked" ? "bg-primary/10 text-primary" : 
-                escrow.status === "pending_deposits" ? "bg-warning/10 text-warning" :
-                "bg-surface-secondary text-muted"
-              }`}>
-                {escrow.status.replace("_", " ")}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-muted">Skill Hours</span>
-              <span className="text-xs font-bold text-heading">{exchange.skillHours} Locked</span>
-            </div>
-            
-            <div className="mt-4 p-3 bg-primary/5 rounded-[var(--radius-button)]">
-              <div className="flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                <p className="text-xs text-heading">This exchange is fully protected by Weave Escrow.</p>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="p-3 bg-warning/10 rounded-[var(--radius-button)]">
-            <div className="flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
-              <p className="text-xs text-heading font-medium">Escrow not initialized.</p>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="p-6 border-b border-border space-y-4">
-        <h3 className="text-sm font-bold text-heading uppercase tracking-wider flex items-center gap-2">
-          <Clock className="w-4 h-4 text-primary" />
-          Milestones
-        </h3>
-        
-        <div className="space-y-3">
-          {exchange.milestones && exchange.milestones.length > 0 ? (
-            exchange.milestones.map(m => (
-              <div key={m.id} className="flex gap-2">
-                <div className="mt-0.5 shrink-0">
-                  {m.status === "completed" ? (
-                    <CheckCircle2 className="w-4 h-4 text-success" />
-                  ) : m.status === "in_progress" ? (
-                    <div className="w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
-                  ) : (
-                    <div className="w-4 h-4 rounded-full border-2 border-border"></div>
-                  )}
-                </div>
-                <div>
-                  <p className={`text-xs font-medium ${m.status === "completed" ? "text-muted line-through" : "text-heading"}`}>
-                    {m.title}
-                  </p>
-                </div>
-              </div>
-            ))
-          ) : (
-            <p className="text-xs text-muted">No specific milestones tracked.</p>
-          )}
-        </div>
-      </div>
-      
-    </div>
-  );
+  const [stats, setStats] = useState({ messages: 0, files: 0 });
+  useEffect(() => { let active = true; const load = async () => { if (conversation?.type !== "exchange" || !conversation.contextId) return; const result = await getExchangeQuickContext(conversation.contextId); if (active && result.success) { setExchange(result.exchange as Exchange | null); setEscrow(result.escrow as Escrow | null); setStats(result.stats ?? { messages: 0, files: 0 }); } }; void load(); const timer = window.setInterval(() => void load(), 10000); return () => { active = false; window.clearInterval(timer); }; }, [conversation]);
+  if (!conversation || conversation.type !== "exchange" || !exchange) return <div className="p-6 text-center text-sm text-muted">No active exchange context.</div>;
+  const milestones = exchange.milestones ?? [];
+  const completed = milestones.filter(item => item.status === "completed").length;
+  const healthy = escrow ? escrow.status !== "disputed" : exchange.status !== "disputed" && exchange.status !== "cancelled";
+  return <div className="h-full overflow-y-auto"><section className="border-b border-border p-5"><h3 className="text-xs font-bold uppercase tracking-wider text-muted">Project health</h3><div className="mt-4 rounded-xl border border-border bg-surface p-4"><div className="flex items-center gap-2"><span className={`h-2.5 w-2.5 rounded-full ${healthy ? "bg-success" : "bg-error"}`} /><span className="text-sm font-bold text-heading">{healthy ? "Healthy" : "Needs attention"}</span></div><p className="mt-2 text-xs text-muted">{exchange.deadline ? `Deadline ${new Date(exchange.deadline).toLocaleDateString()}` : "No deadline recorded"}</p></div><div className="mt-3 grid grid-cols-2 gap-3"><Metric icon={<MessageSquare className="h-4 w-4" />} label="Messages" value={stats.messages} /><Metric icon={<FileText className="h-4 w-4" />} label="Files" value={stats.files} /></div></section><section className="border-b border-border p-5"><h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted"><ShieldCheck className="h-4 w-4 text-primary" />Escrow</h3>{escrow ? <div className="mt-4 space-y-3"><div className="flex justify-between text-xs"><span className="text-muted">Status</span><span className="font-bold uppercase text-primary">{escrow.status.replaceAll("_", " ")}</span></div><div className="flex justify-between text-xs"><span className="text-muted">Skill Hours</span><span className="font-bold text-heading">{exchange.skillHours} protected</span></div><p className="rounded-lg bg-primary/5 p-3 text-xs text-heading">This exchange is protected by Weave escrow.</p></div> : <div className="mt-4 flex gap-2 rounded-lg bg-warning/10 p-3 text-xs text-heading"><AlertCircle className="h-4 w-4 shrink-0 text-warning" />Escrow has not been initialized.</div>}</section><section className="p-5"><h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted"><Clock className="h-4 w-4 text-primary" />Milestones</h3>{milestones.length ? <><p className="mt-3 text-xs text-muted">{completed}/{milestones.length} completed</p><div className="mt-3 space-y-3">{milestones.map(item => <div key={item.id} className="flex gap-2 text-xs"><span className="mt-0.5">{item.status === "completed" ? <CheckCircle2 className="h-4 w-4 text-success" /> : <span className="block h-4 w-4 rounded-full border-2 border-border" />}</span><span className={item.status === "completed" ? "text-muted line-through" : "font-medium text-heading"}>{item.title}</span></div>)}</div></> : <p className="mt-3 text-xs text-muted">No milestones tracked yet.</p>}</section></div>;
 }
+function Metric({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) { return <div className="rounded-lg border border-border bg-surface p-3"><div className="flex items-center gap-1 text-muted">{icon}<span className="text-[10px]">{label}</span></div><p className="mt-1 text-lg font-bold text-heading">{value}</p></div>; }

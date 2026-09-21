@@ -1,187 +1,58 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Conversation, Message, User, Exchange } from "@/types";
-import { getConversationContext, getMessages, markConversationRead } from "@/app/actions/messages";
-import { ArrowLeft, Phone, Video, MoreVertical, ShieldCheck, CheckCircle2 } from "lucide-react";
+import { blockConversationPartner, getConversationContext, getConversationNote, getMessages, leaveConversation, markConversationRead, saveConversationNote, setConversationArchived, setConversationMuted } from "@/app/actions/messages";
+import { Archive, ArrowLeft, CheckCircle2, Clock3, FileText, Link2, MoreVertical, Pin, Search, ShieldCheck, VolumeX } from "lucide-react";
+import Link from "next/link";
 import MessageBubble from "./message-bubble";
 import Composer from "./composer";
 
-interface Props {
-  conversation: Conversation;
-  currentUserId: string;
-  onBack: () => void;
-}
+interface Props { conversation: Conversation; currentUserId: string; onBack: () => void; }
+type Tab = "chat" | "files" | "links" | "activity" | "notes";
+const urlPattern = /https?:\/\/[^\s<>()]+/g;
 
 export default function ChatArea({ conversation, currentUserId, onBack }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [partner, setPartner] = useState<User | null>(null);
   const [exchange, setExchange] = useState<Exchange | null>(null);
-  const [activeTab, setActiveTab] = useState<"chat" | "files" | "links" | "activity" | "notes">("chat");
+  const [exchangeActivity, setExchangeActivity] = useState<{ description: string; createdAt: string }[]>([]);
+  const [partnerTyping, setPartnerTyping] = useState(false);
+  const [activeTab, setActiveTab] = useState<Tab>("chat");
+  const [query, setQuery] = useState("");
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
+  const [note, setNote] = useState("");
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [savingNote, setSavingNote] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    // Mark read
-    if ((conversation.unreadCount[currentUserId] || 0) > 0) {
-      markConversationRead(conversation.id);
-    }
-  }, [conversation.id, conversation.unreadCount, currentUserId]);
+  useEffect(() => { if ((conversation.unreadCount[currentUserId] || 0) > 0) void markConversationRead(conversation.id); }, [conversation.id, conversation.unreadCount, currentUserId]);
+  useEffect(() => { let active = true; const load = async () => { const [context, result, savedNote] = await Promise.all([getConversationContext(conversation.id), getMessages(conversation.id), getConversationNote(conversation.id)]); if (!active) return; if (context.success) { setPartner(context.partner as User | null); setExchange(context.exchange || null); setExchangeActivity(context.activity ?? []); setPartnerTyping((context.typingUserIds ?? []).length > 0); } if (result.success) setMessages(result.messages); if (savedNote.success) setNote(savedNote.note); }; void load(); const timer = window.setInterval(() => void load(), 5000); return () => { active = false; window.clearInterval(timer); }; }, [conversation.id]);
+  useEffect(() => { if (activeTab === "chat" && scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [messages, activeTab]);
 
-  useEffect(() => {
-    // Fetch Partner and Exchange context
-    const fetchContext = async () => {
-      const result = await getConversationContext(conversation.id);
-      if (!result.success) return;
-      setPartner(result.partner as User | null);
-      setExchange(result.exchange || null);
-    };
-    fetchContext();
-  }, [conversation.id]);
+  const filteredMessages = useMemo(() => query.trim() ? messages.filter(message => `${message.content} ${message.attachments?.map(item => item.name).join(" ") ?? ""}`.toLowerCase().includes(query.trim().toLowerCase())) : messages, [messages, query]);
+  const attachments = messages.flatMap(message => (message.attachments ?? []).map(attachment => ({ ...attachment, message })));
+  const links = messages.flatMap(message => (message.content.match(urlPattern) ?? []).map(url => ({ url, message })));
+  const activity = messages.filter(message => message.type === "system_event" || message.type === "rich_card");
+  const deadline = exchange?.deadline || exchange?.completedAt;
+  const pinnedMessages = messages.filter(message => message.isPinned);
+  const daysSinceMessage = conversation.lastMessageAt ? (Date.now() - new Date(conversation.lastMessageAt).getTime()) / 86_400_000 : 0;
+  const suggestion = exchange?.status === "completed" ? { text: "Exchange completed. Leave a review.", href: exchange.id ? `/exchanges/${exchange.id}/complete` : "" } : deadline && new Date(deadline).getTime() - Date.now() < 86_400_000 && new Date(deadline).getTime() > Date.now() ? { text: "Deadline is tomorrow. Need more time?", href: exchange?.id ? `/exchanges/${exchange.id}` : "" } : daysSinceMessage >= 5 ? { text: "It has been a while since anyone replied. Send a reminder?", href: "" } : null;
+  const saveNote = async () => { setSavingNote(true); await saveConversationNote(conversation.id, note); setSavingNote(false); };
+  const archive = async () => { await setConversationArchived(conversation.id, !conversation.isArchived); setSettingsOpen(false); };
+  const mute = async () => { await setConversationMuted(conversation.id, !conversation.isMuted); setSettingsOpen(false); };
+  const block = async () => { if (window.confirm("Block this member? You will no longer be able to message each other in this conversation.")) await blockConversationPartner(conversation.id); setSettingsOpen(false); };
+  const leave = async () => { if (window.confirm("Leave this conversation?")) await leaveConversation(conversation.id); setSettingsOpen(false); };
 
-  useEffect(() => {
-    let active = true;
-    const load = async () => {
-      const result = await getMessages(conversation.id);
-      if (!active || !result.success) return;
-      setMessages(result.messages);
-      setTimeout(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, 100);
-    };
-    load();
-    const timer = window.setInterval(load, 5000);
-    return () => { active = false; window.clearInterval(timer); };
-  }, [conversation.id]);
-
-  return (
-    <div className="flex flex-col h-full bg-background relative">
-      {/* Header */}
-      <header className="h-16 px-4 border-b border-border bg-surface shrink-0 flex items-center justify-between z-10 relative">
-        <div className="flex items-center gap-3">
-          <button onClick={onBack} className="md:hidden p-2 -ml-2 text-muted hover:text-heading">
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          
-          <div className="relative">
-            <div className="w-10 h-10 rounded-full bg-border overflow-hidden">
-              {partner?.photoURL ? (
-                <img src={partner.photoURL} alt="Avatar" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-primary/10 text-primary font-bold">
-                  {partner?.fullName?.charAt(0) || "U"}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm font-bold text-heading">{partner?.fullName || "Loading..."}</h2>
-              {partner?.isVerified && <CheckCircle2 className="w-3 h-3 text-primary" />}
-              <span className="text-xs px-1.5 py-0.5 rounded bg-surface-secondary text-muted font-medium border border-border">
-                Trust Score {partner?.trustScore || 0}
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="w-2 h-2 rounded-full bg-success"></span>
-              <span className="text-xs text-muted">Online</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* Coming Soon Features */}
-          <div className="hidden sm:flex items-center gap-2 mr-2">
-            <button className="p-2 text-muted hover:text-heading hover:bg-surface-secondary rounded-full transition-colors relative group">
-              <Phone className="w-5 h-5" />
-              <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-heading text-background text-[10px] font-bold rounded opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none transition-opacity">
-                Coming Soon
-              </div>
-            </button>
-            <button className="p-2 text-muted hover:text-heading hover:bg-surface-secondary rounded-full transition-colors relative group">
-              <Video className="w-5 h-5" />
-              <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-heading text-background text-[10px] font-bold rounded opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none transition-opacity">
-                Coming Soon
-              </div>
-            </button>
-          </div>
-          
-          <button className="p-2 text-muted hover:text-heading hover:bg-surface-secondary rounded-full transition-colors">
-            <MoreVertical className="w-5 h-5" />
-          </button>
-        </div>
-      </header>
-
-      {/* Tabs */}
-      <div className="flex items-center px-4 border-b border-border bg-surface shrink-0 overflow-x-auto scrollbar-hide relative z-10 shadow-subtle">
-        {(["chat", "files", "links", "activity", "notes"] as const).map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-3 text-sm font-bold border-b-2 whitespace-nowrap transition-colors ${
-              activeTab === tab ? "border-primary text-primary" : "border-transparent text-muted hover:text-heading"
-            }`}
-          >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
-          </button>
-        ))}
-      </div>
-
-      {/* Main Content Area */}
-      {activeTab === "chat" ? (
-        <>
-          {/* Pinned Summary */}
-          {exchange && (
-            <div className="bg-primary/5 border-b border-primary/10 p-3 flex items-center justify-between shrink-0 relative z-10 shadow-sm">
-              <div className="flex items-center gap-3 overflow-hidden">
-                <ShieldCheck className="w-5 h-5 text-primary shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-xs font-bold text-heading truncate">{exchange.title}</p>
-                  <p className="text-[10px] text-muted">Exchange Status: <span className="uppercase text-primary font-bold">{exchange.status.replace("_", " ")}</span></p>
-                </div>
-              </div>
-              <button className="text-xs font-bold text-primary hover:underline whitespace-nowrap px-2">
-                View Contract
-              </button>
-            </div>
-          )}
-
-          {/* Messages */}
-          <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-6 relative z-0">
-            {messages.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center max-w-sm mx-auto">
-                <div className="w-16 h-16 rounded-full bg-surface-secondary flex items-center justify-center mb-4">
-                  <ShieldCheck className="w-8 h-8 text-primary opacity-50" />
-                </div>
-                <h3 className="text-lg font-bold text-heading mb-2">Secure Workspace</h3>
-                <p className="text-sm text-muted">Messages here are protected and tied to your exchange contract. Start the collaboration!</p>
-              </div>
-            ) : (
-              messages.map(msg => (
-                <MessageBubble 
-                  key={msg.id} 
-                  message={msg} 
-                  isOwn={msg.senderId === currentUserId} 
-                  partner={partner}
-                />
-              ))
-            )}
-          </div>
-
-          {/* Composer */}
-          <div className="shrink-0 p-4 bg-surface border-t border-border relative z-10">
-            <Composer conversationId={conversation.id} />
-          </div>
-        </>
-      ) : (
-        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-surface-secondary/20">
-          <div className="px-4 py-2 bg-primary/10 text-primary font-bold text-sm rounded-full mb-4">Coming Soon</div>
-          <p className="text-muted max-w-sm">
-            {activeTab === "files" && "A dedicated grid for all files shared in this workspace."}
-            {activeTab === "links" && "Automatically extracted links to Figma, GitHub, Google Docs."}
-            {activeTab === "activity" && "An immutable audit log of all system events."}
-            {activeTab === "notes" && "Private scratchpad notes only visible to you."}
-          </p>
-        </div>
-      )}
-    </div>
-  );
+  return <div className="relative flex h-full flex-col bg-background">
+    <header className="flex h-auto min-h-16 shrink-0 items-center justify-between border-b border-border bg-surface px-4 py-3"><div className="flex min-w-0 items-center gap-3"><button onClick={onBack} className="-ml-2 rounded p-2 text-muted hover:bg-surface-secondary md:hidden"><ArrowLeft className="h-5 w-5" /></button><div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 font-bold text-primary">{partner?.photoURL ? <img src={partner.photoURL} alt="" className="h-full w-full object-cover" /> : partner?.fullName?.charAt(0) || "W"}</div><div className="min-w-0"><div className="flex items-center gap-2"><h2 className="truncate text-sm font-bold text-heading">{partner?.fullName || "Workspace"}</h2>{partner?.isVerified && <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary" />}<span className="hidden rounded border border-border bg-surface-secondary px-1.5 py-0.5 text-[10px] font-bold text-muted sm:inline">Trust {partner?.trustScore ?? 0}</span></div><p className="truncate text-xs text-muted">{exchange?.title || "Protected collaboration"}{exchange?.status ? ` · ${exchange.status.replaceAll("_", " ")}` : ""}</p></div></div><div className="flex items-center gap-1"><button onClick={() => setActiveTab("chat")} aria-label="Search messages" className="rounded p-2 text-muted hover:bg-surface-secondary"><Search className="h-5 w-5" /></button><div className="relative"><button onClick={() => setSettingsOpen(!settingsOpen)} aria-label="Conversation settings" className="rounded p-2 text-muted hover:bg-surface-secondary"><MoreVertical className="h-5 w-5" /></button>{settingsOpen && <div className="absolute right-0 z-30 mt-1 w-48 rounded-lg border border-border bg-surface p-1 text-sm shadow-lg"><button onClick={() => void mute()} className="flex w-full items-center gap-2 rounded px-3 py-2 text-left hover:bg-surface-secondary"><VolumeX className="h-4 w-4" />{conversation.isMuted ? "Unmute" : "Mute"}</button><button onClick={() => void archive()} className="flex w-full items-center gap-2 rounded px-3 py-2 text-left hover:bg-surface-secondary"><Archive className="h-4 w-4" />{conversation.isArchived ? "Restore" : "Archive"}</button><button onClick={() => void block()} className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-error hover:bg-error/10">Block member</button>{conversation.type !== "exchange" && <button onClick={() => void leave()} className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-error hover:bg-error/10">Leave conversation</button>}</div>}</div></div></header>
+    <div className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-border bg-surface px-3">{(["chat", "files", "links", "activity", "notes"] as Tab[]).map(tab => <button key={tab} onClick={() => setActiveTab(tab)} className={`border-b-2 px-3 py-3 text-sm font-bold capitalize ${activeTab === tab ? "border-primary text-primary" : "border-transparent text-muted hover:text-heading"}`}>{tab}</button>)}</div>
+    {activeTab === "chat" && <><div className="flex shrink-0 items-center gap-2 border-b border-primary/10 bg-primary/5 px-4 py-3"><ShieldCheck className="h-5 w-5 shrink-0 text-primary" /><div className="min-w-0 flex-1"><p className="truncate text-xs font-bold text-heading">{exchange?.title || "Exchange protected"}</p><p className="text-[11px] text-muted">{exchange?.status ? `Status: ${exchange.status.replaceAll("_", " ")}` : "Messages are linked to this collaboration"}</p></div>{exchange?.id && <Link href={`/exchanges/${exchange.id}`} className="text-xs font-bold text-primary hover:underline">View contract</Link>}</div><>{pinnedMessages.length > 0 && <div className="flex shrink-0 items-center gap-2 border-b border-border bg-surface-secondary px-4 py-2 text-xs"><Pin className="h-3.5 w-3.5 text-primary" /><span className="truncate font-medium text-heading">Pinned: {pinnedMessages.at(-1)?.content}</span></div>}{suggestion && <div className="flex shrink-0 items-center justify-between gap-3 border-b border-primary/10 bg-primary/5 px-4 py-2 text-xs"><span className="text-heading">{suggestion.text}</span>{suggestion.href ? <Link href={suggestion.href} className="shrink-0 font-bold text-primary hover:underline">Open</Link> : <button onClick={() => setQuery("")} className="shrink-0 font-bold text-primary hover:underline">Write message</button>}</div>}<div className="shrink-0 border-b border-border bg-surface px-4 py-2"><div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search this conversation" className="w-full rounded-lg border border-border bg-surface-secondary py-2 pl-9 pr-3 text-sm text-heading outline-none focus:ring-2 focus:ring-primary/50" /></div></div></><div ref={scrollRef} className="flex-1 overflow-y-auto p-4">{filteredMessages.length === 0 ? <div className="flex h-full flex-col items-center justify-center text-center"><ShieldCheck className="mb-3 h-9 w-9 text-primary" /><p className="font-bold text-heading">{query ? "No matching messages" : "Secure workspace"}</p><p className="mt-1 max-w-sm text-sm text-muted">{query ? "Try another search term." : "Start the collaboration. Messages, files, and decisions stay connected to this exchange."}</p></div> : filteredMessages.map(message => <MessageBubble key={message.id} message={message} isOwn={message.senderId === currentUserId} partner={partner} currentUserId={currentUserId} onReply={setReplyTo} />)}</div>{partnerTyping && <div className="shrink-0 border-t border-border bg-surface px-4 py-2 text-xs font-medium text-muted">{partner?.fullName || "Your partner"} is typing...</div>}<div className="shrink-0 border-t border-border bg-surface p-4"><Composer conversationId={conversation.id} replyTo={replyTo} onClearReply={() => setReplyTo(null)} /></div></>}
+    {activeTab === "files" && <div className="flex-1 overflow-y-auto p-5">{attachments.length ? <div className="grid gap-3 sm:grid-cols-2">{attachments.map(item => <a key={item.id} href={item.url} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-xl border border-border bg-surface p-4 hover:border-primary"><FileText className="h-6 w-6 text-primary" /><div className="min-w-0"><p className="truncate text-sm font-bold text-heading">{item.name}</p><p className="text-xs text-muted">{Math.ceil(item.sizeBytes / 1024)} KB · {item.message.senderId === currentUserId ? "You" : partner?.fullName || "Member"}</p></div></a>)}</div> : <EmptyTab icon={<FileText className="h-8 w-8" />} text="No files have been shared." />}</div>}
+    {activeTab === "links" && <div className="flex-1 overflow-y-auto p-5">{links.length ? <div className="space-y-3">{links.map(({ url, message }, index) => <a key={`${url}-${index}`} href={url} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-xl border border-border bg-surface p-4 hover:border-primary"><Link2 className="h-5 w-5 shrink-0 text-primary" /><div className="min-w-0"><p className="truncate text-sm font-bold text-heading">{url}</p><p className="text-xs text-muted">Shared {new Date(message.createdAt).toLocaleDateString()}</p></div></a>)}</div> : <EmptyTab icon={<Link2 className="h-8 w-8" />} text="Shared web links will appear here." />}</div>}
+    {activeTab === "activity" && <div className="flex-1 overflow-y-auto p-5">{activity.length || exchangeActivity.length || exchange ? <div className="space-y-3">{exchange && <div className="rounded-xl border border-border bg-surface p-4"><p className="font-bold text-heading">Exchange status: {exchange.status.replaceAll("_", " ")}</p>{deadline && <p className="mt-1 text-sm text-muted">Deadline: {new Date(deadline).toLocaleDateString()}</p>}</div>}{exchangeActivity.map((item, index) => <div key={`${item.createdAt}-${index}`} className="rounded-xl border border-border bg-surface p-4"><p className="font-bold text-heading">{item.description}</p><p className="mt-1 text-xs text-muted">{new Date(item.createdAt).toLocaleString()}</p></div>)}{activity.map(message => <div key={message.id} className="rounded-xl border border-border bg-surface p-4"><p className="font-bold text-heading">{message.content}</p><p className="mt-1 text-xs text-muted">{new Date(message.createdAt).toLocaleString()}</p></div>)}</div> : <EmptyTab icon={<Clock3 className="h-8 w-8" />} text="System events will appear here." />}</div>}
+    {activeTab === "notes" && <div className="flex-1 overflow-y-auto p-5"><div className="mx-auto max-w-2xl"><h3 className="text-lg font-bold text-heading">Private notes</h3><p className="mt-1 text-sm text-muted">Only you can see these notes.</p><textarea value={note} maxLength={10000} onChange={event => setNote(event.target.value)} placeholder="Keep personal context, follow-ups, or reminders here..." className="mt-4 min-h-64 w-full rounded-xl border border-border bg-surface p-4 text-sm text-heading outline-none focus:ring-2 focus:ring-primary/50" /><div className="mt-3 flex justify-between"><span className="text-xs text-muted">{note.length}/10000</span><button disabled={savingNote} onClick={() => void saveNote()} className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-surface hover:bg-primary-hover disabled:opacity-50">Save note</button></div></div></div>}
+  </div>;
 }
+
+function EmptyTab({ icon, text }: { icon: React.ReactNode; text: string }) { return <div className="flex h-full flex-col items-center justify-center text-center text-muted">{icon}<p className="mt-3 text-sm">{text}</p></div>; }

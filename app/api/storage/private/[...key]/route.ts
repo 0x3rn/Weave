@@ -6,6 +6,18 @@ import { neonStorage, privateBucket } from "@/lib/neon-storage";
 type ReadPermission = { allowed: boolean; preview: boolean; filename: string };
 
 async function getReadPermission(key: string, userId: string, wantsPreview: boolean): Promise<ReadPermission> {
+  const messageMatch = /^messages\/([A-Za-z0-9_-]{1,128})\/[A-Za-z0-9_-]+\/[A-Za-z0-9._-]+$/.exec(key);
+  if (messageMatch) {
+    const [attachment] = await sql.query(
+      `select a.original_name from message_attachments a
+       join conversation_participants p on p.conversation_id=a.conversation_id
+       where a.object_key=$1 and a.conversation_id=$2 and p.user_id=$3 limit 1`,
+      [key, messageMatch[1], userId],
+    );
+    return attachment
+      ? { allowed: true, preview: wantsPreview, filename: String(attachment.original_name || "file") }
+      : { allowed: false, preview: false, filename: "file" };
+  }
   const ownerMatch = /^private\/([^/]+)\/(?:deliverables|misc)\/[A-Za-z0-9._-]+$/.exec(key);
   if (ownerMatch) return { allowed: ownerMatch[1] === userId, preview: false, filename: key.split("/").at(-1) || "file" };
 

@@ -142,3 +142,18 @@ export async function storeUpload(userId: string, file: File, folder: string) {
   });
   return publicFolder ? publicObjectUrl(key) : `/api/storage/private/${key.split("/").map(encodeURIComponent).join("/")}`;
 }
+
+export async function storeMessageAttachment(userId: string, conversationId: string, file: File) {
+  if (!/^[A-Za-z0-9_-]{1,128}$/.test(conversationId)) throw new Error("Invalid conversation");
+  if (!(file instanceof File) || file.size === 0 || file.size > 5 * 1024 * 1024) throw new Error("File too large. Maximum size is 5MB.");
+  const suppliedType = file.type.toLowerCase();
+  const originalExtension = file.name.split(".").at(-1)?.toLowerCase() || "";
+  const contentType = suppliedType in extensionByType ? suppliedType : typeByExtension[originalExtension];
+  if (!contentType || !(contentType in extensionByType)) throw new Error("Unsupported file type");
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  if (!hasSupportedSignature(bytes, contentType)) throw new Error("File contents do not match a supported format");
+  const filename = `${crypto.randomUUID()}.${extensionByType[contentType]}`;
+  const key = `messages/${conversationId}/${userId}/${filename}`;
+  await putObject({ bucket: privateBucket(), key, body: bytes, contentType, cacheControl: "private, no-store" });
+  return { key, contentType, sizeBytes: file.size };
+}

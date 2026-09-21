@@ -14,6 +14,7 @@
     "db:apply-schema": "node --env-file=.env.local scripts/apply-neon-schema.mjs",
     "db:apply-exchange-workspace": "node --env-file=.env.local scripts/apply-exchange-workspace-schema.mjs",
     "test:exchange-workflow": "node --env-file=.env.local scripts/verify-exchange-workflow.mjs",
+    "test:messaging-system": "node --env-file=.env.local scripts/verify-messaging-system.mjs",
     "db:migrate:firestore": "node --env-file=.env.local scripts/migrate-firestore-to-neon.mjs",
     "db:verify-migration": "node --env-file=.env.local scripts/verify-firestore-neon.mjs",
     "db:verify-cutover": "node --env-file=.env.local scripts/verify-neon-cutover.mjs",
