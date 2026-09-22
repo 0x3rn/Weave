@@ -85,10 +85,24 @@ try {
   try { await db.query("update exchange_contracts set requester_pays_hours=1 where exchange_id=$1", [exchange]); } catch (error) { immutable = error instanceof Error && error.message.includes("immutable"); }
   if (!immutable) throw new Error("The final contract was mutable.");
 
+  await db.query("update users set skill_hours=1,payload=payload || jsonb_build_object('skillHours',1) where id=$1", [provider]);
+  let insufficientHours = false;
+  try {
+    await db.query("select approve_exchange_contract($1,$2,$3,$4,$5,$6,$7,$8,$9)", [provider, exchange, ...Array.from({ length: 6 }, (_, index) => `codex-insufficient-${index}`), now]);
+  } catch (error) {
+    insufficientHours = error instanceof Error && error.message.includes("insufficient Skill Hours");
+  }
+  const [unfunded] = await db.query("select e.status,u1.skill_hours as requester_hours,u2.skill_hours as provider_hours,(select count(*)::int from escrows where exchange_id=e.id) as escrows,(select count(*)::int from ledger_entries where exchange_id=e.id) as ledger_entries,(select count(*)::int from exchange_contract_approvals where exchange_id=e.id) as approvals from exchanges e join users u1 on u1.id=e.requester_id join users u2 on u2.id=e.provider_id where e.id=$1", [exchange]);
+  if (!insufficientHours || unfunded?.status !== "pending_proposal" || Number(unfunded.requester_hours) !== 20 || Number(unfunded.provider_hours) !== 1 || Number(unfunded.escrows) !== 0 || Number(unfunded.ledger_entries) !== 0 || Number(unfunded.approvals) !== 1) throw new Error(`Insufficient-hour rollback failed: ${JSON.stringify(unfunded)}`);
+  await db.query("update users set skill_hours=20,payload=payload || jsonb_build_object('skillHours',20) where id=$1", [provider]);
+
   const approvalIds = Array.from({ length: 6 }, (_, index) => `codex-protocol-approval-${index}`);
   const [approval] = await db.query("select approve_exchange_contract($1,$2,$3,$4,$5,$6,$7,$8,$9) as result", [provider, exchange, ...approvalIds, now]);
   const [active] = await db.query("select e.status,u1.skill_hours as requester_hours,u2.skill_hours as provider_hours,s.status as escrow_status,(select count(*)::int from ledger_entries where exchange_id=e.id and entry_type='Reserved') as reservations from exchanges e join users u1 on u1.id=e.requester_id join users u2 on u2.id=e.provider_id join escrows s on s.exchange_id=e.id where e.id=$1", [exchange]);
   if (approval?.result !== "active" || active?.status !== "in_progress" || Number(active.requester_hours) !== 15 || Number(active.provider_hours) !== 15 || active.escrow_status !== "locked" || Number(active.reservations) !== 2) throw new Error(`Contract activation verification failed: ${JSON.stringify(active)}`);
+  const [repeatedApproval] = await db.query("select approve_exchange_contract($1,$2,$3,$4,$5,$6,$7,$8,$9) as result", [provider, exchange, ...Array.from({ length: 6 }, (_, index) => `codex-repeat-approval-${index}`), now]);
+  const [afterRepeat] = await db.query("select u1.skill_hours as requester_hours,u2.skill_hours as provider_hours,(select count(*)::int from escrows where exchange_id=e.id) as escrows,(select count(*)::int from ledger_entries where exchange_id=e.id and entry_type='Reserved') as reservations from exchanges e join users u1 on u1.id=e.requester_id join users u2 on u2.id=e.provider_id where e.id=$1", [exchange]);
+  if (repeatedApproval?.result !== "active" || Number(afterRepeat.requester_hours) !== 15 || Number(afterRepeat.provider_hours) !== 15 || Number(afterRepeat.escrows) !== 1 || Number(afterRepeat.reservations) !== 2) throw new Error(`Repeated approval changed escrow balances: ${JSON.stringify(afterRepeat)}`);
 
   const providerFiles = JSON.stringify([{ name: "brand.pdf", url: `/api/storage/private/exchanges/${exchange}/${provider}/brand.pdf`, type: "application/pdf", size: 42 }]);
   const requesterFiles = JSON.stringify([{ name: "landing.png", url: `/api/storage/private/exchanges/${exchange}/${requester}/landing.png`, type: "image/png", size: 42 }]);
@@ -115,7 +129,7 @@ try {
   const [accepted] = await db.query("select record_exchange_review_decision($1,$2,$3,'accept','',$4,$5,$6,$7,$8,$9) as result", [provider, exchange, ...decisionIdsD, now]);
   const [settled] = await db.query("select e.status,e.files_released_at,s.status as escrow_status,u1.skill_hours as requester_hours,u2.skill_hours as provider_hours,(select count(*)::int from ledger_entries where exchange_id=e.id and entry_type='Earned') as earnings from exchanges e join escrows s on s.exchange_id=e.id join users u1 on u1.id=e.requester_id join users u2 on u2.id=e.provider_id where e.id=$1", [exchange]);
   if (acceptedWaiting?.result !== "waiting" || accepted?.result !== "completed" || settled?.status !== "completed" || !settled.files_released_at || settled.escrow_status !== "released" || Number(settled.requester_hours) !== 20 || Number(settled.provider_hours) !== 20 || Number(settled.earnings) !== 2) throw new Error(`Atomic settlement verification failed: ${JSON.stringify(settled)}`);
-  console.log("Verified immutable approval, distinct mutual obligations, sealed commits, hidden decisions, revision rounds, and atomic file and ledger release.");
+  console.log("Verified immutable approval, insufficient-balance rollback, repeat approval, distinct mutual obligations, sealed commits, hidden decisions, revision rounds, and atomic file and ledger release.");
 
   await cleanup();
   await db.transaction([

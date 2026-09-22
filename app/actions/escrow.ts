@@ -1,18 +1,11 @@
 "use server";
 
-import { iso, payload, sql } from "@/lib/neon";
+import { payload, sql } from "@/lib/neon";
+import { escrowFromRow } from "@/lib/escrow-row";
 import { scheduleNotificationEmails } from "@/lib/notification-email";
 import { Escrow, EscrowEvent, EscrowParticipant, Exchange } from "@/types";
 import { revalidatePath } from "next/cache";
 import { getCurrentUserId } from "./user";
-
-function escrowFromRow(row: Record<string, unknown>): Escrow {
-  return {
-    ...payload<Record<string, unknown>>(row.payload), id: String(row.id), exchangeId: String(row.exchange_id ?? ""), status: String(row.status ?? "locked") as Escrow["status"],
-    participants: payload<Record<string, EscrowParticipant>>(row.participants), timeline: Array.isArray(row.timeline) ? row.timeline as EscrowEvent[] : [],
-    dispute: row.dispute ?? undefined, createdAt: iso(row.created_at), updatedAt: iso(row.updated_at),
-  } as Escrow;
-}
 
 function exchangeFromRow(row: Record<string, unknown>): Exchange {
   return { ...payload<Record<string, unknown>>(row.payload), id: String(row.id), requesterId: String(row.requester_id ?? ""), providerId: String(row.provider_id ?? ""), skillHours: Number(row.skill_hours ?? 0), status: String(row.status ?? "") as Exchange["status"], isMutual: row.is_mutual === true } as Exchange;
@@ -25,7 +18,7 @@ async function ownedEscrow(escrowId: string, userId: string) {
 
 async function saveEscrow(row: Record<string, unknown>, escrow: Escrow) {
   const updatedAt = new Date().toISOString();
-  const rows = await sql.query("update escrows set status=$2,participants=$3::jsonb,timeline=$4::jsonb,dispute=$5::jsonb,updated_at=$6,payload=$7::jsonb where id=$1 and updated_at is not distinct from $8 returning id", [escrow.id, escrow.status, JSON.stringify(escrow.participants), JSON.stringify(escrow.timeline), escrow.dispute ? JSON.stringify(escrow.dispute) : null, updatedAt, JSON.stringify({ ...escrow, updatedAt }), row.updated_at ?? null]);
+  const rows = await sql.query("update escrows set status=$2,participants=$3::jsonb,timeline=$4::jsonb,dispute=$5::jsonb,updated_at=$6 where id=$1 and updated_at is not distinct from $7 returning id", [escrow.id, escrow.status, JSON.stringify(escrow.participants), JSON.stringify(escrow.timeline), escrow.dispute ? JSON.stringify(escrow.dispute) : null, updatedAt, row.updated_at ?? null]);
   if (!rows.length) throw new Error("Escrow changed while you were editing it. Please try again.");
 }
 
@@ -59,9 +52,8 @@ export async function initializeEscrow(exchangeId: string) {
     const now = new Date().toISOString();
     const escrowId = crypto.randomUUID();
     const timeline: EscrowEvent[] = [{ id: crypto.randomUUID(), type: "created", message: "Escrow contract created. Skill Hours are reserved by the exchange workflow.", timestamp: now, actorId: userId }];
-    const escrow = { id: escrowId, exchangeId, status: "locked", participants, participantIds: [exchange.requesterId, exchange.providerId], timeline, createdAt: now, updatedAt: now };
     await sql.transaction(tx => [
-      tx.query("insert into escrows (id,exchange_id,status,participants,timeline,created_at,updated_at,payload) values ($1,$2,'locked',$3::jsonb,$4::jsonb,$5,$5,$6::jsonb)", [escrowId, exchangeId, JSON.stringify(participants), JSON.stringify(timeline), now, JSON.stringify(escrow)]),
+      tx.query("insert into escrows (id,exchange_id,status,participants,timeline,created_at,updated_at,payload) values ($1,$2,'locked',$3::jsonb,$4::jsonb,$5,$5,'{}'::jsonb)", [escrowId, exchangeId, JSON.stringify(participants), JSON.stringify(timeline), now]),
       tx.query("update exchanges set payload=payload || $3::jsonb,updated_at=$4 where id=$1 and (requester_id=$2 or provider_id=$2)", [exchangeId, userId, JSON.stringify({ escrowId }), now]),
     ]);
     revalidatePath(`/dashboard/exchanges/${exchangeId}`);
@@ -149,25 +141,24 @@ export async function openDispute(escrowId: string, reason: string, details: str
     owned.escrow.timeline.push({ id: crypto.randomUUID(), type: "disputed", message: `Dispute opened: ${reason.trim()}`, timestamp: now, actorId: userId });
     const activityId = crypto.randomUUID();
     const notificationId = crypto.randomUUID();
-    const updatedPayload = JSON.stringify({ ...owned.escrow, updatedAt: now });
     const message = `A dispute was opened for \"${String(owned.row.payload && typeof owned.row.payload === "object" && "title" in owned.row.payload ? owned.row.payload.title : "your exchange")}\".`;
     const rows = await sql.query(
       `with updated_escrow as (
-         update escrows s set status='disputed',timeline=$2::jsonb,dispute=$3::jsonb,updated_at=$4,payload=$5::jsonb
-         where s.id=$1 and s.updated_at is not distinct from $6 and s.status not in ('released','refunded','disputed') and exists (
-           select 1 from exchanges e where e.id=s.exchange_id and (e.requester_id=$7 or e.provider_id=$7) and e.status in ('in_progress','in_review','revision_requested')
+         update escrows s set status='disputed',timeline=$2::jsonb,dispute=$3::jsonb,updated_at=$4
+         where s.id=$1 and s.updated_at is not distinct from $5 and s.status not in ('released','refunded','disputed') and exists (
+           select 1 from exchanges e where e.id=s.exchange_id and (e.requester_id=$6 or e.provider_id=$6) and e.status in ('in_progress','in_review','revision_requested')
          ) returning s.exchange_id
        ), updated_exchange as (
          update exchanges e set status='disputed',updated_at=$4,payload=e.payload || jsonb_build_object('status','disputed','dispute',$3::jsonb,'updatedAt',$4)
          where e.id in(select exchange_id from updated_escrow) returning e.id,e.requester_id,e.provider_id
        ), activity as (
          insert into exchange_activity (id,exchange_id,actor_id,event_type,description,occurred_at,payload)
-         select $8,id,$7,'dispute_opened',$9,$4,$10::jsonb from updated_exchange returning id
+         select $7,id,$6,'dispute_opened',$8,$4,$9::jsonb from updated_exchange returning id
        ), notified as (
          insert into notifications (id,source_path,user_id,notification_type,title,message,is_read,is_archived,link,related_id,created_at,payload)
-         select $11,$12,case when requester_id=$7 then provider_id else requester_id end,'dispute_opened','Dispute Opened',$13,false,false,$14,id,$4,$15::jsonb from updated_exchange returning id
+         select $10,$11,case when requester_id=$6 then provider_id else requester_id end,'dispute_opened','Dispute Opened',$12,false,false,$13,id,$4,$14::jsonb from updated_exchange returning id
        ) select id from updated_exchange`,
-      [escrowId, JSON.stringify(owned.escrow.timeline), JSON.stringify(owned.escrow.dispute), now, updatedPayload, owned.row.updated_at ?? null, userId, activityId, `Dispute opened: ${reason.trim()}`, JSON.stringify({ type: "dispute_opened", description: `Dispute opened: ${reason.trim()}`, timestamp: now }), notificationId, `notifications/${notificationId}`, message, `/exchanges/${owned.escrow.exchangeId}`, JSON.stringify({ type: "dispute_opened", title: "Dispute Opened", message: "A dispute was opened for your exchange.", isRead: false, link: `/exchanges/${owned.escrow.exchangeId}`, createdAt: now })],
+      [escrowId, JSON.stringify(owned.escrow.timeline), JSON.stringify(owned.escrow.dispute), now, owned.row.updated_at ?? null, userId, activityId, `Dispute opened: ${reason.trim()}`, JSON.stringify({ type: "dispute_opened", description: `Dispute opened: ${reason.trim()}`, timestamp: now }), notificationId, `notifications/${notificationId}`, message, `/exchanges/${owned.escrow.exchangeId}`, JSON.stringify({ type: "dispute_opened", title: "Dispute Opened", message: "A dispute was opened for your exchange.", isRead: false, link: `/exchanges/${owned.escrow.exchangeId}`, createdAt: now })],
     );
     if (!rows.length) throw new Error("Exchange changed or cannot be disputed in its current state. Please refresh and try again.");
     scheduleNotificationEmails([notificationId]);

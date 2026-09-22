@@ -1,6 +1,7 @@
 "use server";
 
 import { payload, sql, iso } from "@/lib/neon";
+import { escrowFromRow } from "@/lib/escrow-row";
 import { storeMessageAttachment } from "@/lib/neon-storage";
 import { getCurrentUserId } from "./user";
 import { Conversation, Exchange, Message, MessageAttachment } from "@/types";
@@ -372,6 +373,6 @@ export async function getExchangeQuickContext(exchangeId: string) {
     sql.query("select count(*)::int as count from messages where conversation_id=$1", [exchangeId]).then(rows => rows[0]),
     sql.query("select count(*)::int as count from message_attachments where conversation_id=$1", [exchangeId]).then(rows => rows[0]),
   ]);
-  const escrowData = escrow ? { ...payload<Record<string, unknown>>(escrow.payload), id: escrow.id, exchangeId: escrow.exchange_id, status: escrow.status, participants: escrow.participants, timeline: escrow.timeline } : null;
+  const escrowData = escrow ? escrowFromRow(escrow) : null;
   return { success: true, exchange: exchangeData, escrow: escrowData, stats: { messages: Number(countRow?.count ?? 0), files: Number(fileRow?.count ?? 0) } };
 }

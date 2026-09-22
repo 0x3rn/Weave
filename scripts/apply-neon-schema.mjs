@@ -5,7 +5,10 @@ if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is required.");
 
 const sql = neon(process.env.DATABASE_URL);
 const migrationDirectory = "database/migrations";
-const migrationFiles = (await readdir(migrationDirectory)).filter(file => file.endsWith(".sql")).sort();
+const availableMigrations = (await readdir(migrationDirectory)).filter(file => file.endsWith(".sql")).sort();
+const requestedMigration = process.argv[2];
+if (requestedMigration && !availableMigrations.includes(requestedMigration)) throw new Error("Unknown migration file.");
+const migrationFiles = requestedMigration ? [requestedMigration] : availableMigrations;
 
 function splitStatements(source) {
   const statements = [];

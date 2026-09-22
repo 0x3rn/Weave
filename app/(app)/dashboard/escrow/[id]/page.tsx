@@ -1,8 +1,9 @@
 import { getCurrentUserId } from "@/app/actions/user";
 import { redirect } from "next/navigation";
 import { payload, sql } from "@/lib/neon";
+import { escrowFromRow } from "@/lib/escrow-row";
 import { userFromRow } from "@/lib/users";
-import { Escrow, Exchange, User } from "@/types";
+import { Exchange, User } from "@/types";
 import EscrowDetailsClient from "@/components/escrow/escrow-details-client";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -17,7 +18,7 @@ export default async function EscrowDetailsPage({ params }: { params: Promise<{ 
   const { id } = await params;
   const [escrowRow] = await sql.query("select * from escrows where id=$1 and participants ? $2", [id, userId]);
   if (!escrowRow) redirect("/dashboard/escrow");
-  const escrow = { ...payload<Record<string, unknown>>(escrowRow.payload), id: String(escrowRow.id), exchangeId: String(escrowRow.exchange_id), status: String(escrowRow.status), participants: escrowRow.participants, timeline: escrowRow.timeline } as Escrow;
+  const escrow = escrowFromRow(escrowRow);
   if (!escrow.participants[userId]) redirect("/dashboard/escrow");
 
   const [exchangeRow] = await sql.query("select * from exchanges where id=$1", [escrow.exchangeId]);
