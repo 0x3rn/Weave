@@ -207,6 +207,8 @@ export interface Conversation {
   id: string; // Typically matches exchangeId
   type: "exchange" | "application" | "support";
   contextId: string; // exchangeId or applicationId
+  contextTitle?: string;
+  contextStatus?: string;
   participants: string[]; // array of userIds
   lastMessage?: string;
   lastMessageAt?: string; // ISO string

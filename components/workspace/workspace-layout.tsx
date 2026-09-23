@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Conversation } from "@/types";
 import ConversationList from "./conversation-list";
 import ChatArea from "./chat-area";
-import ExchangeQuickPanel from "./exchange-quick-panel";
 import { MessageSquareDashed } from "lucide-react";
 
 interface Props {
@@ -43,10 +42,6 @@ export default function WorkspaceLayout({ conversations, currentUserId, activeCo
               />
             </div>
             
-            {/* Right Sidebar - Quick Panel (Hidden on smaller screens, can be toggled if needed) */}
-            <div className="w-80 bg-surface shrink-0 hidden xl:flex flex-col">
-              <ExchangeQuickPanel conversation={activeConversation} currentUserId={currentUserId} />
-            </div>
           </div>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-surface-secondary/30 hidden md:flex">

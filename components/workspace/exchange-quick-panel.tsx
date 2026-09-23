@@ -11,8 +11,39 @@ export default function ExchangeQuickPanel({ conversation }: Props) {
   const [exchange, setExchange] = useState<Exchange | null>(null);
   const [escrow, setEscrow] = useState<Escrow | null>(null);
   const [stats, setStats] = useState({ messages: 0, files: 0 });
-  useEffect(() => { let active = true; const load = async () => { if (conversation?.type !== "exchange" || !conversation.contextId) return; const result = await getExchangeQuickContext(conversation.contextId); if (active && result.success) { setExchange(result.exchange as Exchange | null); setEscrow(result.escrow as Escrow | null); setStats(result.stats ?? { messages: 0, files: 0 }); } }; void load(); const timer = window.setInterval(() => void load(), 10000); return () => { active = false; window.clearInterval(timer); }; }, [conversation]);
-  if (!conversation || conversation.type !== "exchange" || !exchange) return <div className="p-6 text-center text-sm text-muted">No active exchange context.</div>;
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
+  useEffect(() => {
+    let active = true;
+    let inFlight = false;
+    const load = async () => {
+      if (conversation?.type !== "exchange" || !conversation.contextId || inFlight) return;
+      inFlight = true;
+      try {
+        const result = await getExchangeQuickContext(conversation.contextId);
+        if (!active) return;
+        if (!result.success || !result.exchange) {
+          setLoadError(true);
+          return;
+        }
+        setExchange(result.exchange as Exchange);
+        setEscrow(result.escrow as Escrow | null);
+        setStats(result.stats ?? { messages: 0, files: 0 });
+        setLoadError(false);
+      } catch {
+        if (active) setLoadError(true);
+      } finally {
+        inFlight = false;
+        if (active) setLoading(false);
+      }
+    };
+    void load();
+    const timer = window.setInterval(() => void load(), 10000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [conversation?.contextId, conversation?.type, retryKey]);
+  if (!conversation || conversation.type !== "exchange" || !conversation.contextId) return <div className="p-6 text-center text-sm text-muted">No exchange is linked to this conversation.</div>;
+  if (!exchange) return <div className="p-6 text-center text-sm text-muted">{loading ? "Loading project details..." : <><p>{loadError ? "Project details are temporarily unavailable." : "Project details are unavailable."}</p><button type="button" onClick={() => { setLoading(true); setRetryKey(value => value + 1); }} className="mt-3 font-bold text-primary hover:underline">Retry</button></>}</div>;
   const milestones = exchange.milestones ?? [];
   const completed = milestones.filter(item => item.status === "completed").length;
   const healthy = escrow ? escrow.status !== "disputed" : exchange.status !== "disputed" && exchange.status !== "cancelled";

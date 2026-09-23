@@ -5,6 +5,7 @@ import { scheduleNotificationEmails } from "@/lib/notification-email";
 import type { Exchange, ExchangeActivity, ExchangeMilestone } from "@/types";
 import { revalidatePath } from "next/cache";
 import { getCurrentUserId } from "./user";
+import { getOrCreateExchangeConversation } from "./messages";
 
 const mutableStatuses = ["in_progress", "revision_requested"];
 
@@ -99,22 +100,32 @@ export async function createExchangeMilestone(exchangeId: string, input: { title
   const milestoneId = crypto.randomUUID();
   const activityId = crypto.randomUUID();
   const notificationId = crypto.randomUUID();
+  const messageId = crypto.randomUUID();
   const now = new Date().toISOString();
+  const conversation = await getOrCreateExchangeConversation(exchangeId);
+  if (!conversation.success) return { success: false, error: conversation.error };
   const rows = await sql.query(
     `with eligible as (select id,requester_id,provider_id,title from exchanges where id=$1 and (requester_id=$2 or provider_id=$2) and status=any($3::text[])),
      inserted as (insert into exchange_milestones (id,exchange_id,created_by,title,description,due_at,status,position,created_at,updated_at)
        select $4,id,$2,$5,$6,$7,'pending',coalesce((select max(position)+1 from exchange_milestones where exchange_id=$1),0),$8,$8 from eligible returning id),
      activity as (insert into exchange_activity (id,exchange_id,actor_id,event_type,description,occurred_at,payload)
        select $9,$1,$2,'milestone_created','Milestone added: '||$5,$8,jsonb_build_object('type','milestone_created','description','Milestone added: '||$5,'timestamp',$8) from inserted returning id),
+     card as (insert into messages (id,conversation_id,sender_id,message_type,content,metadata,read_by,created_at,payload)
+       select $11,$1,$2,'rich_card','Milestone added: '||$5,jsonb_build_object('kind','milestone','milestoneId',$4,'status','pending','title',$5),array[$2],$8,'{}'::jsonb from inserted returning content),
+     conversation_update as (update conversations c set last_message=card.content,last_message_at=$8,updated_at=$8,
+       unread_counts=jsonb_set(coalesce(c.unread_counts,'{}'::jsonb),array[case when e.requester_id=$2 then e.provider_id else e.requester_id end],
+         to_jsonb(coalesce((c.unread_counts->>(case when e.requester_id=$2 then e.provider_id else e.requester_id end))::int,0)+1),true)
+       from eligible e,card where c.id=e.id),
      notified as (insert into notifications (id,source_path,user_id,notification_type,title,message,is_read,is_archived,link,related_id,created_at,payload)
        select $10,'notifications/'||$10,case when requester_id=$2 then provider_id else requester_id end,'milestone_added','Milestone Added','A milestone was added to "'||title||'".',false,false,'/exchanges/'||id||'/milestones',id,$8,jsonb_build_object('type','milestone_added','title','Milestone Added','message','A milestone was added.','isRead',false,'link','/exchanges/'||id||'/milestones','createdAt',$8) from eligible where exists(select 1 from inserted) returning id)
      select id from inserted`,
-    [exchangeId, userId, mutableStatuses, milestoneId, title, description || null, dueDate?.toISOString() ?? null, now, activityId, notificationId],
+    [exchangeId, userId, mutableStatuses, milestoneId, title, description || null, dueDate?.toISOString() ?? null, now, activityId, notificationId, messageId],
   );
   if (!rows.length) return { success: false, error: "Exchange cannot be updated" };
   scheduleNotificationEmails([notificationId]);
   await updateProgress(exchangeId);
   revalidatePath(`/exchanges/${exchangeId}`);
+  revalidatePath(`/messages/${exchangeId}`);
   return { success: true, milestoneId };
 }
 
@@ -125,20 +136,31 @@ export async function updateExchangeMilestone(exchangeId: string, milestoneId: s
   const now = new Date().toISOString();
   const activityId = crypto.randomUUID();
   const notificationId = crypto.randomUUID();
+  const messageId = crypto.randomUUID();
+  const conversation = await getOrCreateExchangeConversation(exchangeId);
+  if (!conversation.success) return { success: false, error: conversation.error };
   const rows = await sql.query(
     `with eligible as (select id,requester_id,provider_id,title from exchanges where id=$1 and (requester_id=$2 or provider_id=$2) and status=any($3::text[])),
      updated as (update exchange_milestones set status=$5,updated_at=$6 where id=$4 and exchange_id in(select id from eligible) and status<>$5 returning title),
      activity as (insert into exchange_activity (id,exchange_id,actor_id,event_type,description,occurred_at,payload)
        select $7,$1,$2,case when $5='completed' then 'milestone_completed' else 'milestone_updated' end,'Milestone "'||title||'" marked '||replace($5,'_',' '),$6,jsonb_build_object('type',case when $5='completed' then 'milestone_completed' else 'milestone_updated' end,'description','Milestone "'||title||'" marked '||replace($5,'_',' '),'timestamp',$6) from updated returning id),
+     card as (insert into messages (id,conversation_id,sender_id,message_type,content,metadata,read_by,created_at,payload)
+       select $9,$1,$2,'rich_card','Milestone "'||title||'" marked '||replace($5,'_',' '),
+         jsonb_build_object('kind','milestone','milestoneId',$4,'status',$5,'title',title),array[$2],$6,'{}'::jsonb from updated returning content),
+     conversation_update as (update conversations c set last_message=card.content,last_message_at=$6,updated_at=$6,
+       unread_counts=jsonb_set(coalesce(c.unread_counts,'{}'::jsonb),array[case when e.requester_id=$2 then e.provider_id else e.requester_id end],
+         to_jsonb(coalesce((c.unread_counts->>(case when e.requester_id=$2 then e.provider_id else e.requester_id end))::int,0)+1),true)
+       from eligible e,card where c.id=e.id),
      notified as (insert into notifications (id,source_path,user_id,notification_type,title,message,is_read,is_archived,link,related_id,created_at,payload)
        select $8,'notifications/'||$8,case when requester_id=$2 then provider_id else requester_id end,case when $5='completed' then 'milestone_completed' else 'milestone_updated' end,'Milestone Updated','A milestone in "'||title||'" is now '||replace($5,'_',' ')||'.',false,false,'/exchanges/'||id||'/milestones',id,$6,jsonb_build_object('type',case when $5='completed' then 'milestone_completed' else 'milestone_updated' end,'title','Milestone Updated','message','A milestone was updated.','isRead',false,'link','/exchanges/'||id||'/milestones','createdAt',$6) from eligible where exists(select 1 from updated) returning id)
      select title from updated`,
-    [exchangeId, userId, mutableStatuses, milestoneId, status, now, activityId, notificationId],
+    [exchangeId, userId, mutableStatuses, milestoneId, status, now, activityId, notificationId, messageId],
   );
   if (!rows.length) return { success: false, error: "Milestone was not found or already has that status" };
   scheduleNotificationEmails([notificationId]);
   await updateProgress(exchangeId);
   revalidatePath(`/exchanges/${exchangeId}`);
+  revalidatePath(`/messages/${exchangeId}`);
   return { success: true };
 }
 

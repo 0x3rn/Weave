@@ -16,6 +16,7 @@
     "test:exchange-workflow": "node --env-file=.env.local scripts/verify-exchange-workflow.mjs",
     "test:escrow-payload": "node --env-file=.env.local scripts/verify-escrow-payload.mjs",
     "test:messaging-system": "node --env-file=.env.local scripts/verify-messaging-system.mjs",
+    "test:collaboration-workspace": "node --env-file=.env.local scripts/verify-collaboration-workspace.mjs",
     "db:migrate:firestore": "node --env-file=.env.local scripts/migrate-firestore-to-neon.mjs",
     "db:verify-migration": "node --env-file=.env.local scripts/verify-firestore-neon.mjs",
     "db:verify-cutover": "node --env-file=.env.local scripts/verify-neon-cutover.mjs",

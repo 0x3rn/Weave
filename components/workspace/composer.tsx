@@ -5,9 +5,9 @@ import { Code, Paperclip, Send, Smile, X } from "lucide-react";
 import { Message } from "@/types";
 import { sendMessage, sendMessageAttachment, setConversationTyping } from "@/app/actions/messages";
 
-interface Props { conversationId: string; replyTo?: Message | null; onClearReply: () => void; }
+interface Props { conversationId: string; replyTo?: Message | null; onClearReply: () => void; onSent?: () => void | Promise<void>; }
 
-export default function Composer({ conversationId, replyTo, onClearReply }: Props) {
+export default function Composer({ conversationId, replyTo, onClearReply, onSent }: Props) {
   const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [isSending, setIsSending] = useState(false);
@@ -23,6 +23,7 @@ export default function Composer({ conversationId, replyTo, onClearReply }: Prop
       const result = file ? await (() => { const data = new FormData(); data.append("file", file); return sendMessageAttachment(conversationId, data, text); })() : await sendMessage(conversationId, text, replyTo?.id);
       if (!result.success) throw new Error(result.error);
       setText(""); setFile(null); onClearReply(); void setConversationTyping(conversationId, false);
+      await onSent?.();
       if (textareaRef.current) textareaRef.current.style.height = "auto";
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Message could not be sent"); }
     finally { setIsSending(false); }

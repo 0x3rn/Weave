@@ -19,6 +19,8 @@ function conversationFromRow(row: ConversationRow): Conversation {
     id: row.id,
     type: String(row.conversation_type ?? data.type ?? "exchange") as Conversation["type"],
     contextId: String(row.context_id ?? data.contextId ?? ""),
+    contextTitle: row.context_title ? String(row.context_title) : undefined,
+    contextStatus: row.context_status ? String(row.context_status) : undefined,
     participants: [],
     lastMessage: String(row.last_message ?? data.lastMessage ?? "") || undefined,
     lastMessageAt: iso(row.last_message_at) || undefined,
@@ -60,7 +62,7 @@ async function assertNotBlocked(conversationId: string, userId: string) {
 }
 
 async function loadMessages(conversationId: string): Promise<Message[]> {
-  const rows = await sql.query("select * from messages where conversation_id=$1 order by created_at asc limit 500", [conversationId]);
+  const rows = await sql.query("select * from (select * from messages where conversation_id=$1 order by created_at desc,id desc limit 500) recent order by created_at asc,id asc", [conversationId]);
   const ids = rows.map(row => String(row.id));
   if (ids.length === 0) return [];
   const [attachmentRows, reactionRows, pinRows, replyRows] = await Promise.all([
@@ -116,9 +118,12 @@ export async function getConversations() {
   if (!userId) return { success: false, error: "Unauthorized", conversations: [] as Conversation[] };
   try {
     const rows = await sql.query(
-      `select c.*, exists(select 1 from conversation_archives a where a.conversation_id=c.id and a.user_id=$1) as is_archived,
+      `select c.*,e.title as context_title,e.status as context_status,
+       exists(select 1 from conversation_archives a where a.conversation_id=c.id and a.user_id=$1) as is_archived,
        coalesce((select s.is_muted from conversation_member_settings s where s.conversation_id=c.id and s.user_id=$1),false) as is_muted
-       from conversations c join conversation_participants p on p.conversation_id=c.id where p.user_id=$1
+       from conversations c join conversation_participants p on p.conversation_id=c.id
+       left join exchanges e on c.conversation_type='exchange' and e.id=c.context_id
+       where p.user_id=$1
        order by c.last_message_at desc nulls last,c.updated_at desc`,
       [userId],
     );
@@ -290,7 +295,7 @@ export async function markConversationRead(conversationId: string) {
   unread[userId] = 0;
   await sql.transaction(tx => [
     tx.query("update conversations set unread_counts=$2::jsonb,updated_at=now() where id=$1", [conversationId, JSON.stringify(unread)]),
-    tx.query("update messages set read_by=array(select distinct unnest(read_by || $2::text[])) where conversation_id=$1 and sender_id<>$2", [conversationId, userId]),
+    tx.query("update messages set read_by=array_append(read_by,$2::text) where conversation_id=$1 and sender_id<>$2 and not ($2::text=any(read_by))", [conversationId, userId]),
   ]);
   return { success: true };
 }
@@ -359,7 +364,7 @@ export async function getConversationContext(conversationId: string) {
     data.type === "exchange" ? sql.query("select description,occurred_at from exchange_activity where exchange_id=$1 order by occurred_at desc limit 100", [data.contextId]) : Promise.resolve([]),
     sql.query("select user_id from conversation_typing where conversation_id=$1 and user_id<>$2 and updated_at>now()-interval '15 seconds'", [conversationId, userId]),
   ]);
-  return { success: true, partner: partner ? { uid: partner.id, fullName: partner.full_name || partner.username || "Unknown User", photoURL: partner.photo_url || null, isVerified: partner.is_verified === true, trustScore: Number(partner.trust_score || 0) } : null, exchange: exchange ? { id: exchange.id, ...payload<Record<string, unknown>>(exchange.payload) } as Exchange : null, activity: activityRows.map(row => ({ description: String(row.description ?? "Exchange updated"), createdAt: iso(row.occurred_at) })), typingUserIds: typingRows.map(row => String(row.user_id)) };
+  return { success: true, partner: partner ? { uid: partner.id, fullName: partner.full_name || partner.username || "Unknown User", photoURL: partner.photo_url || null, isVerified: partner.is_verified === true, trustScore: Number(partner.trust_score || 0) } : null, exchange: exchange ? { ...payload<Record<string, unknown>>(exchange.payload), id: String(exchange.id), title: String(exchange.title), status: String(exchange.status), deadline: iso(exchange.deadline_at), progress: Number(exchange.progress ?? 0) } as Exchange : null, activity: activityRows.map(row => ({ description: String(row.description ?? "Exchange updated"), createdAt: iso(row.occurred_at) })), typingUserIds: typingRows.map(row => String(row.user_id)) };
 }
 
 export async function getExchangeQuickContext(exchangeId: string) {
@@ -367,12 +372,14 @@ export async function getExchangeQuickContext(exchangeId: string) {
   if (!userId) return { success: false, exchange: null, escrow: null };
   const [exchange] = await sql.query("select * from exchanges where id=$1 and $2 in(requester_id,provider_id)", [exchangeId, userId]);
   if (!exchange) return { success: false, exchange: null, escrow: null };
-  const exchangeData = { ...payload<Record<string, unknown>>(exchange.payload), id: exchange.id, requesterId: exchange.requester_id, providerId: exchange.provider_id, status: exchange.status, title: exchange.title, skillHours: Number(exchange.skill_hours ?? 0) } as Exchange;
-  const [escrow, countRow, fileRow] = await Promise.all([
+  const exchangeData = { ...payload<Record<string, unknown>>(exchange.payload), id: exchange.id, requesterId: exchange.requester_id, providerId: exchange.provider_id, status: exchange.status, title: exchange.title, skillHours: Number(exchange.skill_hours ?? 0), deadline: iso(exchange.deadline_at), progress: Number(exchange.progress ?? 0) } as Exchange;
+  const [escrow, countRow, fileRow, milestoneRows] = await Promise.all([
     sql.query("select * from escrows where exchange_id=$1", [exchangeId]).then(rows => rows[0]),
     sql.query("select count(*)::int as count from messages where conversation_id=$1", [exchangeId]).then(rows => rows[0]),
     sql.query("select count(*)::int as count from message_attachments where conversation_id=$1", [exchangeId]).then(rows => rows[0]),
+    sql.query("select id,title,description,due_at,status from exchange_milestones where exchange_id=$1 order by position,created_at", [exchangeId]),
   ]);
+  exchangeData.milestones = milestoneRows.map(row => ({ id: String(row.id), title: String(row.title), description: row.description ? String(row.description) : undefined, dueDate: iso(row.due_at) || undefined, status: String(row.status) as "pending" | "in_progress" | "completed" }));
   const escrowData = escrow ? escrowFromRow(escrow) : null;
   return { success: true, exchange: exchangeData, escrow: escrowData, stats: { messages: Number(countRow?.count ?? 0), files: Number(fileRow?.count ?? 0) } };
 }
