@@ -1,11 +1,14 @@
 "use client";
+import type { AdminInviteApplication } from "@/lib/admin-types";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
+import toast from "react-hot-toast";
+import { useAdminDialog } from "@/lib/use-admin-dialog";
 import { X, AlertCircle } from "lucide-react";
 import { rejectInvite } from "@/app/actions/admin/invites";
 
 interface RejectModalProps {
-  application: any | null;
+  application: AdminInviteApplication | null;
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (id: string) => void;
@@ -16,10 +19,15 @@ const REJECTION_REASONS = [
   "Not Enough Information",
   "Spam / Low Effort",
   "Outside Target Audience",
-  "Other"
+  "Other",
 ];
 
-export default function RejectModal({ application, isOpen, onClose, onSuccess }: RejectModalProps) {
+export default function RejectModal({
+  application,
+  isOpen,
+  onClose,
+  onSuccess,
+}: RejectModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,45 +35,76 @@ export default function RejectModal({ application, isOpen, onClose, onSuccess }:
   const [reason, setReason] = useState(REJECTION_REASONS[0]);
   const [feedback, setFeedback] = useState("");
 
+  const pending = useRef(false);
+  const dialog = useAdminDialog(isOpen, () => {
+    if (!pending.current) onClose();
+  });
   if (!isOpen || !application) return null;
 
   const handleReject = async () => {
+    if (pending.current) return;
+    pending.current = true;
     setIsSubmitting(true);
     setError(null);
-    
-    const result = await rejectInvite(application.id, {
-      reason,
-      feedback
-    });
 
-    setIsSubmitting(false);
+    try {
+      const result = await rejectInvite(application.id, {
+        reason,
+        feedback,
+      });
 
-    if (result.error) {
-      setError(result.error);
-    } else {
-      onSuccess(application.id);
-      onClose();
+      setIsSubmitting(false);
+
+      if (result.error) {
+        setError(result.error);
+      } else {
+        if (result.warning) toast(result.warning, { duration: 8000 });
+        onSuccess(application.id);
+        onClose();
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Request failed. Retry.");
+    } finally {
+      pending.current = false;
+      setIsSubmitting(false);
     }
   };
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div 
+      <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
+        onClick={() => {
+          if (!pending.current) onClose();
+        }}
       />
-      
+
       {/* Modal Box */}
-      <div className="relative bg-surface border border-border w-full max-w-md rounded-[var(--radius-card)] shadow-2xl flex flex-col overflow-hidden">
-        
+      <div
+        ref={dialog}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Reject application"
+        tabIndex={-1}
+        className="relative bg-surface border border-border w-full max-w-md rounded-[var(--radius-card)] shadow-2xl flex flex-col overflow-hidden"
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border bg-error/10">
           <div className="flex items-center gap-2">
             <AlertCircle className="w-5 h-5 text-error" />
-            <h2 className="text-lg font-bold text-heading">Reject Application</h2>
+            <h2 className="text-lg font-bold text-heading">
+              Reject Application
+            </h2>
           </div>
-          <button onClick={onClose} className="text-muted hover:text-heading transition-colors">
+          <button
+            aria-label="Close dialog"
+            disabled={isSubmitting}
+            onClick={() => {
+              if (!pending.current) onClose();
+            }}
+            className="text-muted hover:text-heading transition-colors"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -73,35 +112,50 @@ export default function RejectModal({ application, isOpen, onClose, onSuccess }:
         {/* Body */}
         <div className="p-6 space-y-6">
           <p className="text-sm text-body">
-            You are rejecting the application for <strong className="text-heading">{application.fullName}</strong>. They will receive an email notification.
+            You are rejecting the application for{" "}
+            <strong className="text-heading">{application.fullName}</strong>.
+            They will receive an email notification.
           </p>
 
           {error && (
-            <div className="p-3 bg-error/10 border border-error/20 text-error text-sm rounded-md">
+            <div
+              role="alert"
+              className="p-3 bg-error/10 border border-error/20 text-error text-sm rounded-md"
+            >
               {error}
             </div>
           )}
 
           <div className="space-y-4">
-            
             {/* Reason */}
             <div className="space-y-2">
-              <label className="text-sm font-bold text-heading block">Primary Reason</label>
-              <select 
+              <label className="text-sm font-bold text-heading block">
+                Primary Reason
+              </label>
+              <select
+                disabled={isSubmitting}
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 className="w-full bg-background border border-border rounded-[var(--radius-input)] p-3 text-sm focus:outline-none focus:border-primary text-heading appearance-none"
               >
-                {REJECTION_REASONS.map(r => (
-                  <option key={r} value={r}>{r}</option>
+                {REJECTION_REASONS.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
                 ))}
               </select>
             </div>
 
             {/* Optional Feedback */}
             <div className="space-y-2">
-              <label className="text-sm font-bold text-heading block">Optional Feedback <span className="text-muted font-normal">(Included in email)</span></label>
-              <textarea 
+              <label className="text-sm font-bold text-heading block">
+                Optional Feedback{" "}
+                <span className="text-muted font-normal">
+                  (Included in email)
+                </span>
+              </label>
+              <textarea
+                disabled={isSubmitting}
                 value={feedback}
                 onChange={(e) => setFeedback(e.target.value)}
                 placeholder="Add constructive feedback explaining the rejection..."
@@ -109,19 +163,21 @@ export default function RejectModal({ application, isOpen, onClose, onSuccess }:
                 className="w-full bg-background border border-border rounded-[var(--radius-input)] p-3 text-sm focus:outline-none focus:border-primary text-body resize-none"
               />
             </div>
-
           </div>
         </div>
 
         {/* Footer */}
         <div className="p-6 border-t border-border bg-surface-secondary flex gap-3 justify-end">
-          <button 
-            onClick={onClose}
+          <button
+            disabled={isSubmitting}
+            onClick={() => {
+              if (!pending.current) onClose();
+            }}
             className="px-4 py-2 font-medium text-sm text-heading hover:bg-border rounded-md transition-colors"
           >
             Cancel
           </button>
-          <button 
+          <button
             onClick={handleReject}
             disabled={isSubmitting}
             className="px-6 py-2 bg-error text-white font-medium text-sm rounded-md hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center gap-2"
@@ -129,7 +185,6 @@ export default function RejectModal({ application, isOpen, onClose, onSuccess }:
             {isSubmitting ? "Rejecting..." : "Reject Application"}
           </button>
         </div>
-
       </div>
     </div>
   );

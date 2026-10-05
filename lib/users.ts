@@ -11,10 +11,16 @@ export type AppUser = User &
   };
 
 export function userFromRow(row: Record<string, unknown>): AppUser {
-  const data = payload<Record<string, unknown>>(row.payload);
+  const data = { ...payload<Record<string, unknown>>(row.payload) };
+  // Staff-only fields must never enter member-facing client props.
+  delete data.adminNotes;
+  delete data.internalNotes;
+  const role = typeof row.role === "string" ? row.role : data.isAdmin === true ? "Admin" : "Member";
   return {
     ...data,
     uid: String(row.id),
+    role,
+    isAdmin: role === "Admin",
     email: String(row.email ?? data.email ?? ""),
     username: String(row.username ?? data.username ?? ""),
     fullName: String(row.full_name ?? data.fullName ?? data.displayName ?? ""),
@@ -33,6 +39,7 @@ export function userFromRow(row: Record<string, unknown>): AppUser {
     isVerified: row.is_verified === true,
     status: String(row.account_status ?? data.status ?? "active"),
     onboarded: row.onboarded === true,
+    profileCompletion: Number(row.profile_completion ?? data.profileCompletion ?? 0),
     createdAt: iso(row.created_at ?? data.createdAt),
     lastActive: iso(row.last_active_at ?? data.lastActive),
   } as unknown as AppUser;

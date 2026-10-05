@@ -48,5 +48,7 @@ firebase-config.json
 /artifacts/exchange-showcase/
 /artifacts/settings-preview/
 /artifacts/notification-preview/
+/artifacts/admin-preview/
 
-docs/
+docs/*
+!docs/admin-dashboard-setup.md

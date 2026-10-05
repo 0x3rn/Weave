@@ -1,4 +1,5 @@
 "use client";
+import type { AdminInviteApplication } from "@/lib/admin-types";
 
 import { useState, useMemo } from "react";
 import { Search, Eye, CheckCircle, XCircle } from "lucide-react";
@@ -7,21 +8,21 @@ import ApproveModal from "./approve-modal";
 import RejectModal from "./reject-modal";
 
 interface InvitesTableProps {
-  initialData: any[];
+  initialData: AdminInviteApplication[];
 }
 
 export default function InvitesTable({ initialData }: InvitesTableProps) {
   const [data, setData] = useState(initialData);
-  
+
   // Filtering & Search
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [professionFilter, setProfessionFilter] = useState("all");
 
   // Drawer & Modals State
-  const [selectedApplication, setSelectedApplication] = useState<any | null>(null);
+  const [selectedApplication, setSelectedApplication] = useState<AdminInviteApplication | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  
+
   const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
 
@@ -39,10 +40,10 @@ export default function InvitesTable({ initialData }: InvitesTableProps) {
         if (statusFilter === "pending" && item.status && item.status !== "pending") return false;
         if (statusFilter !== "pending" && item.status !== statusFilter) return false;
       }
-      
+
       // Profession Match
       if (professionFilter !== "all" && item.profession !== professionFilter) return false;
-      
+
       // Search Match
       if (search) {
         const query = search.toLowerCase();
@@ -51,31 +52,33 @@ export default function InvitesTable({ initialData }: InvitesTableProps) {
         const matchesCountry = (item.country || "").toLowerCase().includes(query);
         if (!matchesName && !matchesEmail && !matchesCountry) return false;
       }
-      
+
       return true;
     });
   }, [data, search, statusFilter, professionFilter]);
 
   // Actions
-  const handleView = (application: any) => {
+  const handleView = (application: AdminInviteApplication) => {
     setSelectedApplication(application);
     setIsDrawerOpen(true);
   };
 
-  const openApprove = (application: any) => {
+  const openApprove = (application: AdminInviteApplication) => {
     setSelectedApplication(application);
+    setIsDrawerOpen(false);
     setIsApproveModalOpen(true);
   };
 
-  const openReject = (application: any) => {
+  const openReject = (application: AdminInviteApplication) => {
     setSelectedApplication(application);
+    setIsDrawerOpen(false);
     setIsRejectModalOpen(true);
   };
 
   const onUpdateSuccess = (id: string, newStatus: string) => {
     // Update local state without refreshing
     setData(prev => prev.map(item => item.id === id ? { ...item, status: newStatus } : item));
-    
+
     // If the drawer is open for this item, update it too
     if (selectedApplication && selectedApplication.id === id) {
       setSelectedApplication({ ...selectedApplication, status: newStatus });
@@ -84,18 +87,19 @@ export default function InvitesTable({ initialData }: InvitesTableProps) {
 
   const onNotesSaved = (id: string, notes: string) => {
     setData(prev => prev.map(item => item.id === id ? { ...item, internalNotes: notes } : item));
+    setSelectedApplication((current: AdminInviteApplication | null) => current?.id === id ? { ...current, internalNotes: notes } : current);
   };
 
   return (
     <div className="space-y-6">
-      
+
       {/* Header & Filters */}
       <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-surface border border-border p-4 rounded-[var(--radius-card)]">
-        
+
         {/* Search */}
         <div className="relative w-full sm:w-96">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-          <input 
+          <input
             type="text"
             placeholder="Search name, email, country..."
             value={search}
@@ -106,7 +110,7 @@ export default function InvitesTable({ initialData }: InvitesTableProps) {
 
         {/* Filters */}
         <div className="flex w-full sm:w-auto gap-3">
-          <select 
+          <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             className="flex-1 sm:flex-none bg-background border border-border rounded-[var(--radius-input)] px-3 py-2 text-sm focus:outline-none focus:border-primary text-heading appearance-none"
@@ -116,8 +120,8 @@ export default function InvitesTable({ initialData }: InvitesTableProps) {
             <option value="approved">Approved</option>
             <option value="rejected">Rejected</option>
           </select>
-          
-          <select 
+
+          <select
             value={professionFilter}
             onChange={(e) => setProfessionFilter(e.target.value)}
             className="flex-1 sm:flex-none bg-background border border-border rounded-[var(--radius-input)] px-3 py-2 text-sm focus:outline-none focus:border-primary text-heading appearance-none max-w-[200px]"
@@ -174,14 +178,14 @@ export default function InvitesTable({ initialData }: InvitesTableProps) {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2 transition-opacity">
-                        <button 
+                        <button
                           onClick={() => handleView(item)}
                           className="p-2 text-muted hover:text-primary transition-colors rounded-md hover:bg-background"
                           title="View Details"
                         >
                           <Eye className="w-4 h-4" />
                         </button>
-                        <button 
+                        <button
                           onClick={() => openApprove(item)}
                           disabled={item.status === 'approved'}
                           className="p-2 text-muted hover:text-success transition-colors rounded-md hover:bg-background disabled:opacity-30 disabled:cursor-not-allowed"
@@ -189,7 +193,7 @@ export default function InvitesTable({ initialData }: InvitesTableProps) {
                         >
                           <CheckCircle className="w-4 h-4" />
                         </button>
-                        <button 
+                        <button
                           onClick={() => openReject(item)}
                           disabled={item.status === 'rejected'}
                           className="p-2 text-muted hover:text-error transition-colors rounded-md hover:bg-background disabled:opacity-30 disabled:cursor-not-allowed"
@@ -208,29 +212,29 @@ export default function InvitesTable({ initialData }: InvitesTableProps) {
       </div>
 
       {/* Modals & Drawer */}
-      <InviteDrawer 
+      {isDrawerOpen && <InviteDrawer key={selectedApplication?.id}
         application={selectedApplication}
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
         onApprove={(app) => { setIsDrawerOpen(false); openApprove(app); }}
         onReject={(app) => { setIsDrawerOpen(false); openReject(app); }}
         onNotesSaved={onNotesSaved}
-      />
+      />}
 
-      <ApproveModal 
+      {isApproveModalOpen && <ApproveModal key={selectedApplication?.id}
         application={selectedApplication}
         isOpen={isApproveModalOpen}
         onClose={() => setIsApproveModalOpen(false)}
         onSuccess={(id) => onUpdateSuccess(id, 'approved')}
-      />
+      />}
 
-      <RejectModal 
+      {isRejectModalOpen && <RejectModal key={selectedApplication?.id}
         application={selectedApplication}
         isOpen={isRejectModalOpen}
         onClose={() => setIsRejectModalOpen(false)}
         onSuccess={(id) => onUpdateSuccess(id, 'rejected')}
-      />
-      
+      />}
+
     </div>
   );
 }

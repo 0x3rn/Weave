@@ -163,5 +163,8 @@ export async function savePortfolioConnection(provider: string, url: string) {
 export async function settingsSnapshot() {
   const { uid } = await requireAuth();
   const [row] = await sql.query("select payload from users where id=$1", [uid]);
-  return object(row?.payload);
+  const settings = { ...object(row?.payload) };
+  delete settings.adminNotes;
+  delete settings.internalNotes;
+  return settings;
 }

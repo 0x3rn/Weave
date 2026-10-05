@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminUsersPage() {
   const data = await getAdminUsersDashboard();
 
-  if (data.error) {
+  if (!data.users || !data.summary) {
     return (
       <div className="p-8 text-error bg-error/10 border border-error/20 rounded-md">
         Failed to load users: {data.error}
@@ -18,5 +18,5 @@ export default async function AdminUsersPage() {
     );
   }
 
-  return <UsersDashboardClient initialUsers={(data.users as any) || []} summary={data.summary} />;
+  return <UsersDashboardClient key={JSON.stringify(data.users)} timeZone={data.timeZone} initialUsers={data.users} summary={data.summary} />;
 }

@@ -7,7 +7,8 @@ export async function requireAdminUser() {
   const uid = await getCurrentUserId();
   if (!uid) throw new Error("Unauthorized");
   const user = await getUserById(uid);
-  if (!user?.isAdmin && user?.role !== "Admin") throw new Error("Forbidden");
+  if (user?.role !== "Admin" || user.status !== "active")
+    throw new Error("Forbidden");
 
   return uid;
 }

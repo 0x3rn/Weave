@@ -3,6 +3,7 @@ import { getIssuedInvites } from "@/app/actions/admin/invite-codes";
 import InvitesTable from "@/components/admin/invites/invites-table";
 import IssuedCodesTable from "@/components/admin/invites/issued-codes-table";
 import Link from "next/link";
+import type { AdminInviteApplication } from "@/lib/admin-types";
 
 export const metadata = {
   title: "Invite Requests"
@@ -17,21 +18,14 @@ export default async function AdminInvitesPage({
   searchParams: Promise<{ tab?: string }>;
 }) {
   const params = await searchParams;
-  const currentTab = params.tab || "requests";
-
-  let result: any = null;
-  if (currentTab === "requests") {
-    result = await getInviteApplications();
-  } else {
-    result = await getIssuedInvites();
-  }
-
-  if (result.error) {
-    return (
-      <div className="p-8 text-error bg-error/10 border border-error/20 rounded-md">
-        Error loading invite applications: {result.error}
-      </div>
-    );
+  const currentTab = params.tab === "issued" ? "issued" : "requests";
+  let applications: AdminInviteApplication[] = [];
+  let issued: Awaited<ReturnType<typeof getIssuedInvites>>["invites"] = [];
+  try {
+    if (currentTab === "requests") applications = (await getInviteApplications()).applications;
+    else issued = (await getIssuedInvites()).invites;
+  } catch {
+    return <div role="alert" className="p-8 text-error">Could not load invitations. Refresh to retry.</div>;
   }
 
   return (
@@ -62,9 +56,9 @@ export default async function AdminInvitesPage({
       </div>
 
       {currentTab === "requests" ? (
-        <InvitesTable initialData={result?.applications || []} />
+        <InvitesTable key={JSON.stringify(applications)} initialData={applications || []} />
       ) : (
-        <IssuedCodesTable initialData={result?.invites || []} />
+        <IssuedCodesTable key={JSON.stringify(issued)} initialData={issued || []} />
       )}
     </div>
   );

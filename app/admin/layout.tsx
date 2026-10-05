@@ -41,7 +41,7 @@ export default async function AdminLayout({
       targetRedirect = "/api/auth/logout";
     } else {
       // 3. Check for admin privileges
-      if (userData.isAdmin !== true) {
+      if (userData.role !== "Admin" || userData.status !== "active") {
         targetRedirect = "/dashboard"; // Send non-admins back to their dashboard
       }
     }

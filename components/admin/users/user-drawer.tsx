@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { User } from "@/types";
 
 import { 
@@ -9,6 +9,9 @@ import {
 import Link from "next/link";
 import { saveAdminUserNotes, updateUserStatus, updateUserVerification, adjustUserSkillHours, deleteUserAccount } from "@/app/actions/admin/users";
 import { calculateTrustScore } from "@/lib/user-metrics";
+import { startDirectConversation } from "@/app/actions/messages";
+import { useRouter } from "next/navigation";
+import { useAdminDialog } from "@/lib/use-admin-dialog";
 
 interface UserDrawerProps {
   user: User | null;
@@ -27,56 +30,56 @@ export default function UserDrawer({ user, isOpen, onClose, onUpdate }: UserDraw
   const [hoursDelta, setHoursDelta] = useState(0);
   const [hoursReason, setHoursReason] = useState("");
 
+  const router = useRouter();
+  const busyRef = useRef(false);
+  const operationId = useRef("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const dialog = useAdminDialog(isOpen, () => { if (!busyRef.current) onClose(); });
   if (!user) return null;
-
-  const handleSaveNotes = async () => {
+  const run = async (operation: () => Promise<void>) => {
+    if (busyRef.current) return;
+    busyRef.current = true; setBusy(true); setError("");
+    try { await operation(); } catch(e) { setError(e instanceof Error ? e.message : "Operation failed. Retry."); }
+    finally { busyRef.current = false; setBusy(false); setIsSavingNotes(false); }
+  };
+  const handleSaveNotes = () => run(async () => {
     setIsSavingNotes(true);
-    const res = await saveAdminUserNotes(user.uid, notes);
-    setIsSavingNotes(false);
-    if (res.success) {
-      onUpdate({ ...user, adminNotes: notes });
-    } else {
-      alert("Failed to save notes: " + res.error);
-    }
-  };
-
-  const handleStatusChange = async (status: "active" | "suspended" | "banned") => {
-    if (!confirm(`Are you sure you want to change user status to ${status}?`)) return;
-    const res = await updateUserStatus(user.uid, status);
-    if (res.success) {
-      onUpdate({ ...user, status });
-    } else {
-      alert("Failed to update status: " + res.error);
-    }
-  };
-
-  const handleVerificationToggle = async () => {
-    const newStatus = !user.isVerified;
-    if (!confirm(`Are you sure you want to ${newStatus ? 'verify' : 'unverify'} this user?`)) return;
-    const res = await updateUserVerification(user.uid, newStatus);
-    if (res.success) {
-      onUpdate({ ...user, isVerified: newStatus });
-    } else {
-      alert("Failed to update verification: " + res.error);
-    }
-  };
-
-  const handleAdjustHours = async () => {
-    if (hoursDelta === 0) return;
-    if (!hoursReason) {
-      alert("Please provide a reason for the ledger.");
-      return;
-    }
-    const res = await adjustUserSkillHours(user.uid, hoursDelta, hoursReason);
-    if (res.success && res.newBalance !== undefined) {
-      onUpdate({ ...user, skillHours: res.newBalance });
-      setHoursDelta(0);
-      setHoursReason("");
-      setIsAdjustingHours(false);
-    } else {
-      alert("Failed to adjust hours: " + res.error);
-    }
-  };
+    const result = await saveAdminUserNotes(user.uid, notes);
+    if (!result.success) throw new Error(result.error);
+    onUpdate({ ...user, adminNotes: notes });
+  });
+  const handleStatusChange = (status: "active" | "suspended" | "banned") => run(async () => {
+    if (!confirm("Change this member's status to " + status + "?")) return;
+    const result = await updateUserStatus(user.uid, status);
+    if (!result.success) throw new Error(result.error);
+    onUpdate({ ...user, status });
+  });
+  const handleVerificationToggle = () => run(async () => {
+    if (!confirm(user.isVerified ? "Remove this member's verified badge?" : "Grant this member a verified badge?")) return;
+    const result = await updateUserVerification(user.uid, !user.isVerified);
+    if (!result.success) throw new Error(result.error);
+    onUpdate({ ...user, isVerified: !user.isVerified });
+  });
+  const handleAdjustHours = () => run(async () => {
+    if (!Number.isInteger(hoursDelta) || !hoursDelta || !hoursReason.trim()) throw new Error("Enter whole Skill Hours and a reason.");
+    operationId.current ||= crypto.randomUUID();
+    const result = await adjustUserSkillHours(user.uid, hoursDelta, hoursReason, operationId.current);
+    if (!result.success) throw new Error(result.error);
+    onUpdate({ ...user, skillHours: result.newBalance });
+    operationId.current = ""; setHoursDelta(0); setHoursReason(""); setIsAdjustingHours(false);
+  });
+  const handleMessage = () => run(async () => {
+    const result = await startDirectConversation(user.uid);
+    if (!result.success || !result.conversationId) throw new Error(result.error || "Could not open conversation");
+    router.push("/messages/" + result.conversationId);
+  });
+  const handleDelete = () => run(async () => {
+    if (!confirm("Schedule deletion after a 14-day recovery period? Active exchanges, disputes, and subscriptions must be resolved. Required ledger records will be retained.")) return;
+    const result = await deleteUserAccount(user.uid);
+    if (!result.success) throw new Error(result.error);
+    onUpdate({ ...user, status: "deletion_pending" });
+  });
 
   return (
     <>
@@ -84,12 +87,17 @@ export default function UserDrawer({ user, isOpen, onClose, onUpdate }: UserDraw
       {isOpen && (
         <div 
           className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 transition-opacity"
-          onClick={onClose}
+          onClick={() => { if (!busyRef.current) onClose(); }}
         />
       )}
 
       {/* Drawer */}
       <div 
+        ref={dialog}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Manage member"
+        tabIndex={-1}
         className={`fixed top-0 right-0 h-full w-full sm:w-[500px] bg-surface border-l border-border shadow-2xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
@@ -132,7 +140,8 @@ export default function UserDrawer({ user, isOpen, onClose, onUpdate }: UserDraw
             </div>
           </div>
           <button 
-            onClick={onClose}
+            aria-label="Close member details"
+            onClick={() => { if (!busyRef.current) onClose(); }}
             className="p-2 text-muted hover:text-heading hover:bg-background rounded-md transition-colors"
           >
             <X className="w-5 h-5" />
@@ -144,11 +153,12 @@ export default function UserDrawer({ user, isOpen, onClose, onUpdate }: UserDraw
           <Link href={`/u/${user.username}`} target="_blank" className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-surface border border-border hover:border-primary transition-colors text-xs font-semibold text-heading">
             <ExternalLink className="w-3.5 h-3.5" /> View Public
           </Link>
-          <button className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-surface border border-border hover:border-primary transition-colors text-xs font-semibold text-heading">
+          <button onClick={handleMessage} disabled={busy} className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-surface border border-border hover:border-primary transition-colors text-xs font-semibold text-heading">
             <MessageSquare className="w-3.5 h-3.5" /> Message
           </button>
         </div>
 
+        {error && <p role="alert" className="p-4 text-sm text-error">{error}</p>}
         {/* Tabs */}
         <div className="flex px-6 border-b border-border bg-surface-secondary">
           <button 
@@ -261,13 +271,15 @@ export default function UserDrawer({ user, isOpen, onClose, onUpdate }: UserDraw
               <textarea 
                 className="w-full flex-1 min-h-[300px] bg-background border border-border rounded-[var(--radius-input)] p-4 text-sm text-body focus:outline-none focus:border-primary resize-none"
                 placeholder="Add notes about this user..."
+                aria-label="Private admin notes"
+                disabled={busy}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
               />
               <div className="mt-4 flex justify-end">
                 <button 
                   onClick={handleSaveNotes}
-                  disabled={isSavingNotes || notes === user.adminNotes}
+                  disabled={busy || isSavingNotes || notes === (user.adminNotes || "")}
                   className="px-4 py-2 bg-primary text-background font-semibold rounded-[var(--radius-button)] disabled:opacity-50"
                 >
                   {isSavingNotes ? "Saving..." : "Save Notes"}
@@ -289,7 +301,8 @@ export default function UserDrawer({ user, isOpen, onClose, onUpdate }: UserDraw
                       <input 
                         type="number" 
                         value={hoursDelta} 
-                        onChange={(e) => setHoursDelta(Number(e.target.value))}
+                        disabled={busy}
+                        onChange={(e) => { setHoursDelta(Number(e.target.value)); operationId.current = ""; }}
                         className="w-full bg-surface border border-border rounded-[var(--radius-input)] p-2 text-sm"
                       />
                     </div>
@@ -297,15 +310,16 @@ export default function UserDrawer({ user, isOpen, onClose, onUpdate }: UserDraw
                       <label className="block text-xs font-semibold text-muted mb-1">Reason for Ledger</label>
                       <input 
                         type="text" 
-                        value={hoursReason} 
-                        onChange={(e) => setHoursReason(e.target.value)}
+                        disabled={busy}
+                        value={hoursReason}
+                        onChange={(e) => { setHoursReason(e.target.value); operationId.current = ""; }}
                         placeholder="e.g. Refund for disputed exchange"
                         className="w-full bg-surface border border-border rounded-[var(--radius-input)] p-2 text-sm"
                       />
                     </div>
                     <div className="flex justify-end gap-2 pt-2">
                       <button onClick={() => setIsAdjustingHours(false)} className="px-3 py-1.5 text-xs font-semibold text-muted hover:text-heading">Cancel</button>
-                      <button onClick={handleAdjustHours} className="px-3 py-1.5 text-xs font-semibold bg-primary text-background rounded">Confirm</button>
+                      <button disabled={busy} onClick={handleAdjustHours} className="px-3 py-1.5 text-xs font-semibold bg-primary text-background rounded">Confirm</button>
                     </div>
                   </div>
                 </div>
@@ -316,7 +330,7 @@ export default function UserDrawer({ user, isOpen, onClose, onUpdate }: UserDraw
                 <h3 className="text-xs font-bold uppercase tracking-wider text-muted mb-4">Verification & Status</h3>
                 <div className="space-y-2">
                   <button 
-                    onClick={handleVerificationToggle}
+                    disabled={busy} onClick={handleVerificationToggle}
                     className="w-full flex items-center gap-3 p-3 rounded-md bg-background border border-border hover:border-primary transition-colors text-left"
                   >
                     <UserCheck className="w-4 h-4 text-primary" />
@@ -328,7 +342,7 @@ export default function UserDrawer({ user, isOpen, onClose, onUpdate }: UserDraw
                   
                   {user.status !== "suspended" ? (
                     <button 
-                      onClick={() => handleStatusChange("suspended")}
+                      disabled={busy} onClick={() => handleStatusChange("suspended")}
                       className="w-full flex items-center gap-3 p-3 rounded-md bg-background border border-border hover:border-primary transition-colors text-left"
                     >
                       <ShieldAlert className="w-4 h-4 text-warning" />
@@ -353,6 +367,7 @@ export default function UserDrawer({ user, isOpen, onClose, onUpdate }: UserDraw
               </div>
 
               {/* Danger Zone */}
+              {user.status === "active" && <button disabled={busy} onClick={handleDelete} className="w-full p-3 border border-error text-error rounded-md text-left">Schedule account deletion</button>}
               <div>
                 <h3 className="text-xs font-bold uppercase tracking-wider text-error mb-4">Danger Zone</h3>
                 <div className="space-y-2">

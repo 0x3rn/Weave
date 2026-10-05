@@ -1,213 +1,225 @@
 "use client";
-
-import { useState } from "react";
-import { Search, Copy, RefreshCw, Clock, Ban, Mail } from "lucide-react";
-import { revokeInviteCode, extendInviteCode, resendInviteEmail } from "@/app/actions/admin/invite-codes";
+import { useState, useRef } from "react";
+import {
+  createInviteCode,
+  revokeInviteCode,
+  extendInviteCode,
+  resendInviteEmail,
+} from "@/app/actions/admin/invite-codes";
 import toast from "react-hot-toast";
-
-interface IssuedCodesTableProps {
-  initialData: any[];
+interface Invite {
+  id: string;
+  code: string;
+  email: string;
+  status: string;
+  expiresAt: string | null;
+  signupUrl?: string;
 }
-
-export default function IssuedCodesTable({ initialData }: IssuedCodesTableProps) {
-  const [data, setData] = useState(initialData);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-
-  const filteredData = data.filter(item => {
-    if (statusFilter !== "all" && item.status !== statusFilter) return false;
-    
-    if (search) {
-      const query = search.toLowerCase();
-      const matchesEmail = (item.email || "").toLowerCase().includes(query);
-      const matchesCode = (item.code || "").toLowerCase().includes(query);
-      if (!matchesEmail && !matchesCode) return false;
-    }
-    
-    return true;
-  });
-
-  const handleCopy = (code: string) => {
-    navigator.clipboard.writeText(`https://weave.network/signup?invite=${code}`);
-    toast.success("Invite link copied to clipboard!");
-  };
-
-  const [confirmRevokeId, setConfirmRevokeId] = useState<string | null>(null);
-
-  const handleRevoke = async (id: string) => {
-    if (confirmRevokeId !== id) {
-      setConfirmRevokeId(id);
-      setTimeout(() => setConfirmRevokeId(null), 3000); // Reset after 3 seconds
-      return;
-    }
-    
-    // Proceed with revoke
-    setConfirmRevokeId(null);
-    const result = await revokeInviteCode(id);
-    if (result.success) {
-      setData(prev => prev.map(item => item.id === id ? { ...item, status: "revoked" } : item));
-      toast.success("Invite revoked successfully");
-    } else {
-      toast.error("Error revoking invite");
+function effectiveStatus(item: Invite) {
+  return item.status === "pending" &&
+    item.expiresAt &&
+    new Date(item.expiresAt).getTime() <= Date.now()
+    ? "expired"
+    : item.status;
+}
+export default function IssuedCodesTable({
+  initialData,
+}: {
+  initialData: Invite[];
+}) {
+  const [data, setData] = useState(initialData),
+    [search, setSearch] = useState(""),
+    [status, setStatus] = useState("all"),
+    [email, setEmail] = useState(""),
+    [busy, setBusy] = useState(false);
+  const pending = useRef(false);
+  const run = async (operation: () => Promise<void>) => {
+    if (pending.current) return;
+    pending.current = true;
+    setBusy(true);
+    try {
+      await operation();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Request failed. Retry.");
+    } finally {
+      pending.current = false;
+      setBusy(false);
     }
   };
-
-  const handleExtend = async (id: string) => {
-    const parsed = 7; // Automatically extend by 7 days
-
-    const result = await extendInviteCode(id, parsed);
-    if (result.success) {
-      toast.success(`Invite extended by ${parsed} days.`);
-      setData(prev => prev.map(item => item.id === id ? { ...item, status: "pending" } : item));
-    } else {
-      toast.error("Error extending invite");
-    }
-  };
-
-  const [isResending, setIsResending] = useState<string | null>(null);
-
-  const handleResend = async (id: string) => {
-    
-    setIsResending(id);
-    const result = await resendInviteEmail(id);
-    setIsResending(null);
-
-    if (result.success) {
-      toast.success("Invite email sent successfully!");
-    } else {
-      toast.error(`Error sending email: ${result.error}`);
-    }
-  };
-
+  const update = (invite: Invite) =>
+    setData((rows) => rows.map((row) => (row.id === invite.id ? invite : row)));
+  const filtered = data.filter(
+    (row) =>
+      (status === "all" || effectiveStatus(row) === status) &&
+      (row.email + " " + row.code).toLowerCase().includes(search.toLowerCase()),
+  );
   return (
     <div className="space-y-6">
-      
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-surface border border-border p-4 rounded-[var(--radius-card)]">
-        <div className="relative w-full sm:w-96">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-          <input 
-            type="text"
-            placeholder="Search code or email..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 bg-background border border-border rounded-[var(--radius-input)] text-sm focus:outline-none focus:border-primary text-body"
+      <form
+        className="flex flex-wrap items-end gap-3 bg-surface border border-border p-4 rounded-[var(--radius-card)]"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void run(async () => {
+            const result = await createInviteCode(email, 7);
+            if (!result.success || !result.invite)
+              throw new Error(result.error || "Could not create invite");
+            setData((rows) => [result.invite!, ...rows]);
+            setEmail("");
+            toast.success(
+              "Invite created. Copy its link or send its email below.",
+            );
+          });
+        }}
+      >
+        <label className="flex-1 text-sm">
+          Invite a member directly
+          <input
+            required
+            type="email"
+            maxLength={320}
+            value={email}
+            disabled={busy}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="member@example.com"
+            className="block w-full mt-2 p-2 bg-background border border-border rounded"
           />
-        </div>
-
-        <select 
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="w-full sm:w-auto bg-background border border-border rounded-[var(--radius-input)] px-3 py-2 text-sm focus:outline-none focus:border-primary text-heading appearance-none"
+        </label>
+        <button
+          disabled={busy}
+          className="p-2 bg-primary text-primary-foreground rounded disabled:opacity-50"
         >
-          <option value="all">All Statuses</option>
-          <option value="pending">Pending</option>
-          <option value="used">Used</option>
-          <option value="expired">Expired</option>
-          <option value="revoked">Revoked</option>
+          Create 7-day invite
+        </button>
+      </form>
+      <div className="flex flex-wrap gap-3">
+        <input
+          aria-label="Search invite codes"
+          placeholder="Search code or email..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="flex-1 p-3 bg-surface border border-border rounded"
+        />
+        <select
+          aria-label="Invite status"
+          value={status}
+          onChange={(e) => setStatus(e.target.value)}
+          className="p-3 bg-surface border border-border rounded"
+        >
+          {["all", "pending", "used", "expired", "revoked"].map((value) => (
+            <option key={value} value={value}>
+              {value === "all" ? "All statuses" : value}
+            </option>
+          ))}
         </select>
       </div>
-
-      {/* Table */}
-      <div className="bg-surface border border-border rounded-[var(--radius-card)] overflow-hidden shadow-subtle">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-surface-secondary border-b border-border text-muted uppercase tracking-wider">
-              <tr>
-                <th className="px-6 py-4 font-semibold">Invite Code</th>
-                <th className="px-6 py-4 font-semibold">Issued To</th>
-                <th className="px-6 py-4 font-semibold">Status</th>
-                <th className="px-6 py-4 font-semibold">Expires At</th>
-                <th className="px-6 py-4 font-semibold text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {filteredData.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-muted">
-                    No issued invite codes found.
+      <div className="overflow-x-auto bg-surface border border-border rounded-[var(--radius-card)]">
+        <table className="w-full min-w-[720px] text-left text-sm">
+          <thead>
+            <tr>
+              {[
+                "Invite code",
+                "Issued to",
+                "Status",
+                "Expires at",
+                "Actions",
+              ].map((t) => (
+                <th className="p-4" key={t}>
+                  {t}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length ? (
+              filtered.map((row) => (
+                <tr key={row.id} className="border-t border-border">
+                  <td className="p-4 font-mono whitespace-nowrap">
+                    {row.code}
+                  </td>
+                  <td className="p-4">{row.email}</td>
+                  <td className="p-4 capitalize">{effectiveStatus(row)}</td>
+                  <td className="p-4">
+                    {row.expiresAt
+                      ? new Date(row.expiresAt).toLocaleString()
+                      : "Never"}
+                  </td>
+                  <td className="p-4">
+                    <div className="flex gap-3 whitespace-nowrap">
+                      <button
+                        disabled={busy}
+                        onClick={() =>
+                          void run(async () => {
+                            await navigator.clipboard.writeText(
+                              row.signupUrl ||
+                                window.location.origin +
+                                  "/signup?invite=" +
+                                  encodeURIComponent(row.code),
+                            );
+                            toast.success("Invite link copied");
+                          })
+                        }
+                      >
+                        Copy link
+                      </button>
+                      <button
+                        disabled={busy || effectiveStatus(row) !== "pending"}
+                        onClick={() =>
+                          void run(async () => {
+                            const result = await resendInviteEmail(row.id);
+                            if (!result.success) throw new Error(result.error);
+                            toast.success("Invite email sent");
+                          })
+                        }
+                      >
+                        Resend
+                      </button>
+                      <button
+                        disabled={
+                          busy || ["used", "revoked"].includes(row.status)
+                        }
+                        onClick={() =>
+                          void run(async () => {
+                            const result = await extendInviteCode(row.id, 7);
+                            if (!result.success || !result.invite)
+                              throw new Error(result.error);
+                            update(result.invite);
+                            toast.success("Invite extended by 7 days");
+                          })
+                        }
+                      >
+                        Extend
+                      </button>
+                      <button
+                        disabled={
+                          busy || ["used", "revoked"].includes(row.status)
+                        }
+                        onClick={() =>
+                          void run(async () => {
+                            if (!confirm("Revoke this invitation?")) return;
+                            const result = await revokeInviteCode(row.id);
+                            if (!result.success || !result.invite)
+                              throw new Error(result.error);
+                            update(result.invite);
+                            toast.success("Invite revoked");
+                          })
+                        }
+                      >
+                        Revoke
+                      </button>
+                    </div>
                   </td>
                 </tr>
-              ) : (
-                filteredData.map((item) => {
-                  const isExpired = item.expiresAt && new Date(item.expiresAt) < new Date();
-                  const actualStatus = isExpired && item.status === "pending" ? "expired" : item.status;
-
-                  return (
-                    <tr key={item.id} className="hover:bg-surface-secondary transition-colors group">
-                      <td className="px-6 py-4">
-                        <div className="font-mono text-heading bg-background border border-border px-2 py-1 rounded inline-block">
-                          {item.code}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-body">{item.email}</td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase tracking-wider ${
-                          actualStatus === 'used' ? 'bg-success/10 text-success' :
-                          actualStatus === 'revoked' ? 'bg-error/10 text-error' :
-                          actualStatus === 'expired' ? 'bg-warning/10 text-warning' :
-                          'bg-primary/10 text-primary'
-                        }`}>
-                          {actualStatus}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-muted text-xs">
-                        {item.expiresAt ? new Date(item.expiresAt).toLocaleString() : 'Never'}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2 transition-opacity">
-                          <button 
-                            onClick={() => handleCopy(item.code)}
-                            className="p-2 text-muted hover:text-primary transition-colors rounded-md hover:bg-background"
-                            title="Copy Signup Link"
-                          >
-                            <Copy className="w-4 h-4" />
-                          </button>
-                          {item.status === 'pending' && (
-                            <button 
-                              onClick={() => handleResend(item.id)}
-                              disabled={isResending === item.id}
-                              className={`p-2 text-muted hover:text-success transition-colors rounded-md hover:bg-background ${isResending === item.id ? 'opacity-50 cursor-wait' : ''}`}
-                              title="Resend Email"
-                            >
-                              <Mail className="w-4 h-4" />
-                            </button>
-                          )}
-                          <button 
-                            onClick={() => handleExtend(item.id)}
-                            disabled={item.status === 'used' || item.status === 'revoked'}
-                            className="p-2 text-muted hover:text-info transition-colors rounded-md hover:bg-background disabled:opacity-30 disabled:cursor-not-allowed"
-                            title="Extend Expiration"
-                          >
-                            <Clock className="w-4 h-4" />
-                          </button>
-                          <button 
-                            onClick={() => handleRevoke(item.id)}
-                            disabled={item.status === 'used' || item.status === 'revoked'}
-                            className={`p-2 transition-colors rounded-md hover:bg-background disabled:opacity-30 disabled:cursor-not-allowed ${
-                              confirmRevokeId === item.id 
-                                ? 'text-surface bg-error hover:bg-error hover:text-surface px-3' 
-                                : 'text-muted hover:text-error'
-                            }`}
-                            title="Revoke Invite"
-                          >
-                            {confirmRevokeId === item.id ? (
-                              <span className="text-xs font-bold uppercase tracking-wider">Confirm</span>
-                            ) : (
-                              <Ban className="w-4 h-4" />
-                            )}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={5} className="p-12 text-center text-muted">
+                  No issued invite codes found.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
-
     </div>
   );
 }

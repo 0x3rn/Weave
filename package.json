@@ -27,6 +27,8 @@
     "test:settings": "node scripts/verify-member-settings.mjs",
     "db:apply-settings": "node --env-file=.env.local scripts/apply-neon-schema.mjs 0011_member_settings.sql",
     "test:notifications": "node scripts/verify-notification-center.mjs",
+    "test:admin": "node scripts/verify-admin-dashboard.mjs",
+    "db:apply-admin": "node --env-file=.env.local scripts/apply-neon-schema.mjs 0013_admin_dashboard_integrity.sql",
     "db:apply-notifications": "node --env-file=.env.local scripts/apply-neon-schema.mjs 0012_notification_center.sql"
   },
   "dependencies": {

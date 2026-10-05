@@ -11,7 +11,7 @@ interface UsersSummaryCardsProps {
     verifiedCount: number;
     verifiedPercentage: number;
     pendingInvites: number;
-    pendingVerification: number;
+    unverifiedCount: number;
     suspendedCount: number;
     reportedCount: number;
     newTodayCount: number;
@@ -23,7 +23,7 @@ export default function UsersSummaryCards({ summary }: UsersSummaryCardsProps) {
     {
       title: "Total Users",
       value: summary.totalUsers.toLocaleString(),
-      subtext: `+${summary.thisWeekCount} this week`,
+      subtext: `+${summary.thisWeekCount} in the last 7 days`,
       icon: <Users className="w-5 h-5 text-primary" />,
       color: "bg-primary/10 border-primary/20",
     },
@@ -44,7 +44,7 @@ export default function UsersSummaryCards({ summary }: UsersSummaryCardsProps) {
     {
       title: "New Today",
       value: summary.newTodayCount.toLocaleString(),
-      subtext: "Joined last 24h",
+      subtext: "Joined today",
       icon: <AlertCircle className="w-5 h-5 text-purple-500" />,
       color: "bg-purple-500/10 border-purple-500/20",
     },
@@ -56,9 +56,9 @@ export default function UsersSummaryCards({ summary }: UsersSummaryCardsProps) {
       color: "bg-amber-500/10 border-amber-500/20",
     },
     {
-      title: "Pending Verification",
-      value: summary.pendingVerification.toLocaleString(),
-      subtext: "Needs review",
+      title: "Unverified Members",
+      value: summary.unverifiedCount.toLocaleString(),
+      subtext: "Active accounts without a badge",
       icon: <Clock className="w-5 h-5 text-amber-500" />,
       color: "bg-amber-500/10 border-amber-500/20",
     },

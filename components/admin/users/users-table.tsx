@@ -124,12 +124,12 @@ export default function UsersTable({ users, onRowClick, selectedUserId }: UsersT
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 text-muted bg-border/50 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">
-                        Active
+                        {(user.status || "active").replaceAll("_", " ")}
                       </span>
                     )}
                   </td>
                   <td className="px-6 py-4 text-center text-muted font-bold tracking-widest group-hover:text-primary transition-colors">
-                    •••
+                    <button aria-label={"Manage " + user.fullName} className="p-2">•••</button>
                   </td>
                 </tr>
               ))
