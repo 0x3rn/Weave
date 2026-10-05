@@ -1,6 +1,9 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { revokeFirebaseRefreshTokens, verifyFirebaseSessionCookie } from "@/lib/firebase-auth-server";
+import {
+  revokeFirebaseRefreshTokens,
+  verifyFirebaseSessionCookie,
+} from "@/lib/firebase-auth-server";
 import { sql } from "@/lib/neon";
 
 export async function POST() {
@@ -11,17 +14,24 @@ export async function POST() {
 
     if (sessionCookie) {
       // Clear the session from Firebase backend
-      const decodedClaims = await verifyFirebaseSessionCookie(sessionCookie, false).catch(() => null);
+      const decodedClaims = await verifyFirebaseSessionCookie(
+        sessionCookie,
+        false,
+      ).catch(() => null);
       if (decodedClaims) {
         // Remove device tracking
         if (deviceId) {
           try {
-            await sql.query("delete from user_devices where id=$1 and user_id=$2", [deviceId, decodedClaims.sub]);
+            await sql.query(
+              "delete from user_devices where id=$1 and user_id=$2",
+              [deviceId, decodedClaims.sub],
+            );
           } catch (e) {
             console.error("Failed to delete device on logout:", e);
           }
         }
-        await revokeFirebaseRefreshTokens(decodedClaims.sub);
+        // Tracked sessions revoke independently. Legacy sessions require a global revoke.
+        if (!deviceId) await revokeFirebaseRefreshTokens(decodedClaims.sub);
       }
     }
 
@@ -32,7 +42,10 @@ export async function POST() {
     return NextResponse.json({ status: "success" }, { status: 200 });
   } catch (error) {
     console.error("Logout error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 },
+    );
   }
 }
 
@@ -41,13 +54,14 @@ export async function GET(request: Request) {
     const cookieStore = await cookies();
     cookieStore.delete("session");
     cookieStore.delete("deviceId");
-    
+
     const url = new URL(request.url);
     const requestedRedirect = url.searchParams.get("redirect") || "/login";
-    const redirectTo = requestedRedirect.startsWith("/") && !requestedRedirect.startsWith("//")
-      ? requestedRedirect
-      : "/login";
-    
+    const redirectTo =
+      requestedRedirect.startsWith("/") && !requestedRedirect.startsWith("//")
+        ? requestedRedirect
+        : "/login";
+
     return NextResponse.redirect(new URL(redirectTo, request.url));
   } catch {
     return NextResponse.redirect(new URL("/login", request.url));

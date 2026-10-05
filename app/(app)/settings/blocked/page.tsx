@@ -1,17 +1,20 @@
+import { getBlockedMembers } from "@/app/actions/settings";
+import { BlockedClient } from "@/components/settings/blocked-client";
 export const metadata = { title: "Blocked Members - Weave" };
-
-export default function BlockedSettingsPage() {
+export default async function Page() {
+  const rows = await getBlockedMembers();
+  const initial = rows.map((row) => ({
+    id: String(row.id),
+    full_name: String(row.full_name || ""),
+    username: String(row.username || ""),
+    reason: String(row.reason || ""),
+    created_at: new Date(row.created_at).toISOString(),
+  }));
   return (
-    <div className="p-8">
-      <div className="border-b border-border pb-6 mb-8">
-        <h2 className="text-2xl font-black text-heading mb-2">Blocked Members</h2>
-        <p className="text-muted">Manage members you have blocked.</p>
-      </div>
-
-      <div className="bg-surface-secondary border border-border rounded-xl p-12 text-center">
-        <h3 className="text-lg font-bold text-heading mb-2">Coming Soon</h3>
-        <p className="text-muted text-sm">Blocking features are currently under development.</p>
-      </div>
+    <div className="p-4 sm:p-8">
+      <h2 className="mb-2 text-2xl font-bold text-heading">Blocked Members</h2>
+      <p className="mb-6 text-muted">Manage members you have blocked.</p>
+      <BlockedClient initial={initial} />
     </div>
   );
 }

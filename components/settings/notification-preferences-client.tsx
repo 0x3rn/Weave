@@ -1,196 +1,393 @@
 "use client";
-
-import { useState } from "react";
-import { NotificationPreferences } from "@/types";
+import { useRef, useState } from "react";
+import {
+  notificationCategory,
+  notificationSettings,
+  NOTIFICATION_CATEGORIES,
+  type NotificationSettings,
+} from "@/lib/settings";
 import { updateNotificationPreferences } from "@/app/actions/notifications";
-import toast from "react-hot-toast";
-import { Loader2 } from "lucide-react";
-
-interface Props {
-  initialPreferences: NotificationPreferences | null;
-}
-
-const DEFAULT_PREFS: NotificationPreferences = {
-  exchangeActivity: true,
-  marketplace: true,
-  messages: true,
-  reviews: true,
-  community: true,
-  security: true, // Always true
-  deliveryMethod: {
-    inApp: true,
-    email: false,
-  }
+import {
+  NOTIFICATION_EVENTS,
+  NOTIFICATION_CATEGORIES as EVENT_CATEGORIES,
+  notificationEvent,
+} from "@/lib/notification-catalog";
+import { AutoSaveWrapper } from "./auto-save-wrapper";
+const names = {
+  applications: "Applications",
+  messages: "Messages",
+  reviews: "Reviews",
+  skillHours: "Skill Hours",
+  trustScore: "Trust score changes",
+  marketplace: "Marketplace recommendations",
+  escrow: "Escrow updates",
+  announcements: "Product announcements",
 };
-
-export default function NotificationPreferencesClient({ initialPreferences }: Props) {
-  const [prefs, setPrefs] = useState<NotificationPreferences>(initialPreferences || DEFAULT_PREFS);
-  const [isSaving, setIsSaving] = useState(false);
-
-  const toggle = (field: keyof Omit<NotificationPreferences, "deliveryMethod" | "security">) => {
-    setPrefs(prev => ({ ...prev, [field]: !prev[field] }));
-  };
-
-  const toggleDelivery = (method: keyof NotificationPreferences["deliveryMethod"]) => {
-    setPrefs(prev => ({
-      ...prev,
-      deliveryMethod: {
-        ...prev.deliveryMethod,
-        [method]: !prev.deliveryMethod[method]
-      }
-    }));
-  };
-
-  const handleSave = async () => {
-    setIsSaving(true);
-    const result = await updateNotificationPreferences(prefs);
-    setIsSaving(false);
-    
-    if (result.success) {
-      toast.success("Preferences saved successfully!");
-    } else {
-      toast.error(result.error || "Failed to save preferences.");
-    }
-  };
-
-  return (
-    <div className="space-y-8">
-      {/* Category Preferences */}
-      <div className="bg-surface border border-border rounded-[var(--radius-card)] overflow-hidden">
-        <div className="px-6 py-4 border-b border-border bg-surface-secondary">
-          <h2 className="text-lg font-bold text-heading">Categories</h2>
-          <p className="text-sm text-muted">Select which types of notifications you want to receive.</p>
-        </div>
-        
-        <div className="divide-y divide-border">
-          <ToggleRow 
-            title="Exchange Activity" 
-            description="Applications received, proposals accepted, milestones completed, and files uploaded."
-            checked={prefs.exchangeActivity}
-            onChange={() => toggle("exchangeActivity")}
-          />
-          <ToggleRow 
-            title="Marketplace" 
-            description="Recommended opportunities, updates on your saved requests, and new professionals."
-            checked={prefs.marketplace}
-            onChange={() => toggle("marketplace")}
-          />
-          <ToggleRow 
-            title="Messages" 
-            description="Direct messages from other users."
-            checked={prefs.messages}
-            onChange={() => toggle("messages")}
-          />
-          <ToggleRow 
-            title="Reviews & Trust Score" 
-            description="New reviews, skill endorsements, and Trust Score updates."
-            checked={prefs.reviews}
-            onChange={() => toggle("reviews")}
-          />
-          <ToggleRow 
-            title="Community" 
-            description="Announcements, upcoming events, and newsletters."
-            checked={prefs.community}
-            onChange={() => toggle("community")}
-          />
-          <ToggleRow 
-            title="Security" 
-            description="New logins, password changes, and security alerts."
-            checked={true}
-            disabled={true}
-            onChange={() => {}}
-          />
-        </div>
-      </div>
-
-      {/* Delivery Methods */}
-      <div className="bg-surface border border-border rounded-[var(--radius-card)] overflow-hidden">
-        <div className="px-6 py-4 border-b border-border bg-surface-secondary">
-          <h2 className="text-lg font-bold text-heading">Delivery Methods</h2>
-          <p className="text-sm text-muted">How would you like to receive your notifications?</p>
-        </div>
-        
-        <div className="divide-y divide-border">
-          <ToggleRow 
-            title="In-App Notifications" 
-            description="Receive notifications inside the Weave application."
-            checked={prefs.deliveryMethod.inApp}
-            onChange={() => toggleDelivery("inApp")}
-          />
-          <ToggleRow 
-            title="Email" 
-            description="Receive important notifications by email."
-            checked={prefs.deliveryMethod.email}
-            onChange={() => toggleDelivery("email")}
-          />
-          <ToggleRow 
-            title="Push Notifications" 
-            description="Receive push notifications on your mobile device."
-            checked={false}
-            disabled={true}
-            onChange={() => {}}
-            badge="Coming Soon"
-          />
-          <ToggleRow 
-            title="SMS" 
-            description="Receive text messages for critical alerts."
-            checked={false}
-            disabled={true}
-            onChange={() => {}}
-            badge="Coming Soon"
-          />
-        </div>
-      </div>
-
-      <div className="flex justify-end">
-        <button 
-          onClick={handleSave}
-          disabled={isSaving}
-          className="flex items-center gap-2 px-6 py-3 bg-primary text-surface font-bold rounded-[var(--radius-button)] hover:bg-primary-hover transition-colors disabled:opacity-50"
-        >
-          {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
-          Save Preferences
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function ToggleRow({ 
-  title, 
-  description, 
-  checked, 
-  onChange, 
-  disabled = false,
-  badge
-}: { 
-  title: string; 
-  description: string; 
-  checked: boolean; 
-  onChange: () => void;
-  disabled?: boolean;
-  badge?: string;
+export default function NotificationPreferencesClient({
+  initialPreferences,
+}: {
+  initialPreferences: unknown;
 }) {
+  const [prefs, setPrefs] = useState(() =>
+      notificationSettings(initialPreferences),
+    ),
+    current = useRef(prefs);
+  const update = (
+    next: NotificationSettings,
+    save: (fn: () => Promise<unknown>) => Promise<void>,
+  ) => {
+    current.current = next;
+    setPrefs(next);
+    void save(() => updateNotificationPreferences(current.current));
+  };
+  let zones: string[];
+  try {
+    zones = ["UTC", ...Intl.supportedValuesOf("timeZone")];
+  } catch {
+    zones = ["UTC", "Africa/Lagos", "Europe/London", "America/New_York"];
+  }
   return (
-    <div className={`p-6 flex items-start justify-between gap-4 ${disabled ? "opacity-60" : ""}`}>
-      <div>
-        <div className="flex items-center gap-2">
-          <h3 className="font-bold text-heading">{title}</h3>
-          {badge && <span className="px-2 py-0.5 text-[10px] uppercase font-bold bg-surface-secondary text-muted rounded-full">{badge}</span>}
+    <AutoSaveWrapper>
+      {({ handleSave }) => (
+        <div className="space-y-8">
+          <p className="text-sm text-muted">
+            Choose categories separately for each channel. Security alerts are
+            always enabled for in-app and email delivery.
+          </p>
+          <div className="grid gap-6 md:grid-cols-2">
+            {(["inApp", "email"] as const).map((channel) => (
+              <section
+                key={channel}
+                className="overflow-hidden rounded-xl border border-border"
+              >
+                <h3 className="border-b border-border bg-surface-secondary p-4 font-bold text-heading">
+                  {channel === "inApp" ? "In-app" : "Email"}
+                </h3>
+                <div className="divide-y divide-border">
+                  {NOTIFICATION_CATEGORIES.map((category) => (
+                    <label
+                      key={category}
+                      className="flex items-center justify-between gap-3 p-4 text-sm"
+                    >
+                      <span>{names[category]}</span>
+                      <input
+                        type="checkbox"
+                        role="switch"
+                        checked={prefs.channels[channel][category]}
+                        onChange={(event) =>
+                          update(
+                            {
+                              ...current.current,
+                              events: {
+                                ...current.current.events,
+                                [channel]: {
+                                  ...current.current.events[channel],
+                                  ...Object.fromEntries(
+                                    Object.keys(NOTIFICATION_EVENTS)
+                                      .filter(
+                                        (type) =>
+                                          notificationCategory(type) ===
+                                            category &&
+                                          notificationEvent(type).category !==
+                                            "Security",
+                                      )
+                                      .map((type) => [
+                                        type,
+                                        event.target.checked,
+                                      ]),
+                                  ),
+                                },
+                              },
+                              channels: {
+                                ...current.current.channels,
+                                [channel]: {
+                                  ...current.current.channels[channel],
+                                  [category]: event.target.checked,
+                                },
+                              },
+                            },
+                            handleSave,
+                          )
+                        }
+                        className="h-5 w-5 accent-primary"
+                      />
+                    </label>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+          <section className="space-y-4 rounded-xl border border-border p-5">
+            <h3 className="font-bold text-heading">Email digest frequency</h3>
+            <label className="block text-sm">
+              Delivery frequency
+              <select
+                value={prefs.digest}
+                onChange={(event) =>
+                  update(
+                    {
+                      ...current.current,
+                      digest: event.target
+                        .value as NotificationSettings["digest"],
+                    },
+                    handleSave,
+                  )
+                }
+                className="mt-2 block w-full rounded-lg border border-border bg-background p-3"
+              >
+                {["instant", "daily", "weekly", "never"].map((value) => (
+                  <option key={value} value={value}>
+                    {value[0].toUpperCase() + value.slice(1)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p className="text-xs text-muted">
+              Daily digests use your chosen morning delivery time; weekly
+              digests arrive on Monday. Security alerts bypass digests and quiet
+              hours.
+            </p>
+          </section>
+          <section className="space-y-4 rounded-xl border border-border p-5">
+            <h3 className="font-bold text-heading">Messages</h3>
+            <label className="block text-sm">
+              Message email frequency
+              <select
+                value={prefs.messageFrequency}
+                onChange={(event) =>
+                  update(
+                    {
+                      ...current.current,
+                      messageFrequency: event.target
+                        .value as NotificationSettings["messageFrequency"],
+                    },
+                    handleSave,
+                  )
+                }
+                className="mt-2 block w-full rounded-lg border border-border bg-background p-3"
+              >
+                {["default", "instant", "daily", "weekly", "never"].map(
+                  (value) => (
+                    <option key={value} value={value}>
+                      {value === "default"
+                        ? "Use general digest frequency"
+                        : value[0].toUpperCase() + value.slice(1)}
+                    </option>
+                  ),
+                )}
+              </select>
+            </label>
+          </section>
+          <section className="space-y-4 rounded-xl border border-border p-5">
+            <h3 className="font-bold text-heading">
+              Morning productivity digest
+            </h3>
+            <label className="flex items-center justify-between gap-3 text-sm">
+              Send my daily overview
+              <input
+                type="checkbox"
+                checked={prefs.dailySummary.enabled}
+                onChange={(event) =>
+                  update(
+                    {
+                      ...current.current,
+                      dailySummary: {
+                        ...current.current.dailySummary,
+                        enabled: event.target.checked,
+                      },
+                    },
+                    handleSave,
+                  )
+                }
+              />
+            </label>
+            <label className="block text-sm">
+              Morning delivery time
+              <input
+                type="time"
+                value={prefs.dailySummary.time}
+                onChange={(event) => {
+                  const next = {
+                    ...current.current,
+                    dailySummary: {
+                      ...current.current.dailySummary,
+                      time: event.target.value,
+                    },
+                  };
+                  current.current = next;
+                  setPrefs(next);
+                }}
+                onBlur={() =>
+                  void handleSave(() =>
+                    updateNotificationPreferences(current.current),
+                  )
+                }
+                className="mt-2 block rounded-lg border border-border bg-background p-3"
+              />
+            </label>
+            <p className="text-xs text-muted">
+              An overview of exchanges waiting for review, unread messages,
+              relevant matches, and Trust Score changes. Uses the time zone
+              below and respects quiet hours.
+            </p>
+          </section>
+          <section className="space-y-4">
+            <h3 className="font-bold text-heading">
+              Individual event preferences
+            </h3>
+            <p className="text-sm text-muted">
+              Choose which updates you receive. Individual choices override
+              category defaults.
+            </p>
+            {EVENT_CATEGORIES.map((category) => (
+              <details
+                key={category}
+                className="rounded-xl border border-border"
+              >
+                <summary className="cursor-pointer p-4 text-sm font-bold text-heading">
+                  {category}
+                  {category === "Security" ? " · Always enabled" : ""}
+                </summary>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead>
+                      <tr className="border-t border-border bg-surface-secondary">
+                        <th className="p-3">Event</th>
+                        <th className="p-3">In-app</th>
+                        <th className="p-3">Email</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.keys(NOTIFICATION_EVENTS)
+                        .filter(
+                          (type) =>
+                            notificationEvent(type).category === category,
+                        )
+                        .map((type) => (
+                          <tr key={type} className="border-t border-border">
+                            <td className="p-3 text-heading">
+                              {notificationEvent(type).label}
+                            </td>
+                            {(["inApp", "email"] as const).map((channel) => (
+                              <td className="p-3" key={channel}>
+                                <input
+                                  type="checkbox"
+                                  disabled={category === "Security"}
+                                  aria-label={
+                                    notificationEvent(type).label +
+                                    " " +
+                                    (channel === "inApp" ? "in-app" : "email")
+                                  }
+                                  checked={prefs.events[channel][type]}
+                                  onChange={(event) =>
+                                    update(
+                                      {
+                                        ...current.current,
+                                        events: {
+                                          ...current.current.events,
+                                          [channel]: {
+                                            ...current.current.events[channel],
+                                            [type]: event.target.checked,
+                                          },
+                                        },
+                                      },
+                                      handleSave,
+                                    )
+                                  }
+                                  className="accent-primary disabled:opacity-60"
+                                />
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              </details>
+            ))}
+          </section>
+          <section className="space-y-4 rounded-xl border border-border p-5">
+            <h3 className="font-bold text-heading">Quiet hours</h3>
+            <label className="flex items-center justify-between text-sm">
+              Pause email delivery during quiet hours
+              <input
+                type="checkbox"
+                checked={prefs.quietHours.enabled}
+                onChange={(event) =>
+                  update(
+                    {
+                      ...current.current,
+                      quietHours: {
+                        ...current.current.quietHours,
+                        enabled: event.target.checked,
+                      },
+                    },
+                    handleSave,
+                  )
+                }
+              />
+            </label>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {(["start", "end"] as const).map((key) => (
+                <label key={key} className="text-sm capitalize">
+                  {key} time
+                  <input
+                    type="time"
+                    value={prefs.quietHours[key]}
+                    onChange={(event) => {
+                      const next = {
+                        ...current.current,
+                        quietHours: {
+                          ...current.current.quietHours,
+                          [key]: event.target.value,
+                        },
+                      };
+                      current.current = next;
+                      setPrefs(next);
+                    }}
+                    onBlur={() =>
+                      void handleSave(() =>
+                        updateNotificationPreferences(current.current),
+                      )
+                    }
+                    className="mt-1 block w-full rounded-lg border border-border bg-background p-3"
+                  />
+                </label>
+              ))}
+            </div>
+            <label className="block text-sm">
+              Time zone
+              <select
+                value={prefs.quietHours.timeZone}
+                onChange={(event) =>
+                  update(
+                    {
+                      ...current.current,
+                      quietHours: {
+                        ...current.current.quietHours,
+                        timeZone: event.target.value,
+                      },
+                    },
+                    handleSave,
+                  )
+                }
+                className="mt-1 block w-full rounded-lg border border-border bg-background p-3"
+              >
+                {zones.map((zone) => (
+                  <option key={zone}>{zone}</option>
+                ))}
+              </select>
+            </label>
+          </section>
+          <section className="rounded-xl border border-border bg-surface-secondary p-5">
+            <h3 className="font-bold text-heading">Future delivery channels</h3>
+            <p className="mt-2 text-sm text-muted">
+              Push notifications and SMS alerts are planned for a future
+              release.
+            </p>
+          </section>
         </div>
-        <p className="text-sm text-muted mt-1">{description}</p>
-      </div>
-      
-      <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-1">
-        <input 
-          type="checkbox" 
-          className="sr-only peer" 
-          checked={checked} 
-          onChange={onChange}
-          disabled={disabled}
-        />
-        <div className="w-11 h-6 bg-surface-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-      </label>
-    </div>
+      )}
+    </AutoSaveWrapper>
   );
 }

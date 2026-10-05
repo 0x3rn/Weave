@@ -2,39 +2,112 @@
 
 import { iso, payload, sql } from "@/lib/neon";
 import { scheduleNotificationEmails } from "@/lib/notification-email";
-import { getUserById } from "@/lib/users";
+import { publicMember } from "@/lib/public-member";
 import { Exchange, ExchangeContract, ExchangeRequest } from "@/types";
 import { revalidatePath } from "next/cache";
 import { getCurrentUserId } from "./user";
+import { canContact, assertExchangeAvailable } from "@/lib/member-privacy";
 
 function requestFromRow(row: Record<string, unknown>): ExchangeRequest {
   return {
-    ...payload<Record<string, unknown>>(row.payload), id: String(row.id), senderId: String(row.sender_id ?? ""), receiverId: String(row.receiver_id ?? ""),
-    skillNeeded: String(row.skill_needed ?? ""), dateOptions: Array.isArray(row.date_options) ? row.date_options as string[] : [], timeNeeded: String(row.time_needed ?? ""),
-    hoursNeeded: row.hours_needed == null ? undefined : Number(row.hours_needed), message: row.message ? String(row.message) : undefined,
-    status: String(row.status ?? "pending") as ExchangeRequest["status"], createdAt: iso(row.created_at), updatedAt: iso(row.updated_at),
+    ...payload<Record<string, unknown>>(row.payload),
+    id: String(row.id),
+    senderId: String(row.sender_id ?? ""),
+    receiverId: String(row.receiver_id ?? ""),
+    skillNeeded: String(row.skill_needed ?? ""),
+    dateOptions: Array.isArray(row.date_options)
+      ? (row.date_options as string[])
+      : [],
+    timeNeeded: String(row.time_needed ?? ""),
+    hoursNeeded:
+      row.hours_needed == null ? undefined : Number(row.hours_needed),
+    message: row.message ? String(row.message) : undefined,
+    status: String(row.status ?? "pending") as ExchangeRequest["status"],
+    createdAt: iso(row.created_at),
+    updatedAt: iso(row.updated_at),
   } as ExchangeRequest;
 }
 
 function exchangeFromRow(row: Record<string, unknown>): Exchange {
   return {
-    ...payload<Record<string, unknown>>(row.payload), id: String(row.id), requestId: row.marketplace_request_id ? String(row.marketplace_request_id) : undefined,
-    applicationId: row.marketplace_application_id ? String(row.marketplace_application_id) : undefined, requesterId: String(row.requester_id ?? ""), providerId: String(row.provider_id ?? ""),
-    title: String(row.title ?? ""), skillHours: Number(row.skill_hours ?? 0), requesterEscrowHours: Number(row.requester_escrow_hours ?? 0), providerEscrowHours: Number(row.provider_escrow_hours ?? 0),
-    status: String(row.status ?? "") as Exchange["status"], isMutual: row.is_mutual === true, deadline: iso(row.deadline_at), progress: Number(row.progress ?? 0), reviewRound: Number(row.review_round ?? 1), revealAt: iso(row.reveal_at), filesReleasedAt: iso(row.files_released_at), createdAt: iso(row.created_at), completedAt: iso(row.completed_at), updatedAt: iso(row.updated_at),
+    ...payload<Record<string, unknown>>(row.payload),
+    id: String(row.id),
+    requestId: row.marketplace_request_id
+      ? String(row.marketplace_request_id)
+      : undefined,
+    applicationId: row.marketplace_application_id
+      ? String(row.marketplace_application_id)
+      : undefined,
+    requesterId: String(row.requester_id ?? ""),
+    providerId: String(row.provider_id ?? ""),
+    title: String(row.title ?? ""),
+    skillHours: Number(row.skill_hours ?? 0),
+    requesterEscrowHours: Number(row.requester_escrow_hours ?? 0),
+    providerEscrowHours: Number(row.provider_escrow_hours ?? 0),
+    status: String(row.status ?? "") as Exchange["status"],
+    isMutual: row.is_mutual === true,
+    deadline: iso(row.deadline_at),
+    progress: Number(row.progress ?? 0),
+    reviewRound: Number(row.review_round ?? 1),
+    revealAt: iso(row.reveal_at),
+    filesReleasedAt: iso(row.files_released_at),
+    createdAt: iso(row.created_at),
+    completedAt: iso(row.completed_at),
+    updatedAt: iso(row.updated_at),
   } as Exchange;
 }
 
-export async function createExchangeRequest(data: Omit<ExchangeRequest, "id" | "status" | "createdAt" | "updatedAt">) {
+export async function createExchangeRequest(
+  data: Omit<ExchangeRequest, "id" | "status" | "createdAt" | "updatedAt">,
+) {
   try {
     const userId = await getCurrentUserId();
     if (!userId) return { success: false, error: "Unauthorized" };
-    if (!data || data.senderId !== userId || !data.receiverId || data.receiverId === userId || typeof data.skillNeeded !== "string" || !data.skillNeeded.trim() || data.skillNeeded.length > 120 || !Array.isArray(data.dateOptions) || data.dateOptions.length > 10 || data.dateOptions.some(date => typeof date !== "string" || date.length > 32) || (data.message && data.message.length > 2000) || (data.hoursNeeded !== undefined && (!Number.isInteger(data.hoursNeeded) || data.hoursNeeded < 1 || data.hoursNeeded > 1000))) return { success: false, error: "Invalid exchange request" };
+    if (
+      !data ||
+      data.senderId !== userId ||
+      !data.receiverId ||
+      data.receiverId === userId ||
+      typeof data.skillNeeded !== "string" ||
+      !data.skillNeeded.trim() ||
+      data.skillNeeded.length > 120 ||
+      !Array.isArray(data.dateOptions) ||
+      data.dateOptions.length > 10 ||
+      data.dateOptions.some(
+        (date) => typeof date !== "string" || date.length > 32,
+      ) ||
+      (data.message && data.message.length > 2000) ||
+      (data.hoursNeeded !== undefined &&
+        (!Number.isInteger(data.hoursNeeded) ||
+          data.hoursNeeded < 1 ||
+          data.hoursNeeded > 1000))
+    )
+      return { success: false, error: "Invalid exchange request" };
+    if (!(await canContact(userId, data.receiverId)))
+      throw new Error("This member is not accepting contact from your account");
+    await assertExchangeAvailable(data.receiverId, false);
+    await assertExchangeAvailable(userId, false);
     const id = crypto.randomUUID();
     const notificationId = crypto.randomUUID();
     const now = new Date().toISOString();
-    const request = { ...data, id, skillNeeded: data.skillNeeded.trim(), status: "pending", createdAt: now, updatedAt: now };
-    const notification = { id: notificationId, userId: data.receiverId, type: "exchange_request", title: "New Exchange Request", message: `You have a new request for ${request.skillNeeded}.`, isRead: false, relatedId: id, createdAt: now };
+    const request = {
+      ...data,
+      id,
+      skillNeeded: data.skillNeeded.trim(),
+      status: "pending",
+      createdAt: now,
+      updatedAt: now,
+    };
+    const notification = {
+      id: notificationId,
+      userId: data.receiverId,
+      type: "exchange_request",
+      title: "New Exchange Request",
+      message: `You have a new request for ${request.skillNeeded}.`,
+      isRead: false,
+      relatedId: id,
+      createdAt: now,
+    };
     const rows = await sql.query(
       `with recipient as (select id from users where id=$2), inserted as (
         insert into exchange_requests (id,sender_id,receiver_id,skill_needed,date_options,time_needed,hours_needed,message,status,created_at,updated_at,payload)
@@ -42,47 +115,152 @@ export async function createExchangeRequest(data: Omit<ExchangeRequest, "id" | "
       ), notified as (insert into notifications (id,source_path,user_id,notification_type,title,message,is_read,is_archived,link,related_id,created_at,payload)
         select $11,$12,$2,'exchange_request','New Exchange Request',$13,false,false,'/dashboard',$1,$9,$14::jsonb from inserted returning id)
       select id from inserted`,
-      [id, data.receiverId, userId, request.skillNeeded, JSON.stringify(data.dateOptions), data.timeNeeded ?? null, data.hoursNeeded ?? null, data.message?.trim() ?? null, now, JSON.stringify(request), notificationId, `notifications/${notificationId}`, notification.message, JSON.stringify(notification)],
+      [
+        id,
+        data.receiverId,
+        userId,
+        request.skillNeeded,
+        JSON.stringify(data.dateOptions),
+        data.timeNeeded ?? null,
+        data.hoursNeeded ?? null,
+        data.message?.trim() ?? null,
+        now,
+        JSON.stringify(request),
+        notificationId,
+        `notifications/${notificationId}`,
+        notification.message,
+        JSON.stringify(notification),
+      ],
     );
     if (!rows.length) return { success: false, error: "Recipient not found" };
     scheduleNotificationEmails([notificationId]);
     return { success: true, id };
-  } catch (error) { return { success: false, error: error instanceof Error ? error.message : "Unable to create exchange request" }; }
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unable to create exchange request",
+    };
+  }
 }
 
-export async function updateExchangeRequest(requestId: string, status: string, message?: string, updates?: Partial<ExchangeRequest>) {
+export async function updateExchangeRequest(
+  requestId: string,
+  status: string,
+  message?: string,
+  updates?: Partial<ExchangeRequest>,
+) {
   try {
     const userId = await getCurrentUserId();
     if (!userId) return { success: false, error: "Unauthorized" };
-    if (!["reviewing", "accepted", "rejected"].includes(status) || (message && message.length > 2000)) return { success: false, error: "Invalid request update" };
-    const [row] = await sql.query("select * from exchange_requests where id=$1 and receiver_id=$2 and status not in ('accepted','rejected')", [requestId, userId]);
-    if (!row) return { success: false, error: "Request not found or unauthorized" };
+    if (
+      !["reviewing", "accepted", "rejected"].includes(status) ||
+      (message && message.length > 2000)
+    )
+      return { success: false, error: "Invalid request update" };
+    const [row] = await sql.query(
+      "select * from exchange_requests where id=$1 and receiver_id=$2 and status not in ('accepted','rejected')",
+      [requestId, userId],
+    );
+    if (!row)
+      return { success: false, error: "Request not found or unauthorized" };
     const request = requestFromRow(row);
-    const changes: Record<string, unknown> = { status, updatedAt: new Date().toISOString() };
-    if (updates?.hoursNeeded !== undefined && Number.isInteger(updates.hoursNeeded) && updates.hoursNeeded > 0 && updates.hoursNeeded <= 1000) changes.hoursNeeded = updates.hoursNeeded;
-    if (typeof updates?.timeNeeded === "string" && updates.timeNeeded.length <= 32) changes.timeNeeded = updates.timeNeeded;
-    if (Array.isArray(updates?.dateOptions) && updates.dateOptions.length <= 10 && updates.dateOptions.every(date => typeof date === "string" && date.length <= 32)) changes.dateOptions = updates.dateOptions;
+    const changes: Record<string, unknown> = {
+      status,
+      updatedAt: new Date().toISOString(),
+    };
+    if (
+      updates?.hoursNeeded !== undefined &&
+      Number.isInteger(updates.hoursNeeded) &&
+      updates.hoursNeeded > 0 &&
+      updates.hoursNeeded <= 1000
+    )
+      changes.hoursNeeded = updates.hoursNeeded;
+    if (
+      typeof updates?.timeNeeded === "string" &&
+      updates.timeNeeded.length <= 32
+    )
+      changes.timeNeeded = updates.timeNeeded;
+    if (
+      Array.isArray(updates?.dateOptions) &&
+      updates.dateOptions.length <= 10 &&
+      updates.dateOptions.every(
+        (date) => typeof date === "string" && date.length <= 32,
+      )
+    )
+      changes.dateOptions = updates.dateOptions;
     const now = String(changes.updatedAt);
     let notificationMessage = `Your request for ${request.skillNeeded} was ${status}.`;
-    if (status === "reviewing") notificationMessage = `The provider has countered your request for ${request.skillNeeded}.`;
+    if (status === "reviewing")
+      notificationMessage = `The provider has countered your request for ${request.skillNeeded}.`;
     if (message) notificationMessage += ` Message: ${message.trim()}`;
     const notificationId = crypto.randomUUID();
-    const nextPayload = { ...payload<Record<string, unknown>>(row.payload), ...changes };
-    await sql.transaction(tx => [
-      tx.query("update exchange_requests set status=$3,time_needed=$4,hours_needed=$5,date_options=$6::jsonb,updated_at=$7,payload=$8::jsonb where id=$1 and receiver_id=$2", [requestId, userId, status, nextPayload.timeNeeded ?? row.time_needed, nextPayload.hoursNeeded ?? row.hours_needed, JSON.stringify(nextPayload.dateOptions ?? row.date_options), now, JSON.stringify(nextPayload)]),
-      tx.query("insert into notifications (id,source_path,user_id,notification_type,title,message,is_read,is_archived,link,related_id,created_at,payload) values ($1,$2,$3,'request_update',$4,$5,false,false,'/dashboard',$6,$7,$8::jsonb)", [notificationId, `notifications/${notificationId}`, request.senderId, `Request ${status === "reviewing" ? "Update" : status}`, notificationMessage, requestId, now, JSON.stringify({ type: "request_update", title: `Request ${status}`, message: notificationMessage, isRead: false, link: "/dashboard", relatedId: requestId, createdAt: now })]),
+    const nextPayload = {
+      ...payload<Record<string, unknown>>(row.payload),
+      ...changes,
+    };
+    await sql.transaction((tx) => [
+      tx.query(
+        "update exchange_requests set status=$3,time_needed=$4,hours_needed=$5,date_options=$6::jsonb,updated_at=$7,payload=$8::jsonb where id=$1 and receiver_id=$2",
+        [
+          requestId,
+          userId,
+          status,
+          nextPayload.timeNeeded ?? row.time_needed,
+          nextPayload.hoursNeeded ?? row.hours_needed,
+          JSON.stringify(nextPayload.dateOptions ?? row.date_options),
+          now,
+          JSON.stringify(nextPayload),
+        ],
+      ),
+      tx.query(
+        "insert into notifications (id,source_path,user_id,notification_type,title,message,is_read,is_archived,link,related_id,created_at,payload) values ($1,$2,$3,'request_update',$4,$5,false,false,'/dashboard',$6,$7,$8::jsonb)",
+        [
+          notificationId,
+          `notifications/${notificationId}`,
+          request.senderId,
+          `Request ${status === "reviewing" ? "Update" : status}`,
+          notificationMessage,
+          requestId,
+          now,
+          JSON.stringify({
+            type: "request_update",
+            title: `Request ${status}`,
+            message: notificationMessage,
+            isRead: false,
+            link: "/dashboard",
+            relatedId: requestId,
+            createdAt: now,
+          }),
+        ],
+      ),
     ]);
     scheduleNotificationEmails([notificationId]);
     return { success: true };
-  } catch (error) { return { success: false, error: error instanceof Error ? error.message : "Unable to update request" }; }
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Unable to update request",
+    };
+  }
 }
 
-export async function getExchangeRequests(userId: string, role: "sender" | "receiver") {
+export async function getExchangeRequests(
+  userId: string,
+  role: "sender" | "receiver",
+) {
   const currentUserId = await getCurrentUserId();
-  if (!currentUserId || currentUserId !== userId) return { success: false, error: "Unauthorized", requests: [] };
+  if (!currentUserId || currentUserId !== userId)
+    return { success: false, error: "Unauthorized", requests: [] };
   const column = role === "sender" ? "sender_id" : "receiver_id";
-  const rows = await sql.query(`select * from exchange_requests where ${column}=$1 order by created_at desc`, [userId]);
-  return { success: true, requests: rows.map(row => requestFromRow(row)) };
+  const rows = await sql.query(
+    `select * from exchange_requests where ${column}=$1 order by created_at desc`,
+    [userId],
+  );
+  return { success: true, requests: rows.map((row) => requestFromRow(row)) };
 }
 
 export async function createExchangeFromApplication(applicationId: string) {
@@ -90,11 +268,30 @@ export async function createExchangeFromApplication(applicationId: string) {
   if (!userId) return { success: false, error: "Unauthorized" };
   try {
     const ids = Array.from({ length: 6 }, () => crypto.randomUUID());
-    const [row] = await sql.query("select create_exchange_from_application($1,$2,$3,$4,$5,$6,$7,$8,$9) as exchange_id", [userId, applicationId, ids[0], ids[1], ids[2], ids[3], ids[4], ids[5], new Date().toISOString()]);
+    const [row] = await sql.query(
+      "select create_exchange_from_application($1,$2,$3,$4,$5,$6,$7,$8,$9) as exchange_id",
+      [
+        userId,
+        applicationId,
+        ids[0],
+        ids[1],
+        ids[2],
+        ids[3],
+        ids[4],
+        ids[5],
+        new Date().toISOString(),
+      ],
+    );
     scheduleNotificationEmails([ids[5]]);
     return { success: true, exchangeId: String(row.exchange_id) };
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message.replace(/^.*error:\s*/i, "") : "Failed to create exchange" };
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message.replace(/^.*error:\s*/i, "")
+          : "Failed to create exchange",
+    };
   }
 }
 
@@ -109,10 +306,29 @@ export async function getExchangeContract(exchangeId: string) {
   if (!row) return { success: false, error: "Contract not found" };
   const terms = payload<Record<string, unknown>>(row.terms);
   const contract: ExchangeContract = {
-    exchangeId: String(row.exchange_id), version: Number(row.version), exchangeType: String(row.exchange_type) as ExchangeContract["exchangeType"], requesterId: String(row.requester_id), providerId: String(row.provider_id),
-    requesterDeliverables: Array.isArray(row.requester_deliverables) ? row.requester_deliverables as string[] : [], providerDeliverables: Array.isArray(row.provider_deliverables) ? row.provider_deliverables as string[] : [],
-    requesterPaysHours: Number(row.requester_pays_hours), providerPaysHours: Number(row.provider_pays_hours), hourDifference: Number(row.hour_difference), differenceResolution: String(row.difference_resolution) as ExchangeContract["differenceResolution"],
-    deadline: iso(row.deadline_at) || undefined, revisionsIncluded: Number(terms.revisionsIncluded ?? 2), fingerprint: String(row.contract_fingerprint), approvedBy: Array.isArray(row.approved_by) ? row.approved_by as string[] : [],
+    exchangeId: String(row.exchange_id),
+    version: Number(row.version),
+    exchangeType: String(row.exchange_type) as ExchangeContract["exchangeType"],
+    requesterId: String(row.requester_id),
+    providerId: String(row.provider_id),
+    requesterDeliverables: Array.isArray(row.requester_deliverables)
+      ? (row.requester_deliverables as string[])
+      : [],
+    providerDeliverables: Array.isArray(row.provider_deliverables)
+      ? (row.provider_deliverables as string[])
+      : [],
+    requesterPaysHours: Number(row.requester_pays_hours),
+    providerPaysHours: Number(row.provider_pays_hours),
+    hourDifference: Number(row.hour_difference),
+    differenceResolution: String(
+      row.difference_resolution,
+    ) as ExchangeContract["differenceResolution"],
+    deadline: iso(row.deadline_at) || undefined,
+    revisionsIncluded: Number(terms.revisionsIncluded ?? 2),
+    fingerprint: String(row.contract_fingerprint),
+    approvedBy: Array.isArray(row.approved_by)
+      ? (row.approved_by as string[])
+      : [],
   };
   return { success: true, contract };
 }
@@ -122,32 +338,80 @@ export async function approveExchangeContract(exchangeId: string) {
   if (!userId) return { success: false, error: "Unauthorized" };
   try {
     const ids = Array.from({ length: 6 }, () => crypto.randomUUID());
-    const [row] = await sql.query("select approve_exchange_contract($1,$2,$3,$4,$5,$6,$7,$8,$9) as result", [userId, exchangeId, ...ids, new Date().toISOString()]);
+    const [row] = await sql.query(
+      "select approve_exchange_contract($1,$2,$3,$4,$5,$6,$7,$8,$9) as result",
+      [userId, exchangeId, ...ids, new Date().toISOString()],
+    );
     const status = String(row.result);
-    if (status === "active") scheduleNotificationEmails([ids[4], ids[5], `${ids[1]}-notification`, `${ids[2]}-notification`]);
+    if (status === "active")
+      scheduleNotificationEmails([
+        ids[4],
+        ids[5],
+        `${ids[1]}-notification`,
+        `${ids[2]}-notification`,
+      ]);
     revalidatePath(`/exchanges/${exchangeId}`);
     revalidatePath(`/exchanges/${exchangeId}/start`);
     revalidatePath("/exchanges");
     return { success: true, status };
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message.replace(/^.*error:\s*/i, "") : "Unable to approve contract" };
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message.replace(/^.*error:\s*/i, "")
+          : "Unable to approve contract",
+    };
   }
 }
 
 export async function getExchange(exchangeId: string) {
   const userId = await getCurrentUserId();
   if (!userId) return { success: false, error: "Unauthorized" };
-  const [row] = await sql.query("select * from exchanges where id=$1 and (requester_id=$2 or provider_id=$2)", [exchangeId, userId]);
-  if (!row) return { success: false, error: "Exchange not found or unauthorized" };
+  const [row] = await sql.query(
+    "select * from exchanges where id=$1 and (requester_id=$2 or provider_id=$2)",
+    [exchangeId, userId],
+  );
+  if (!row)
+    return { success: false, error: "Exchange not found or unauthorized" };
   const exchange = exchangeFromRow(row);
-  const [requester, provider] = await Promise.all([getUserById(exchange.requesterId), getUserById(exchange.providerId)]);
-  return { success: true, exchange, requester: { id: exchange.requesterId, username: requester?.username || "", name: requester?.fullName || requester?.username || "Unknown", avatar: requester?.photoURL || null, timezone: requester?.timeZone || "UTC" }, provider: { id: exchange.providerId, username: provider?.username || "", name: provider?.fullName || provider?.username || "Unknown", avatar: provider?.photoURL || null, timezone: provider?.timeZone || "UTC" } };
+  const members = await sql.query(
+    "select * from users where id=any($1::text[])",
+    [[exchange.requesterId, exchange.providerId]],
+  );
+  const member = (id: string) => {
+    const row = members.find((row) => row.id === id);
+    return row
+      ? publicMember({ ...row, id: String(row.id), payload: row.payload })
+      : null;
+  };
+  const requester = member(exchange.requesterId),
+    provider = member(exchange.providerId);
+  return {
+    success: true,
+    exchange,
+    requester: {
+      id: exchange.requesterId,
+      username: requester?.username || "",
+      name: requester?.fullName || requester?.username || "Unknown",
+      avatar: requester?.photoURL || null,
+      timezone: requester?.timeZone || "UTC",
+    },
+    provider: {
+      id: exchange.providerId,
+      username: provider?.username || "",
+      name: provider?.fullName || provider?.username || "Unknown",
+      avatar: provider?.photoURL || null,
+      timezone: provider?.timeZone || "UTC",
+    },
+  };
 }
 
 export async function requestRevision(exchangeId: string, message: string) {
   const userId = await getCurrentUserId();
   if (!userId) return { success: false, error: "Unauthorized" };
-  if (typeof message !== "string" || !message.trim() || message.length > 3000) return { success: false, error: "Invalid revision request" };
+  if (typeof message !== "string" || !message.trim() || message.length > 3000)
+    return { success: false, error: "Invalid revision request" };
   return recordReviewDecision(userId, exchangeId, "revision", message.trim());
 }
 
@@ -157,21 +421,59 @@ export async function acceptDelivery(exchangeId: string) {
   try {
     return await recordReviewDecision(userId, exchangeId, "accept", "");
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message.replace(/^.*error:\s*/i, "") : "Unable to accept delivery" };
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message.replace(/^.*error:\s*/i, "")
+          : "Unable to accept delivery",
+    };
   }
 }
 
-async function recordReviewDecision(userId: string, exchangeId: string, decision: "accept" | "revision", feedback: string) {
+async function recordReviewDecision(
+  userId: string,
+  exchangeId: string,
+  decision: "accept" | "revision",
+  feedback: string,
+) {
   try {
     const ids = Array.from({ length: 6 }, () => crypto.randomUUID());
-    const [row] = await sql.query("select record_exchange_review_decision($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) as result", [userId, exchangeId, ids[0], decision, feedback, ids[1], ids[2], ids[3], ids[4], ids[5], new Date().toISOString()]);
+    const [row] = await sql.query(
+      "select record_exchange_review_decision($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) as result",
+      [
+        userId,
+        exchangeId,
+        ids[0],
+        decision,
+        feedback,
+        ids[1],
+        ids[2],
+        ids[3],
+        ids[4],
+        ids[5],
+        new Date().toISOString(),
+      ],
+    );
     const status = String(row.result);
-    if (status !== "waiting") scheduleNotificationEmails([ids[4], ids[5], `${ids[2]}-notification`, `${ids[3]}-notification`]);
+    if (status !== "waiting")
+      scheduleNotificationEmails([
+        ids[4],
+        ids[5],
+        `${ids[2]}-notification`,
+        `${ids[3]}-notification`,
+      ]);
     revalidatePath(`/exchanges/${exchangeId}`);
     revalidatePath(`/exchanges/${exchangeId}/files`);
     revalidatePath("/exchanges");
     return { success: true, status };
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message.replace(/^.*error:\s*/i, "") : "Unable to record review decision" };
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message.replace(/^.*error:\s*/i, "")
+          : "Unable to record review decision",
+    };
   }
 }

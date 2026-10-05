@@ -23,7 +23,11 @@
     "storage:verify": "node --env-file=.env.local scripts/verify-neon-storage.mjs",
     "storage:roundtrip": "node --env-file=.env.local scripts/verify-neon-storage-roundtrip.mjs",
     "storage:migrate": "node --env-file=.env.local scripts/migrate-firebase-storage-to-neon.mjs",
-    "storage:rewrite-references": "node --env-file=.env.local scripts/rewrite-storage-references.mjs"
+    "storage:rewrite-references": "node --env-file=.env.local scripts/rewrite-storage-references.mjs",
+    "test:settings": "node scripts/verify-member-settings.mjs",
+    "db:apply-settings": "node --env-file=.env.local scripts/apply-neon-schema.mjs 0011_member_settings.sql",
+    "test:notifications": "node scripts/verify-notification-center.mjs",
+    "db:apply-notifications": "node --env-file=.env.local scripts/apply-neon-schema.mjs 0012_notification_center.sql"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1127.0",
@@ -50,6 +54,7 @@
     "ua-parser-js": "^2.0.10"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@opennextjs/cloudflare": "^1.20.6",
     "@tailwindcss/postcss": "^4",
     "@types/country-list": "^2.1.4",
@@ -59,6 +64,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "^16.3.4",
+    "prettier": "^3.9.9",
     "tailwindcss": "^4",
     "typescript": "^5",
     "wrangler": "^4.129.1"

@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { verifyFirebaseSessionCookie } from "@/lib/firebase-auth-server";
+import { requireAuth } from "@/app/actions/user";
 import { getUserById } from "@/lib/users";
 import OnboardingWizard from "@/components/onboarding/onboarding-wizard";
 
@@ -16,7 +16,7 @@ export default async function OnboardingPage() {
   let userId = "";
   let userData: Awaited<ReturnType<typeof getUserById>> = null;
   try {
-    const decodedClaims = await verifyFirebaseSessionCookie(sessionCookie, true);
+    const decodedClaims = await requireAuth();
     userId = decodedClaims.uid;
     userData = await getUserById(userId);
   } catch (error) {

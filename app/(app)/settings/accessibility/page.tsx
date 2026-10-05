@@ -1,17 +1,18 @@
+import { SettingsPageContent } from "@/components/settings/settings-page";
+import { ACCESSIBILITY } from "@/lib/settings";
 export const metadata = { title: "Accessibility - Weave" };
-
-export default function AccessibilitySettingsPage() {
+export default function Page() {
   return (
-    <div className="p-8">
-      <div className="border-b border-border pb-6 mb-8">
-        <h2 className="text-2xl font-black text-heading mb-2">Accessibility</h2>
-        <p className="text-muted">Manage settings to make Weave easier to use.</p>
-      </div>
-
-      <div className="bg-surface-secondary border border-border rounded-xl p-12 text-center">
-        <h3 className="text-lg font-bold text-heading mb-2">Coming Soon</h3>
-        <p className="text-muted text-sm">Advanced accessibility options are coming soon.</p>
-      </div>
-    </div>
+    <>
+      <SettingsPageContent
+        title="Accessibility"
+        description="Make Weave easier to read and navigate."
+        group="preferences"
+        sections={[ACCESSIBILITY]}
+      />
+      <p className="px-4 pb-8 text-sm text-muted sm:px-8">
+        Dyslexic-friendly fonts are planned for a future update.
+      </p>
+    </>
   );
 }

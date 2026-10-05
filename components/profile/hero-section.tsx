@@ -2,9 +2,18 @@
 
 import { User } from "@/types";
 import { formatDistanceToNow, format } from "date-fns";
-import { BadgeCheck, MapPin, Globe, Calendar, Clock, Star, Zap, Activity, MessageSquare, Plus, Share2, QrCode, Link2, UserPlus } from "lucide-react";
+import {
+  BadgeCheck,
+  MapPin,
+  Globe,
+  Calendar,
+  MessageSquare,
+  Share2,
+} from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { startDirectConversation } from "@/app/actions/messages";
+import toast from "react-hot-toast";
 
 import { usePathname, useRouter } from "next/navigation";
 
@@ -14,10 +23,14 @@ interface HeroSectionProps {
   currentUserId?: string | null;
 }
 
-export default function HeroSection({ user, isOwner, currentUserId }: HeroSectionProps) {
+export default function HeroSection({
+  user,
+  isOwner,
+  currentUserId,
+}: HeroSectionProps) {
   // Compute joined date fallback
   const joinedDate = user.createdAt ? new Date(user.createdAt) : new Date();
-  
+
   // Safe defaults for stats if backend doesn't populate them yet
   const stats = user.stats || {
     rating: 0,
@@ -41,12 +54,15 @@ export default function HeroSection({ user, isOwner, currentUserId }: HeroSectio
     }
   };
 
-  const handleMessageClick = () => {
+  const handleMessageClick = async () => {
     if (!currentUserId) {
       router.push(`/login?next=${encodeURIComponent(pathname)}`);
       return;
     }
-    // TODO: implement messaging logic later
+    const result = await startDirectConversation(user.uid);
+    if (result.success && result.conversationId)
+      router.push(`/messages/${result.conversationId}`);
+    else toast.error(result.error || "Could not open messages");
   };
 
   return (
@@ -55,11 +71,11 @@ export default function HeroSection({ user, isOwner, currentUserId }: HeroSectio
       <div className="bg-background border border-border p-6 rounded-[var(--radius-card)] shadow-subtle flex flex-col items-center text-center">
         <div className="relative mb-4">
           <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-surface-secondary bg-background flex-shrink-0">
-            {user.photoURL || (user as any).photoUrl ? (
-              <Image 
-                src={user.photoURL || (user as any).photoUrl} 
-                alt={user.fullName} 
-                fill 
+            {user.photoURL ? (
+              <Image
+                src={user.photoURL || (user as any).photoUrl}
+                alt={user.fullName}
+                fill
                 className="object-cover"
               />
             ) : (
@@ -78,7 +94,7 @@ export default function HeroSection({ user, isOwner, currentUserId }: HeroSectio
         <h1 className="text-2xl font-bold text-heading flex items-center justify-center gap-2">
           {user.fullName}
         </h1>
-        
+
         <p className="text-sm font-medium text-primary mt-1">
           {user.headline || user.profession || "Weave Member"}
         </p>
@@ -101,92 +117,112 @@ export default function HeroSection({ user, isOwner, currentUserId }: HeroSectio
         {/* Action Buttons */}
         <div className="w-full mt-6 flex flex-col gap-3">
           {isOwner ? (
-            <Link 
-              href="/profile" 
+            <Link
+              href="/profile"
               className="w-full py-2.5 bg-surface-secondary hover:bg-border text-heading text-sm font-bold rounded-[var(--radius-button)] transition-colors border border-border"
             >
               Edit Profile
             </Link>
           ) : (
             <>
-              <button onClick={handleActionClick} className="w-full py-2.5 bg-primary hover:bg-primary-hover text-surface text-sm font-bold rounded-[var(--radius-button)] transition-colors shadow-subtle">
+              <button
+                disabled={!user.schedule}
+                onClick={handleActionClick}
+                className="w-full py-2.5 bg-primary hover:bg-primary-hover text-surface text-sm font-bold rounded-[var(--radius-button)] transition-colors shadow-subtle"
+              >
                 Request Exchange
               </button>
-              <button onClick={handleMessageClick} className="w-full py-2.5 bg-surface-secondary hover:bg-border text-heading text-sm font-bold rounded-[var(--radius-button)] transition-colors border border-border flex items-center justify-center gap-2">
+              <button
+                onClick={handleMessageClick}
+                className="w-full py-2.5 bg-surface-secondary hover:bg-border text-heading text-sm font-bold rounded-[var(--radius-button)] transition-colors border border-border flex items-center justify-center gap-2"
+              >
                 <MessageSquare className="w-4 h-4" />
                 Send Message
               </button>
             </>
           )}
 
-          {/* Social / Sharing (Coming Soon Placeholders) */}
-          <div className="flex items-center gap-2 mt-2">
-             {!isOwner && (
-               <button className="flex-1 py-2 bg-background hover:bg-surface-secondary text-muted text-xs font-bold rounded-[var(--radius-button)] transition-colors border border-border flex items-center justify-center gap-2 cursor-not-allowed" title="Coming soon">
-                 <UserPlus className="w-3.5 h-3.5" /> Follow
-               </button>
-             )}
-             
-             {isOwner ? (
-               <button className="flex-1 py-2 bg-background hover:bg-surface-secondary text-muted text-xs font-bold rounded-[var(--radius-button)] transition-colors border border-border flex items-center justify-center gap-2 cursor-not-allowed" title="Share (Coming soon)">
-                 <Share2 className="w-3.5 h-3.5" /> Share Profile
-               </button>
-             ) : (
-               <button className="w-10 h-10 bg-background hover:bg-surface-secondary text-muted rounded-[var(--radius-button)] transition-colors border border-border flex items-center justify-center flex-shrink-0 cursor-not-allowed" title="Share (Coming soon)">
-                 <Share2 className="w-4 h-4" />
-               </button>
-             )}
-
-             {isOwner && (
-               <button className="w-10 h-10 bg-background hover:bg-surface-secondary text-muted rounded-[var(--radius-button)] transition-colors border border-border flex items-center justify-center flex-shrink-0 cursor-not-allowed" title="QR Code (Coming soon)">
-                 <QrCode className="w-4 h-4" />
-               </button>
-             )}
-          </div>
-          <div className="w-full py-2 px-3 bg-background border border-border rounded-[var(--radius-button)] flex items-center justify-between mt-1 opacity-70">
-             <div className="flex items-center gap-2 overflow-hidden">
-               <Link2 className="w-3.5 h-3.5 text-muted flex-shrink-0" />
-               <span className="text-xs text-muted truncate">weave.network/u/{user.username}</span>
-             </div>
-             <span className="text-[10px] font-bold uppercase tracking-wider text-muted bg-surface-secondary px-1.5 py-0.5 rounded">Soon</span>
-          </div>
+          {user.publicPrivacy?.allowProfileSharing !== false && (
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(window.location.href);
+                  toast.success("Profile link copied");
+                } catch {
+                  toast.error("Could not copy profile link");
+                }
+              }}
+              className="flex items-center justify-center gap-2 rounded-lg border border-border p-2 text-sm"
+            >
+              <Share2 className="h-4 w-4" />
+              Copy profile link
+            </button>
+          )}
+          {user.lastActive && (
+            <p className="text-xs text-muted">
+              Last active{" "}
+              {formatDistanceToNow(new Date(user.lastActive), {
+                addSuffix: true,
+              })}
+            </p>
+          )}
+          {user.skillHours !== undefined && (
+            <p className="text-xs text-muted">
+              Skill Hour balance: {user.skillHours}
+            </p>
+          )}
         </div>
       </div>
 
       {/* Large Stats Grid */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="bg-background border border-border p-4 rounded-[var(--radius-card)] flex flex-col items-center justify-center text-center">
-          <div className="flex items-center gap-1 mb-1">
-            <span className="font-bold text-heading text-lg">
-              {stats.exchangesCompleted > 0 ? stats.rating.toFixed(1) : "N/A"}
-            </span>
-          </div>
-          <span className="text-xs text-muted">Rating</span>
-        </div>
-        
-        <div className="bg-background border border-border p-4 rounded-[var(--radius-card)] flex flex-col items-center justify-center text-center">
-          <div className="flex items-center gap-1 mb-1">
-            <span className="font-bold text-heading text-lg">{stats.exchangesCompleted}</span>
-          </div>
-          <span className="text-xs text-muted">Exchanges</span>
-        </div>
+      {(isOwner || user.publicPrivacy?.showCompletedExchanges !== false) && (
+        <>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-background border border-border p-4 rounded-[var(--radius-card)] flex flex-col items-center justify-center text-center">
+              <div className="flex items-center gap-1 mb-1">
+                <span className="font-bold text-heading text-lg">
+                  {user.publicPrivacy?.showReviews === false
+                    ? "Private"
+                    : stats.exchangesCompleted > 0
+                      ? stats.rating.toFixed(1)
+                      : "N/A"}
+                </span>
+              </div>
+              <span className="text-xs text-muted">Rating</span>
+            </div>
 
-        <div className="bg-background border border-border p-4 rounded-[var(--radius-card)] flex flex-col items-center justify-center text-center">
-          <div className="flex items-center gap-1 mb-1">
-            <span className="font-bold text-heading text-lg">{stats.skillHoursEarned}</span>
-          </div>
-          <span className="text-xs text-muted">Hours Earned</span>
-        </div>
+            <div className="bg-background border border-border p-4 rounded-[var(--radius-card)] flex flex-col items-center justify-center text-center">
+              <div className="flex items-center gap-1 mb-1">
+                <span className="font-bold text-heading text-lg">
+                  {stats.exchangesCompleted}
+                </span>
+              </div>
+              <span className="text-xs text-muted">Exchanges</span>
+            </div>
 
-        <div className="bg-background border border-border p-4 rounded-[var(--radius-card)] flex flex-col items-center justify-center text-center">
-          <div className="flex items-center gap-1 mb-1">
-            <span className="font-bold text-heading text-lg">
-              {stats.exchangesCompleted > 0 ? `${stats.completionRate}%` : "N/A"}
-            </span>
+            <div className="bg-background border border-border p-4 rounded-[var(--radius-card)] flex flex-col items-center justify-center text-center">
+              <div className="flex items-center gap-1 mb-1">
+                <span className="font-bold text-heading text-lg">
+                  {stats.skillHoursEarned}
+                </span>
+              </div>
+              <span className="text-xs text-muted">Hours Earned</span>
+            </div>
+
+            <div className="bg-background border border-border p-4 rounded-[var(--radius-card)] flex flex-col items-center justify-center text-center">
+              <div className="flex items-center gap-1 mb-1">
+                <span className="font-bold text-heading text-lg">
+                  {stats.exchangesCompleted > 0
+                    ? `${stats.completionRate}%`
+                    : "N/A"}
+                </span>
+              </div>
+              <span className="text-xs text-muted">Completion Rate</span>
+            </div>
           </div>
-          <span className="text-xs text-muted">Completion Rate</span>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }

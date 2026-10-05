@@ -8,26 +8,47 @@ import Link from "next/link";
 import { MarketplaceRequest } from "@/types";
 
 const CATEGORIES = [
-  "Development", "Design", "Marketing", "Writing", 
-  "Business", "Audio/Video", "Photography", "Other"
+  "Development",
+  "Design",
+  "Marketing",
+  "Writing",
+  "Business",
+  "Audio/Video",
+  "Photography",
+  "Other",
 ];
 
 const EXPERIENCES = ["Beginner", "Intermediate", "Expert", "Any"];
 
-export default function EditRequestClient({ request }: { request: MarketplaceRequest }) {
+export default function EditRequestClient({
+  request,
+}: {
+  request: MarketplaceRequest;
+}) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
-  
-  const initialDeliverables = request.deliverables && request.deliverables.length > 0 ? request.deliverables : [""];
-  const [deliverables, setDeliverables] = useState<string[]>(initialDeliverables);
-  
+
+  const initialDeliverables =
+    request.deliverables && request.deliverables.length > 0
+      ? request.deliverables
+      : [""];
+  const [deliverables, setDeliverables] =
+    useState<string[]>(initialDeliverables);
+
   // Mutual Exchange State
   const [isMutual, setIsMutual] = useState(request.isMutual !== false); // Default to true unless explicitly false
-  const initialOfferedDeliverables = request.offeredDeliverables && request.offeredDeliverables.length > 0 ? request.offeredDeliverables : [""];
-  const [offeredDeliverables, setOfferedDeliverables] = useState<string[]>(initialOfferedDeliverables);
+  const initialOfferedDeliverables =
+    request.offeredDeliverables && request.offeredDeliverables.length > 0
+      ? request.offeredDeliverables
+      : [""];
+  const [offeredDeliverables, setOfferedDeliverables] = useState<string[]>(
+    initialOfferedDeliverables,
+  );
   const [offeredHours, setOfferedHours] = useState(request.offeredHours || "");
-  const [offeredSkills, setOfferedSkills] = useState(request.offeredSkills ? request.offeredSkills.join(", ") : "");
+  const [offeredSkills, setOfferedSkills] = useState(
+    request.offeredSkills ? request.offeredSkills.join(", ") : "",
+  );
 
   const [formData, setFormData] = useState({
     title: request.title,
@@ -37,12 +58,24 @@ export default function EditRequestClient({ request }: { request: MarketplaceReq
     estimatedHours: request.estimatedHours,
     exchangeType: request.exchangeType || "One-time",
     timeline: request.timeline || "Flexible",
-    preferredExperience: request.preferredExperience || "Any"
+    expiresAt: request.expiresAt
+      ? new Date(
+          new Date(request.expiresAt).getTime() -
+            new Date(request.expiresAt).getTimezoneOffset() * 60000,
+        )
+          .toISOString()
+          .slice(0, 16)
+      : "",
+    preferredExperience: request.preferredExperience || "Any",
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
+  ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleDeliverableChange = (index: number, value: string) => {
@@ -52,7 +85,7 @@ export default function EditRequestClient({ request }: { request: MarketplaceReq
   };
 
   const addDeliverable = () => setDeliverables([...deliverables, ""]);
-  
+
   const removeDeliverable = (index: number) => {
     if (deliverables.length === 1) return;
     setDeliverables(deliverables.filter((_, i) => i !== index));
@@ -64,8 +97,9 @@ export default function EditRequestClient({ request }: { request: MarketplaceReq
     setOfferedDeliverables(newDelivs);
   };
 
-  const addOfferedDeliverable = () => setOfferedDeliverables([...offeredDeliverables, ""]);
-  
+  const addOfferedDeliverable = () =>
+    setOfferedDeliverables([...offeredDeliverables, ""]);
+
   const removeOfferedDeliverable = (index: number) => {
     if (offeredDeliverables.length === 1) return;
     setOfferedDeliverables(offeredDeliverables.filter((_, i) => i !== index));
@@ -85,23 +119,31 @@ export default function EditRequestClient({ request }: { request: MarketplaceReq
     try {
       const skillsArr = formData.skillsRequired
         .split(",")
-        .map(s => s.trim())
-        .filter(s => s.length > 0);
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
 
       const cleanDeliverables = deliverables
-        .map(d => d.trim())
-        .filter(d => d.length > 0);
+        .map((d) => d.trim())
+        .filter((d) => d.length > 0);
 
       const requestData: any = {
         ...formData,
+        expiresAt: formData.expiresAt
+          ? new Date(formData.expiresAt).toISOString()
+          : null,
         skillsRequired: skillsArr,
         deliverables: cleanDeliverables,
-        isMutual
+        isMutual,
       };
 
       if (isMutual) {
-        requestData.offeredSkills = offeredSkills.split(",").map(s => s.trim()).filter(s => s.length > 0);
-        requestData.offeredDeliverables = offeredDeliverables.map(d => d.trim()).filter(d => d.length > 0);
+        requestData.offeredSkills = offeredSkills
+          .split(",")
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0);
+        requestData.offeredDeliverables = offeredDeliverables
+          .map((d) => d.trim())
+          .filter((d) => d.length > 0);
         requestData.offeredHours = offeredHours;
       }
 
@@ -113,7 +155,6 @@ export default function EditRequestClient({ request }: { request: MarketplaceReq
 
       router.push(`/marketplace/${request.id}`);
       router.refresh();
-
     } catch (err: any) {
       setError(err.message || "An error occurred while updating your request.");
       setIsSubmitting(false);
@@ -122,13 +163,19 @@ export default function EditRequestClient({ request }: { request: MarketplaceReq
 
   return (
     <div className="max-w-3xl mx-auto py-8">
-      <Link href={`/marketplace/${request.id}`} className="inline-flex items-center text-sm font-bold text-muted hover:text-heading mb-6 transition-colors">
+      <Link
+        href={`/marketplace/${request.id}`}
+        className="inline-flex items-center text-sm font-bold text-muted hover:text-heading mb-6 transition-colors"
+      >
         <ArrowLeft className="w-4 h-4 mr-2" /> Back to Request
       </Link>
 
       <div className="mb-8">
         <h1 className="text-3xl font-black text-heading mb-2">Edit Request</h1>
-        <p className="text-body text-lg">Update your request details. Note: you cannot edit requests with existing applicants.</p>
+        <p className="text-body text-lg">
+          Update your request details. Note: you cannot edit requests with
+          existing applicants.
+        </p>
       </div>
 
       {error && (
@@ -138,270 +185,358 @@ export default function EditRequestClient({ request }: { request: MarketplaceReq
       )}
 
       <div className="bg-surface border border-border rounded-[var(--radius-card)] shadow-elevated p-6 md:p-8 relative overflow-hidden">
-        
         <form onSubmit={handleSubmit} className="space-y-8">
-          
+          <label className="block text-sm font-semibold text-heading">
+            Request closing time (optional)
+            <input
+              type="datetime-local"
+              name="expiresAt"
+              value={formData.expiresAt || ""}
+              onChange={handleChange}
+              className="mt-2 block w-full rounded-lg border border-border bg-surface p-3"
+            />
+            <span className="mt-2 block text-xs font-normal text-muted">
+              Uses your local time. We will remind you before the request
+              closes.
+            </span>
+          </label>
+
           <div className="bg-surface-secondary/50 p-6 rounded-xl border border-border mb-8">
-            <h2 className="text-lg font-bold text-heading mb-4">Exchange Type</h2>
+            <h2 className="text-lg font-bold text-heading mb-4">
+              Exchange Type
+            </h2>
             <div className="flex flex-col sm:flex-row gap-4">
-              <label className={`flex-1 border p-4 rounded-xl cursor-pointer transition-all ${!isMutual ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border bg-surface hover:border-primary/50'}`}>
+              <label
+                className={`flex-1 border p-4 rounded-xl cursor-pointer transition-all ${!isMutual ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border bg-surface hover:border-primary/50"}`}
+              >
                 <div className="flex items-center gap-3 mb-2">
-                  <input type="radio" checked={!isMutual} onChange={() => setIsMutual(false)} className="w-4 h-4 accent-primary" />
-                  <span className="font-bold text-heading">Standard Exchange</span>
+                  <input
+                    type="radio"
+                    checked={!isMutual}
+                    onChange={() => setIsMutual(false)}
+                    className="w-4 h-4 accent-primary"
+                  />
+                  <span className="font-bold text-heading">
+                    Standard Exchange
+                  </span>
                 </div>
-                <p className="text-sm text-muted ml-7">I will pay Skill Hours to the person who completes my project.</p>
+                <p className="text-sm text-muted ml-7">
+                  I will pay Skill Hours to the person who completes my project.
+                </p>
               </label>
-              
-              <label className={`flex-1 border p-4 rounded-xl cursor-pointer transition-all ${isMutual ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border bg-surface hover:border-primary/50'}`}>
+
+              <label
+                className={`flex-1 border p-4 rounded-xl cursor-pointer transition-all ${isMutual ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border bg-surface hover:border-primary/50"}`}
+              >
                 <div className="flex items-center gap-3 mb-2">
-                  <input type="radio" checked={isMutual} onChange={() => setIsMutual(true)} className="w-4 h-4 accent-primary" />
-                  <span className="font-bold text-heading">Mutual Exchange</span>
+                  <input
+                    type="radio"
+                    checked={isMutual}
+                    onChange={() => setIsMutual(true)}
+                    className="w-4 h-4 accent-primary"
+                  />
+                  <span className="font-bold text-heading">
+                    Mutual Exchange
+                  </span>
                 </div>
-                <p className="text-sm text-muted ml-7">I will offer my own skills/work in return instead of just spending Skill Hours.</p>
+                <p className="text-sm text-muted ml-7">
+                  I will offer my own skills/work in return instead of just
+                  spending Skill Hours.
+                </p>
               </label>
             </div>
           </div>
 
           <div className="space-y-6">
-            <h2 className="text-xl font-black text-heading border-b border-border pb-2">What I Need</h2>
-            
+            <h2 className="text-xl font-black text-heading border-b border-border pb-2">
+              What I Need
+            </h2>
+
             {/* Title */}
             <div>
-            <label className="block text-sm font-bold text-heading mb-2">Project Title *</label>
-            <input
-              type="text"
-              name="title"
-              value={formData.title}
-              onChange={handleChange}
-              className="w-full bg-surface-secondary border border-border rounded-[var(--radius-button)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-body"
-              required
-              disabled={isSubmitting}
-            />
-          </div>
-
-          {/* Description */}
-          <div>
-            <label className="block text-sm font-bold text-heading mb-2">Detailed Description *</label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              className="w-full bg-surface-secondary border border-border rounded-[var(--radius-button)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-body min-h-[150px] resize-none"
-              required
-              disabled={isSubmitting}
-            />
-          </div>
-
-          {/* Deliverables */}
-          <div>
-            <label className="block text-sm font-bold text-heading mb-2">Deliverables</label>
-            <p className="text-xs text-muted mb-3">List exactly what you expect to receive at the end of this project.</p>
-            <div className="space-y-3 mb-3">
-              {deliverables.map((deliv, idx) => (
-                <div key={idx} className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={deliv}
-                    onChange={(e) => handleDeliverableChange(idx, e.target.value)}
-                    placeholder="e.g. 5 Screens mapped out in Figma"
-                    className="flex-1 bg-surface-secondary border border-border rounded-[var(--radius-button)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-body"
-                    disabled={isSubmitting}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeDeliverable(idx)}
-                    disabled={deliverables.length === 1 || isSubmitting}
-                    className="p-3 text-muted hover:text-error hover:bg-error/10 rounded-[var(--radius-button)] transition-colors disabled:opacity-50"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={addDeliverable}
-              disabled={isSubmitting}
-              className="text-sm font-bold text-primary hover:text-primary-hover flex items-center gap-1 transition-colors"
-            >
-              <Plus className="w-4 h-4" /> Add Deliverable
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Category */}
-            <div>
-              <label className="block text-sm font-bold text-heading mb-2">Category</label>
-              <select
-                name="category"
-                value={formData.category}
-                onChange={handleChange}
-                className="w-full bg-surface-secondary border border-border rounded-[var(--radius-button)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-body"
-                disabled={isSubmitting}
-              >
-                {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-              </select>
-            </div>
-
-            {/* Estimated Hours */}
-            <div>
-              <label className="block text-sm font-bold text-heading mb-2">Estimated Hours *</label>
+              <label className="block text-sm font-bold text-heading mb-2">
+                Project Title *
+              </label>
               <input
                 type="text"
-                name="estimatedHours"
-                value={formData.estimatedHours}
+                name="title"
+                value={formData.title}
                 onChange={handleChange}
-                placeholder="e.g. 5, 10-15, 20+"
                 className="w-full bg-surface-secondary border border-border rounded-[var(--radius-button)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-body"
                 required
                 disabled={isSubmitting}
               />
-              <p className="text-xs text-muted mt-1 flex items-center gap-1">
-                <Info className="w-3 h-3" /> Make sure you have this much balance.
-              </p>
             </div>
 
-            {/* Skills */}
-            <div className="md:col-span-2">
-              <label className="block text-sm font-bold text-heading mb-2">Skills Required (Comma separated)</label>
-              <input
-                type="text"
-                name="skillsRequired"
-                value={formData.skillsRequired}
+            {/* Description */}
+            <div>
+              <label className="block text-sm font-bold text-heading mb-2">
+                Detailed Description *
+              </label>
+              <textarea
+                name="description"
+                value={formData.description}
                 onChange={handleChange}
-                placeholder="e.g. React, UI/UX, Firebase"
-                className="w-full bg-surface-secondary border border-border rounded-[var(--radius-button)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-body"
+                className="w-full bg-surface-secondary border border-border rounded-[var(--radius-button)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-body min-h-[150px] resize-none"
+                required
                 disabled={isSubmitting}
               />
             </div>
 
-            {/* Exchange Type */}
+            {/* Deliverables */}
             <div>
-              <label className="block text-sm font-bold text-heading mb-2">Exchange Type</label>
-              <select
-                name="exchangeType"
-                value={formData.exchangeType}
-                onChange={handleChange}
-                className="w-full bg-surface-secondary border border-border rounded-[var(--radius-button)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-body"
-                disabled={isSubmitting}
-              >
-                <option value="One-time">One-time Project</option>
-                <option value="Ongoing">Ongoing Part-time</option>
-                <option value="Consultation">Consultation</option>
-              </select>
-            </div>
-
-            {/* Timeline */}
-            <div>
-              <label className="block text-sm font-bold text-heading mb-2">Timeline</label>
-              <select
-                name="timeline"
-                value={formData.timeline}
-                onChange={handleChange}
-                className="w-full bg-surface-secondary border border-border rounded-[var(--radius-button)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-body"
-                disabled={isSubmitting}
-              >
-                <option value="Flexible">Flexible</option>
-                <option value="Less than 1 week">Less than 1 week</option>
-                <option value="1 to 2 weeks">1 to 2 weeks</option>
-                <option value="Less than 1 month">Less than 1 month</option>
-              </select>
-            </div>
-
-            {/* Experience */}
-            <div className="md:col-span-2">
-              <label className="block text-sm font-bold text-heading mb-2">Preferred Experience Level</label>
-              <select
-                name="preferredExperience"
-                value={formData.preferredExperience}
-                onChange={handleChange}
-                className="w-full bg-surface-secondary border border-border rounded-[var(--radius-button)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-body"
-                disabled={isSubmitting}
-              >
-                {EXPERIENCES.map(exp => <option key={exp} value={exp}>{exp}</option>)}
-              </select>
-            </div>
-          </div>
-
-          {isMutual && (
-            <div className="space-y-6 pt-8 mt-8 border-t-2 border-dashed border-border">
-              <div className="bg-primary/5 border border-primary/20 rounded-xl p-6">
-                <h2 className="text-xl font-black text-heading mb-2 flex items-center gap-2">
-                  What I Can Offer
-                </h2>
-                <p className="text-sm text-muted mb-6">Since this is a mutual exchange, describe what you are bringing to the table for the other person.</p>
-                
-                <div className="space-y-6">
-                  <div>
-                    <label className="block text-sm font-bold text-heading mb-2">The Skills I Can Provide (Comma separated)</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="10000"
-                      value={offeredSkills}
-                      onChange={(e) => setOfferedSkills(e.target.value)}
-                      placeholder="e.g. React Development, Copywriting"
-                      className="w-full bg-surface border border-border rounded-[var(--radius-button)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-body"
-                      required={isMutual}
-                      disabled={isSubmitting}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-bold text-heading mb-2">My Estimated Effort (Hours) *</label>
+              <label className="block text-sm font-bold text-heading mb-2">
+                Deliverables
+              </label>
+              <p className="text-xs text-muted mb-3">
+                List exactly what you expect to receive at the end of this
+                project.
+              </p>
+              <div className="space-y-3 mb-3">
+                {deliverables.map((deliv, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
                     <input
                       type="text"
-                      value={offeredHours}
-                      onChange={(e) => setOfferedHours(e.target.value)}
-                      placeholder="e.g. 5, 10-15"
-                      className="w-full bg-surface border border-border rounded-[var(--radius-button)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-body"
-                      required={isMutual}
+                      value={deliv}
+                      onChange={(e) =>
+                        handleDeliverableChange(idx, e.target.value)
+                      }
+                      placeholder="e.g. 5 Screens mapped out in Figma"
+                      className="flex-1 bg-surface-secondary border border-border rounded-[var(--radius-button)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-body"
                       disabled={isSubmitting}
                     />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-bold text-heading mb-2">What I Will Deliver</label>
-                    <div className="space-y-3 mb-3">
-                      {offeredDeliverables.map((deliv, idx) => (
-                        <div key={idx} className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={deliv}
-                            onChange={(e) => handleOfferedDeliverableChange(idx, e.target.value)}
-                            placeholder="e.g. 3 fully developed React components"
-                            className="flex-1 bg-surface border border-border rounded-[var(--radius-button)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-body"
-                            disabled={isSubmitting}
-                            required={isMutual && idx === 0}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeOfferedDeliverable(idx)}
-                            disabled={offeredDeliverables.length === 1 || isSubmitting}
-                            className="p-3 text-muted hover:text-error hover:bg-error/10 rounded-[var(--radius-button)] transition-colors disabled:opacity-50"
-                          >
-                            <X className="w-5 h-5" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
                     <button
                       type="button"
-                      onClick={addOfferedDeliverable}
-                      disabled={isSubmitting}
-                      className="text-sm font-bold text-primary hover:text-primary-hover flex items-center gap-1 transition-colors"
+                      onClick={() => removeDeliverable(idx)}
+                      disabled={deliverables.length === 1 || isSubmitting}
+                      className="p-3 text-muted hover:text-error hover:bg-error/10 rounded-[var(--radius-button)] transition-colors disabled:opacity-50"
                     >
-                      <Plus className="w-4 h-4" /> Add Deliverable
+                      <X className="w-5 h-5" />
                     </button>
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={addDeliverable}
+                disabled={isSubmitting}
+                className="text-sm font-bold text-primary hover:text-primary-hover flex items-center gap-1 transition-colors"
+              >
+                <Plus className="w-4 h-4" /> Add Deliverable
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Category */}
+              <div>
+                <label className="block text-sm font-bold text-heading mb-2">
+                  Category
+                </label>
+                <select
+                  name="category"
+                  value={formData.category}
+                  onChange={handleChange}
+                  className="w-full bg-surface-secondary border border-border rounded-[var(--radius-button)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-body"
+                  disabled={isSubmitting}
+                >
+                  {CATEGORIES.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Estimated Hours */}
+              <div>
+                <label className="block text-sm font-bold text-heading mb-2">
+                  Estimated Hours *
+                </label>
+                <input
+                  type="text"
+                  name="estimatedHours"
+                  value={formData.estimatedHours}
+                  onChange={handleChange}
+                  placeholder="e.g. 5, 10-15, 20+"
+                  className="w-full bg-surface-secondary border border-border rounded-[var(--radius-button)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-body"
+                  required
+                  disabled={isSubmitting}
+                />
+                <p className="text-xs text-muted mt-1 flex items-center gap-1">
+                  <Info className="w-3 h-3" /> Make sure you have this much
+                  balance.
+                </p>
+              </div>
+
+              {/* Skills */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-bold text-heading mb-2">
+                  Skills Required (Comma separated)
+                </label>
+                <input
+                  type="text"
+                  name="skillsRequired"
+                  value={formData.skillsRequired}
+                  onChange={handleChange}
+                  placeholder="e.g. React, UI/UX, Firebase"
+                  className="w-full bg-surface-secondary border border-border rounded-[var(--radius-button)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-body"
+                  disabled={isSubmitting}
+                />
+              </div>
+
+              {/* Exchange Type */}
+              <div>
+                <label className="block text-sm font-bold text-heading mb-2">
+                  Exchange Type
+                </label>
+                <select
+                  name="exchangeType"
+                  value={formData.exchangeType}
+                  onChange={handleChange}
+                  className="w-full bg-surface-secondary border border-border rounded-[var(--radius-button)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-body"
+                  disabled={isSubmitting}
+                >
+                  <option value="One-time">One-time Project</option>
+                  <option value="Ongoing">Ongoing Part-time</option>
+                  <option value="Consultation">Consultation</option>
+                </select>
+              </div>
+
+              {/* Timeline */}
+              <div>
+                <label className="block text-sm font-bold text-heading mb-2">
+                  Timeline
+                </label>
+                <select
+                  name="timeline"
+                  value={formData.timeline}
+                  onChange={handleChange}
+                  className="w-full bg-surface-secondary border border-border rounded-[var(--radius-button)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-body"
+                  disabled={isSubmitting}
+                >
+                  <option value="Flexible">Flexible</option>
+                  <option value="Less than 1 week">Less than 1 week</option>
+                  <option value="1 to 2 weeks">1 to 2 weeks</option>
+                  <option value="Less than 1 month">Less than 1 month</option>
+                </select>
+              </div>
+
+              {/* Experience */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-bold text-heading mb-2">
+                  Preferred Experience Level
+                </label>
+                <select
+                  name="preferredExperience"
+                  value={formData.preferredExperience}
+                  onChange={handleChange}
+                  className="w-full bg-surface-secondary border border-border rounded-[var(--radius-button)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-body"
+                  disabled={isSubmitting}
+                >
+                  {EXPERIENCES.map((exp) => (
+                    <option key={exp} value={exp}>
+                      {exp}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {isMutual && (
+              <div className="space-y-6 pt-8 mt-8 border-t-2 border-dashed border-border">
+                <div className="bg-primary/5 border border-primary/20 rounded-xl p-6">
+                  <h2 className="text-xl font-black text-heading mb-2 flex items-center gap-2">
+                    What I Can Offer
+                  </h2>
+                  <p className="text-sm text-muted mb-6">
+                    Since this is a mutual exchange, describe what you are
+                    bringing to the table for the other person.
+                  </p>
+
+                  <div className="space-y-6">
+                    <div>
+                      <label className="block text-sm font-bold text-heading mb-2">
+                        The Skills I Can Provide (Comma separated)
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="10000"
+                        value={offeredSkills}
+                        onChange={(e) => setOfferedSkills(e.target.value)}
+                        placeholder="e.g. React Development, Copywriting"
+                        className="w-full bg-surface border border-border rounded-[var(--radius-button)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-body"
+                        required={isMutual}
+                        disabled={isSubmitting}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-bold text-heading mb-2">
+                        My Estimated Effort (Hours) *
+                      </label>
+                      <input
+                        type="text"
+                        value={offeredHours}
+                        onChange={(e) => setOfferedHours(e.target.value)}
+                        placeholder="e.g. 5, 10-15"
+                        className="w-full bg-surface border border-border rounded-[var(--radius-button)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-body"
+                        required={isMutual}
+                        disabled={isSubmitting}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-bold text-heading mb-2">
+                        What I Will Deliver
+                      </label>
+                      <div className="space-y-3 mb-3">
+                        {offeredDeliverables.map((deliv, idx) => (
+                          <div key={idx} className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={deliv}
+                              onChange={(e) =>
+                                handleOfferedDeliverableChange(
+                                  idx,
+                                  e.target.value,
+                                )
+                              }
+                              placeholder="e.g. 3 fully developed React components"
+                              className="flex-1 bg-surface border border-border rounded-[var(--radius-button)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-body"
+                              disabled={isSubmitting}
+                              required={isMutual && idx === 0}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeOfferedDeliverable(idx)}
+                              disabled={
+                                offeredDeliverables.length === 1 || isSubmitting
+                              }
+                              className="p-3 text-muted hover:text-error hover:bg-error/10 rounded-[var(--radius-button)] transition-colors disabled:opacity-50"
+                            >
+                              <X className="w-5 h-5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={addOfferedDeliverable}
+                        disabled={isSubmitting}
+                        className="text-sm font-bold text-primary hover:text-primary-hover flex items-center gap-1 transition-colors"
+                      >
+                        <Plus className="w-4 h-4" /> Add Deliverable
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
           </div>
 
           <div className="pt-6 border-t border-border flex justify-end gap-3">
-            <Link 
+            <Link
               href={`/marketplace/${request.id}`}
               className="px-6 py-3 bg-surface-secondary text-heading font-bold rounded-[var(--radius-button)] hover:bg-border transition-colors disabled:opacity-50"
             >
@@ -413,7 +548,9 @@ export default function EditRequestClient({ request }: { request: MarketplaceReq
               className="px-8 py-3 bg-primary text-primary-foreground font-bold rounded-[var(--radius-button)] hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 min-w-[150px]"
             >
               {isSubmitting ? (
-                <><Loader2 className="w-5 h-5 animate-spin" /> Saving...</>
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" /> Saving...
+                </>
               ) : (
                 "Save Changes"
               )}

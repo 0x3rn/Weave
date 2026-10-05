@@ -8,7 +8,12 @@ import SetUsernameClient from "./set-username-client";
 import EditProfileModal from "@/components/profile/edit-profile-modal";
 
 // Profile Components
-import { getUserPortfolio, getUserExchanges, getUserReviews } from "@/app/actions/profile";
+import {
+  getUserByUsername,
+  getUserPortfolio,
+  getUserExchanges,
+  getUserReviews,
+} from "@/app/actions/profile";
 import HeroSection from "@/components/profile/hero-section";
 import TrustScoreCard from "@/components/profile/trust-score-card";
 import AboutSection from "@/components/profile/about-section";
@@ -27,12 +32,15 @@ export const metadata = {
 
 export default async function ProfilePage() {
   const userId = await getCurrentUserId();
-  
+
   if (!userId) {
     redirect("/api/auth/logout");
   }
 
-  const user = await getUserById(userId);
+  const account = await getUserById(userId);
+  const user = account?.username
+    ? { ...account, ...(await getUserByUsername(account.username)) }
+    : account;
   if (!user) {
     notFound();
   }
@@ -58,17 +66,19 @@ export default async function ProfilePage() {
   return (
     <div className="min-h-full bg-background">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl py-8 md:py-12">
-        
         {/* Top Action Bar */}
         <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-heading">Your Profile</h1>
-            <p className="text-body text-sm mt-2">This is how your profile appears to others. Click Edit to make changes.</p>
+            <p className="text-body text-sm mt-2">
+              This is how your profile appears to others. Click Edit to make
+              changes.
+            </p>
           </div>
-          
+
           <div className="flex items-center gap-3">
             <EditProfileModal user={user} />
-            <Link 
+            <Link
               href={`/u/${user.username}`}
               target="_blank"
               rel="noopener noreferrer"
@@ -82,11 +92,14 @@ export default async function ProfilePage() {
 
         {/* Responsive Grid: Sidebar (Left) + Main Content (Right) */}
         <div className="flex flex-col gap-8 lg:grid lg:grid-cols-12 lg:gap-12 lg:items-start">
-          
           {/* LEFT SIDEBAR (Hero + Stats + Trust Score + Calendar) */}
           <div className="contents lg:block lg:col-span-4 lg:space-y-6">
             <div className="order-1 relative">
-              <HeroSection user={user} isOwner={isOwner} currentUserId={userId} />
+              <HeroSection
+                user={user}
+                isOwner={isOwner}
+                currentUserId={userId}
+              />
             </div>
             <div className="order-2">
               <ProfileCompletion user={user} portfolio={portfolio} />
@@ -121,7 +134,6 @@ export default async function ProfilePage() {
             </div>
           </div>
         </div>
-
       </div>
     </div>
   );

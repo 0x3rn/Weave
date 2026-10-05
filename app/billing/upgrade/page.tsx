@@ -1,3 +1,4 @@
-export default function UpgradePage() {
-  return <div>Placeholder for /billing/upgrade</div>;
+import { redirect } from "next/navigation";
+export default function Page() {
+  redirect("/settings/billing");
 }

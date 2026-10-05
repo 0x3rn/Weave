@@ -1,33 +1,13 @@
-import { getCurrentUserId } from "@/app/actions/user";
-import { getUserById } from "@/lib/users";
-import { redirect } from "next/navigation";
-import { PrivacyClient } from "@/components/settings/privacy-client";
-
-export const metadata = {
-  title: "Privacy Settings - Weave",
-};
-
-export default async function PrivacySettingsPage() {
-  const userId = await getCurrentUserId();
-  
-  if (!userId) {
-    redirect("/login");
-  }
-
-  const user = await getUserById(userId);
-
-  if (!user) {
-    return <div className="p-8 text-error">Failed to load account data.</div>;
-  }
-
+import { SettingsPageContent } from "@/components/settings/settings-page";
+import { SETTINGS_SECTIONS } from "@/lib/settings";
+export const metadata = { title: "Privacy - Weave" };
+export default function Page() {
   return (
-    <div className="p-8">
-      <div className="border-b border-border pb-6 mb-8">
-        <h2 className="text-2xl font-black text-heading mb-2">Privacy</h2>
-        <p className="text-muted">Manage your profile visibility, search preferences, and contact permissions.</p>
-      </div>
-
-      <PrivacyClient user={user} />
-    </div>
+    <SettingsPageContent
+      title="Privacy"
+      description="Control who can discover, view, and contact you."
+      group="privacy"
+      sections={SETTINGS_SECTIONS.privacy}
+    />
   );
 }

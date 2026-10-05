@@ -1,6 +1,7 @@
 import { MarketplaceRequest } from "@/types";
 
-export const USE_DEMO_MARKETPLACE = true;
+export const USE_DEMO_MARKETPLACE =
+  process.env.NEXT_PUBLIC_USE_DEMO_MARKETPLACE === "true";
 
 const now = Date.now();
 const H = 3600000;

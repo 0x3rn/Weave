@@ -1,3 +1,4 @@
-export default function BillingPage() {
-  return <div>Placeholder for /billing</div>;
+import { redirect } from "next/navigation";
+export default function Page() {
+  redirect("/settings/billing");
 }

@@ -60,13 +60,17 @@ export interface User {
   // Admin / Operational fields
   skillHours?: number; // Current balance
   role?: UserRole;
-  status?: "active" | "suspended" | "banned";
+  status?: "active" | "suspended" | "banned" | "deactivated" | "deletion_pending" | "deletion_processing" | "deleted";
+  publicPrivacy?: Record<string, string | number | boolean>;
   adminNotes?: string;
 
   notificationPreferences?: NotificationPreferences;
 }
 
 export interface NotificationPreferences {
+  channels?: { inApp: Record<string, boolean>; email: Record<string, boolean> };
+  digest?: "instant" | "daily" | "weekly" | "never";
+  quietHours?: { enabled: boolean; start: string; end: string; timeZone: string };
   exchangeActivity: boolean;
   marketplace: boolean;
   messages: boolean;
@@ -347,7 +351,7 @@ export interface ExchangeRequest {
   updatedAt: string; // ISO string
 }
 
-export type MarketplaceRequestStatus = "open" | "in_progress" | "completed" | "cancelled";
+export type MarketplaceRequestStatus = "expired" | "open" | "in_progress" | "completed" | "cancelled";
 
 export interface MarketplaceRequest {
   id: string;
@@ -356,6 +360,7 @@ export interface MarketplaceRequest {
   requesterName: string;
   requesterAvatar?: string;
   requesterTrustScore: number;
+  requesterTrustScoreVisible?: boolean;
   requesterVerification: boolean;
   description: string;
   deliverables: string[];
@@ -371,6 +376,7 @@ export interface MarketplaceRequest {
   
   exchangeType: string; // "One-time", "Ongoing", etc.
   timeline: string; // e.g. "Within 2 weeks"
+  expiresAt?: string | null;
   preferredExperience: string; // "Intermediate"
   preferredTimeZone?: string;
   attachments: { name: string, url: string }[];
@@ -420,7 +426,7 @@ export interface MarketplaceFilters {
   sort?: string;
 }
 
-export type NotificationType = "exchange_request" | "request_update" | "system" | "application_received" | "application_accepted" | "exchange_started" | "milestone_completed" | "milestone_added" | "milestone_updated" | "file_uploaded" | "revision_requested" | "review_waiting" | "exchange_completed" | "exchange_cancelled" | "dispute_opened" | "dispute_resolved" | "message_received" | "new_match" | "saved_request_updated" | "request_expiring" | "new_professional" | "hours_earned" | "hours_reserved" | "hours_released" | "admin_adjustment" | "new_review" | "skill_endorsement" | "trust_score_increased" | "achievement_unlocked" | "verification_approved" | "profile_incomplete" | "subscription_renewed" | "payment_failed" | "security_alert" | "community_update";
+export type NotificationType = import("@/lib/notification-catalog").NotificationEventType | "exchange_request" | "request_update" | "system" | "application_received" | "application_accepted" | "exchange_started" | "milestone_completed" | "milestone_added" | "milestone_updated" | "file_uploaded" | "revision_requested" | "review_waiting" | "exchange_completed" | "exchange_cancelled" | "dispute_opened" | "dispute_resolved" | "message_received" | "new_match" | "saved_request_updated" | "request_expiring" | "new_professional" | "hours_earned" | "hours_reserved" | "hours_released" | "admin_adjustment" | "new_review" | "skill_endorsement" | "trust_score_increased" | "achievement_unlocked" | "verification_approved" | "profile_incomplete" | "subscription_renewed" | "payment_failed" | "security_alert" | "community_update";
 
 export type NotificationCategory = "Exchanges" | "Marketplace" | "Messages" | "Ledger" | "Reviews" | "Trust Score" | "Achievements" | "Account" | "Billing" | "Community" | "Security" | "System";
 
@@ -438,6 +444,14 @@ export interface Notification {
   isArchived?: boolean;
   link?: string;
   actionLabel?: string; // Optional label for CTA button
+  requiresAction?: boolean;
+  actionResolvedAt?: string;
+  canAcknowledge?: boolean;
+  why?: string;
+  groupKey?: string;
+  relatedUserId?: string;
+  relatedProject?: {id: string; title: string; link?: string};
+  relatedUser?: {id: string; name: string; username?: string; avatar?: string | null; link?: string};
   relatedId?: string; // e.g., requestId
   createdAt: string; // ISO string
 }

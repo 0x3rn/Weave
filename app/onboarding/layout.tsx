@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { verifyFirebaseSessionCookie } from "@/lib/firebase-auth-server";
+import { requireAuth } from "@/app/actions/user";
 import { getUserById } from "@/lib/users";
 
 export default async function OnboardingLayout({
@@ -19,8 +19,8 @@ export default async function OnboardingLayout({
 
   try {
     // 1. Verify the session cookie cryptographically
-    const decodedClaims = await verifyFirebaseSessionCookie(sessionCookie, true);
-    
+    const decodedClaims = await requireAuth();
+
     // 2. Fetch the user's application profile
     const userData = await getUserById(decodedClaims.uid);
     if (!userData) {
@@ -31,7 +31,6 @@ export default async function OnboardingLayout({
         targetRedirect = "/dashboard";
       }
     }
-
   } catch (error) {
     // If the session cookie is invalid, expired, or tampered with
     console.error("Onboarding route protection error:", error);

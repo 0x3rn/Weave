@@ -39,6 +39,7 @@ const NAV_ITEMS = [
   { name: "Disputes", href: "/admin/disputes", icon: AlertTriangle },
   { name: "Reports", href: "/admin/reports", icon: Flag },
   { name: "Subscriptions", href: "/admin/subscriptions", icon: CreditCard },
+  { name: "Announcements", href: "/admin/notifications", icon: FileText },
   { name: "CMS", href: "/admin/cms", icon: FileText },
   { name: "Blog", href: "/admin/blog", icon: PenTool },
   { name: "Analytics", href: "/admin/analytics", icon: BarChart3 },

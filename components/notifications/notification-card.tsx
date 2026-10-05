@@ -1,37 +1,69 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
+import { safeNotificationLink } from "@/lib/notification-catalog";
 import { Notification } from "@/types";
 import { formatDistanceToNow } from "date-fns";
 import {
-  Archive, Bell, Check, CreditCard, Info, Lock, MessageSquare,
-  RefreshCw, Shield, Star, Store, Trophy, User, Users, Wallet,
+  Archive,
+  Bell,
+  Check,
+  CreditCard,
+  Info,
+  Lock,
+  MessageSquare,
+  RefreshCw,
+  Shield,
+  Star,
+  Store,
+  Trophy,
+  User,
+  Users,
+  Wallet,
 } from "lucide-react";
 import Link from "next/link";
 
 export function getCategoryIcon(category?: string) {
   switch (category) {
-    case "Exchanges": return <RefreshCw className="h-5 w-5" />;
-    case "Marketplace": return <Store className="h-5 w-5" />;
-    case "Messages": return <MessageSquare className="h-5 w-5" />;
-    case "Ledger": return <Wallet className="h-5 w-5" />;
-    case "Reviews": return <Star className="h-5 w-5" />;
-    case "Trust Score": return <Shield className="h-5 w-5" />;
-    case "Achievements": return <Trophy className="h-5 w-5" />;
-    case "Account": return <User className="h-5 w-5" />;
-    case "Billing": return <CreditCard className="h-5 w-5" />;
-    case "Community": return <Users className="h-5 w-5" />;
-    case "Security": return <Lock className="h-5 w-5" />;
-    case "System": return <Info className="h-5 w-5" />;
-    default: return <Bell className="h-5 w-5" />;
+    case "Exchanges":
+      return <RefreshCw className="h-5 w-5" />;
+    case "Marketplace":
+      return <Store className="h-5 w-5" />;
+    case "Messages":
+      return <MessageSquare className="h-5 w-5" />;
+    case "Ledger":
+      return <Wallet className="h-5 w-5" />;
+    case "Reviews":
+      return <Star className="h-5 w-5" />;
+    case "Trust Score":
+      return <Shield className="h-5 w-5" />;
+    case "Achievements":
+      return <Trophy className="h-5 w-5" />;
+    case "Account":
+      return <User className="h-5 w-5" />;
+    case "Billing":
+      return <CreditCard className="h-5 w-5" />;
+    case "Community":
+      return <Users className="h-5 w-5" />;
+    case "Security":
+      return <Lock className="h-5 w-5" />;
+    case "System":
+      return <Info className="h-5 w-5" />;
+    default:
+      return <Bell className="h-5 w-5" />;
   }
 }
 
 export function getPriorityColor(priority?: string) {
   switch (priority) {
-    case "Critical": return "bg-error/10 text-error";
-    case "High": return "bg-warning/10 text-warning";
-    case "Normal": return "bg-primary/10 text-primary";
-    default: return "bg-surface-secondary text-muted";
+    case "Critical":
+      return "bg-error/10 text-error";
+    case "High":
+      return "bg-warning/10 text-warning";
+    case "Normal":
+      return "bg-blue-500/10 text-blue-700 dark:text-blue-300";
+    default:
+      return "bg-surface-secondary text-muted";
   }
 }
 
@@ -41,46 +73,184 @@ interface NotificationCardProps {
   onArchive?: (id: string) => void;
   onOpen?: (notification: Notification) => void;
   compact?: boolean;
+  onSelect?: (id: string) => void;
 }
 
 function internalHref(link?: string) {
-  return link?.startsWith("/") && !link.startsWith("//") ? link : undefined;
+  return safeNotificationLink(link);
 }
 
-export default function NotificationCard({ notification, onRead, onArchive, onOpen, compact = false }: NotificationCardProps) {
+export default function NotificationCard({
+  notification,
+  onRead,
+  onArchive,
+  onOpen,
+  onSelect,
+  compact = false,
+}: NotificationCardProps) {
   const href = internalHref(notification.link);
   const date = new Date(notification.createdAt);
-  const relativeTime = Number.isNaN(date.getTime()) ? "Recently" : formatDistanceToNow(date, { addSuffix: true });
+  const relativeTime = Number.isNaN(date.getTime())
+    ? "Recently"
+    : formatDistanceToNow(date, { addSuffix: true });
 
+  const gesture = useRef<{
+    x: number;
+    y: number;
+    timer?: ReturnType<typeof setTimeout>;
+    handled: boolean;
+  } | null>(null);
+  const suppressClick = useRef(false);
+  const [swipe, setSwipe] = useState(0);
+  useEffect(
+    () => () => {
+      if (gesture.current?.timer) clearTimeout(gesture.current.timer);
+    },
+    [],
+  );
   return (
-    <article className={`relative flex items-start gap-3 p-4 transition-colors ${!notification.isRead ? "bg-primary/5" : "bg-transparent"} ${compact ? "rounded-lg hover:bg-surface-secondary" : "border border-border rounded-[var(--radius-card)]"}`}>
-      <div className={`shrink-0 rounded-full p-2 ${getPriorityColor(notification.priority)}`}>
+    <article
+      onClick={(event) => {
+        if (!(event.target as HTMLElement).closest("button,a,input"))
+          onOpen?.(notification);
+      }}
+      style={{
+        touchAction: "pan-y",
+        transform: swipe ? `translateX(${swipe}px)` : undefined,
+      }}
+      onPointerDown={(event) => {
+        if (
+          event.pointerType !== "touch" ||
+          (event.target as HTMLElement).closest("button,a,input")
+        )
+          return;
+        suppressClick.current = false;
+        const next = {
+          x: event.clientX,
+          y: event.clientY,
+          handled: false,
+          timer: undefined as ReturnType<typeof setTimeout> | undefined,
+        };
+        if (onSelect)
+          next.timer = setTimeout(() => {
+            next.handled = true;
+            onSelect(notification.id);
+          }, 550);
+        gesture.current = next;
+      }}
+      onPointerMove={(event) => {
+        const start = gesture.current;
+        if (!start || event.pointerType !== "touch") return;
+        const dx = event.clientX - start.x,
+          dy = event.clientY - start.y;
+        if (Math.abs(dx) > 12 || Math.abs(dy) > 12) {
+          clearTimeout(start.timer);
+          start.timer = undefined;
+        }
+        if (!start.handled && Math.abs(dx) > Math.abs(dy) * 1.5)
+          setSwipe(Math.max(-85, Math.min(85, dx)));
+      }}
+      onPointerUp={(event) => {
+        const start = gesture.current;
+        if (!start) return;
+        clearTimeout(start.timer);
+        const dx = event.clientX - start.x,
+          dy = event.clientY - start.y;
+        if (!start.handled && Math.abs(dx) > 64 && Math.abs(dy) < 35) {
+          start.handled = true;
+          if (dx > 0 && !notification.isRead) onRead?.(notification.id);
+          else if (dx < 0) onArchive?.(notification.id);
+        }
+        suppressClick.current = start.handled;
+        gesture.current = null;
+        setSwipe(0);
+      }}
+      onPointerCancel={() => {
+        if (gesture.current?.timer) clearTimeout(gesture.current.timer);
+        gesture.current = null;
+        setSwipe(0);
+      }}
+      onClickCapture={(event) => {
+        if (suppressClick.current) {
+          event.preventDefault();
+          event.stopPropagation();
+          suppressClick.current = false;
+        }
+      }}
+      className={`relative flex items-start gap-3 p-4 transition-colors ${!notification.isRead ? "bg-primary/5" : "bg-transparent"} ${compact ? "rounded-lg hover:bg-surface-secondary" : "border border-border rounded-[var(--radius-card)]"}`}
+    >
+      <div
+        className={`shrink-0 rounded-full p-2 ${getPriorityColor(notification.priority)}`}
+      >
         {getCategoryIcon(notification.category)}
       </div>
       <div className="min-w-0 flex-1">
         <div className="mb-1 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
-          <button type="button" onClick={() => onOpen?.(notification)} className="min-w-0 text-left">
-            <span className="line-clamp-2 block text-sm font-bold text-heading">{notification.title}</span>
+          <button
+            type="button"
+            onClick={() => onOpen?.(notification)}
+            className="min-w-0 text-left"
+          >
+            <span className="line-clamp-2 block text-sm font-bold text-heading">
+              {notification.title}
+            </span>
           </button>
           <span className="shrink-0 text-xs text-muted">{relativeTime}</span>
         </div>
-        <p className={`text-sm text-body ${compact ? "line-clamp-2" : "line-clamp-3"}`}>{notification.message}</p>
+        <p
+          className={`text-sm text-body ${compact ? "line-clamp-2" : "line-clamp-3"}`}
+        >
+          {notification.message}
+        </p>
+        {notification.why && (
+          <p className="mt-2 text-xs leading-5 text-muted">
+            {notification.why}
+          </p>
+        )}
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          {notification.category && <span className="rounded-full bg-surface-secondary px-2 py-1 text-[11px] font-semibold text-muted">{notification.category}</span>}
-          {notification.priority && notification.priority !== "Normal" && <span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${getPriorityColor(notification.priority)}`}>{notification.priority}</span>}
+          {notification.requiresAction && (
+            <span className="rounded-full border border-warning/30 bg-warning/10 px-2 py-1 text-[11px] font-semibold text-heading">
+              Action required
+            </span>
+          )}
+          {notification.category && (
+            <span className="rounded-full bg-surface-secondary px-2 py-1 text-[11px] font-semibold text-muted">
+              {notification.category}
+            </span>
+          )}
+          {notification.priority && (
+            <span
+              className={`rounded-full px-2 py-1 text-[11px] font-semibold ${getPriorityColor(notification.priority)}`}
+            >
+              {notification.priority}
+            </span>
+          )}
           {href && notification.actionLabel && (
-            <Link href={href} onClick={() => !notification.isRead && onRead?.(notification.id)} className="rounded-[var(--radius-button)] bg-primary px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-primary-hover">
+            <Link
+              href={href}
+              onClick={() => !notification.isRead && onRead?.(notification.id)}
+              className="rounded-[var(--radius-button)] bg-primary px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-primary-hover"
+            >
               {notification.actionLabel}
             </Link>
           )}
           {!notification.isRead && onRead && (
-            <button type="button" onClick={() => onRead(notification.id)} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-primary hover:text-primary-hover">
+            <button
+              type="button"
+              onClick={() => onRead(notification.id)}
+              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-primary hover:text-primary-hover"
+            >
               <Check className="h-3.5 w-3.5" /> Mark read
             </button>
           )}
           {onArchive && (
-            <button type="button" onClick={() => onArchive(notification.id)} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-muted hover:text-heading">
-              <Archive className="h-3.5 w-3.5" /> {notification.isArchived ? "Restore" : "Archive"}
+            <button
+              type="button"
+              onClick={() => onArchive(notification.id)}
+              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-muted hover:text-heading"
+            >
+              <Archive className="h-3.5 w-3.5" />{" "}
+              {notification.isArchived ? "Restore" : "Archive"}
             </button>
           )}
         </div>

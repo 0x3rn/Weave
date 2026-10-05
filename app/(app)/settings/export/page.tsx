@@ -1,17 +1,26 @@
+import { requireAuth } from "@/app/actions/user";
+import { getUserById } from "@/lib/users";
+import { ExportClient } from "@/components/settings/export-client";
+import { SettingsEditor } from "@/components/settings/settings-editor";
+import { SETTINGS_SECTIONS } from "@/lib/settings";
 export const metadata = { title: "Data & Export - Weave" };
-
-export default function ExportSettingsPage() {
+export default async function Page() {
+  const { uid } = await requireAuth();
+  const user = await getUserById(uid);
   return (
-    <div className="p-8">
-      <div className="border-b border-border pb-6 mb-8">
-        <h2 className="text-2xl font-black text-heading mb-2">Data & Export</h2>
-        <p className="text-muted">Export your data and account backup.</p>
-      </div>
-
-      <div className="bg-surface-secondary border border-border rounded-xl p-12 text-center">
-        <h3 className="text-lg font-bold text-heading mb-2">Coming Soon</h3>
-        <p className="text-muted text-sm">Data export tools are currently under development.</p>
-      </div>
+    <div className="space-y-8 p-4 sm:p-8">
+      <header>
+        <h2 className="mb-2 text-2xl font-bold text-heading">Data & Export</h2>
+        <p className="text-muted">
+          Download your data and manage archived conversations.
+        </p>
+      </header>
+      <ExportClient />
+      <SettingsEditor
+        group="dataRetention"
+        initial={user?.dataRetention}
+        sections={SETTINGS_SECTIONS.dataRetention}
+      />
     </div>
   );
 }

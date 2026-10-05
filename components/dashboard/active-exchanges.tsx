@@ -1,11 +1,20 @@
 "use client";
 
+import { usePreferences } from "@/components/settings/preferences-provider";
+import { exchangeWorkspacePath } from "@/lib/workspace-preferences";
 import { Exchange } from "@/types";
-import { ArrowRight, Clock, RefreshCcw, Handshake } from "lucide-react";
+import { ArrowRight, Clock, RefreshCcw } from "lucide-react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 
-export default function ActiveExchanges({ exchanges, currentUserId }: { exchanges: Exchange[], currentUserId: string }) {
+export default function ActiveExchanges({
+  exchanges,
+  currentUserId,
+}: {
+  exchanges: Exchange[];
+  currentUserId: string;
+}) {
+  const preferences = usePreferences();
   if (exchanges.length === 0) return null;
 
   return (
@@ -16,13 +25,18 @@ export default function ActiveExchanges({ exchanges, currentUserId }: { exchange
             <RefreshCcw className="w-5 h-5 text-primary" />
             Active Exchanges
           </h2>
-          <p className="text-sm text-muted mt-1 font-medium">Exchanges currently in progress</p>
+          <p className="text-sm text-muted mt-1 font-medium">
+            Exchanges currently in progress
+          </p>
         </div>
-        <Link href="/exchanges" className="text-sm font-semibold text-primary hover:underline flex items-center gap-1 transition-colors">
+        <Link
+          href="/exchanges"
+          className="text-sm font-semibold text-primary hover:underline flex items-center gap-1 transition-colors"
+        >
           View All <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
-      
+
       <div className="overflow-x-auto">
         <table className="w-full text-sm text-left">
           <thead className="text-xs uppercase text-muted bg-background border-b border-border">
@@ -38,16 +52,23 @@ export default function ActiveExchanges({ exchanges, currentUserId }: { exchange
           <tbody className="divide-y divide-border">
             {exchanges.map((exchange) => {
               const isProvider = exchange.providerId === currentUserId;
-              
+
               return (
-                <tr key={exchange.id} className="hover:bg-background transition-colors">
+                <tr
+                  key={exchange.id}
+                  className="hover:bg-background transition-colors"
+                >
                   <td className="px-6 py-4 font-medium text-heading">
                     {exchange.title}
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`inline-flex px-2 py-1 rounded-md text-xs font-medium border ${
-                      isProvider ? 'bg-primary/10 border-primary/20 text-primary' : 'bg-blue-500/10 border-blue-500/20 text-blue-500'
-                    }`}>
+                    <span
+                      className={`inline-flex px-2 py-1 rounded-md text-xs font-medium border ${
+                        isProvider
+                          ? "bg-primary/10 border-primary/20 text-primary"
+                          : "bg-blue-500/10 border-blue-500/20 text-blue-500"
+                      }`}
+                    >
                       {isProvider ? "Provider" : "Receiver"}
                     </span>
                   </td>
@@ -61,14 +82,25 @@ export default function ActiveExchanges({ exchanges, currentUserId }: { exchange
                     </span>
                   </td>
                   <td className="px-6 py-4 text-muted">
-                    {formatDistanceToNow(new Date(exchange.createdAt), { addSuffix: true })}
+                    {formatDistanceToNow(new Date(exchange.createdAt), {
+                      addSuffix: true,
+                    })}
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <Link 
-                      href={`/exchanges/${exchange.id}${exchange.status === "pending_proposal" ? "/start" : ""}`}
+                    <Link
+                      href={
+                        exchange.status === "pending_proposal"
+                          ? `/exchanges/${exchange.id}/start`
+                          : exchangeWorkspacePath(
+                              exchange.id,
+                              preferences.exchangeView,
+                            )
+                      }
                       className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-semibold bg-background border border-border rounded-[var(--radius-button)] hover:border-primary hover:text-primary transition-all"
                     >
-                      {exchange.status === "pending_proposal" ? "Review contract" : "Workspace"}
+                      {exchange.status === "pending_proposal"
+                        ? "Review contract"
+                        : "Workspace"}
                     </Link>
                   </td>
                 </tr>

@@ -4,6 +4,7 @@ import { verifyFirebaseSessionCookie } from "@/lib/firebase-auth-server";
 import { getUserById } from "@/lib/users";
 import { iso, sql } from "@/lib/neon";
 import DashboardShell from "@/components/dashboard/dashboard-shell";
+import { requireAuth } from "@/app/actions/user";
 
 export default async function DashboardLayout({
   children,
@@ -22,8 +23,11 @@ export default async function DashboardLayout({
 
   try {
     // 1. Verify the session cookie cryptographically
-    const decodedClaims = await verifyFirebaseSessionCookie(sessionCookie, true);
-    
+    const decodedClaims = await verifyFirebaseSessionCookie(
+      sessionCookie,
+      true,
+    );
+
     // 2. Fetch the user's application profile to ensure it still exists
     const user = await getUserById(decodedClaims.uid);
     if (!user) {
@@ -31,16 +35,22 @@ export default async function DashboardLayout({
     } else {
       // Unlike /admin, we don't require isAdmin === true here.
       // Any valid, authenticated user can access the dashboard.
-      
+
       // 3. Ensure user has completed onboarding
       userData = user;
-      if (userData.onboarded !== true) {
+      if (userData.status !== "active") {
+        targetRedirect = "/account-recovery";
+      } else if (userData.onboarded !== true) {
         targetRedirect = "/onboarding";
       } else {
+        await requireAuth();
         // 4. Verify the specific device session if deviceId is present
         const deviceId = cookieStore.get("deviceId")?.value;
         if (deviceId) {
-          const [device] = await sql.query("select last_active_at from user_devices where id=$1 and user_id=$2", [deviceId, decodedClaims.uid]);
+          const [device] = await sql.query(
+            "select last_active_at from user_devices where id=$1 and user_id=$2",
+            [deviceId, decodedClaims.uid],
+          );
           if (!device) {
             // Device was revoked or deleted
             targetRedirect = "/api/auth/logout";
@@ -50,13 +60,20 @@ export default async function DashboardLayout({
             const now = new Date();
             if (now.getTime() - lastActive.getTime() > 24 * 60 * 60 * 1000) {
               // Fire and forget
-              await sql.query("update user_devices set last_active_at=$3,payload=payload || $4::jsonb where id=$1 and user_id=$2", [deviceId, decodedClaims.uid, now.toISOString(), JSON.stringify({ lastActive: now.toISOString() })]);
+              await sql.query(
+                "update user_devices set last_active_at=$3,payload=payload || $4::jsonb where id=$1 and user_id=$2",
+                [
+                  deviceId,
+                  decodedClaims.uid,
+                  now.toISOString(),
+                  JSON.stringify({ lastActive: now.toISOString() }),
+                ],
+              );
             }
           }
         }
       }
     }
-
   } catch (error) {
     // If the session cookie is invalid, expired, or tampered with
     console.error("Dashboard route protection error:", error);
