@@ -118,6 +118,10 @@ export async function verifyCheckout(reference: string, userId?: string) {
       "update billing_checkouts set verified_at=now() where reference=$1",
       [reference],
     ),
+    tx.query(
+      "update billing_accounts set billing_interval=$2 where user_id=$1",
+      [checkout.user_id, plan.interval || null],
+    ),
   ]);
   return { userId: String(checkout.user_id) };
 }
@@ -134,10 +138,27 @@ export async function refreshSubscription(userId: string) {
   );
   const plan = object(subscription.plan),
     authorization = object(subscription.authorization);
-  const active = ["active", "non-renewing", "attention"].includes(
-    String(subscription.status),
+  const [policy] = await sql.query(
+    "select value->>'failedPaymentGraceDays'as days from platform_settings where section='billing'",
   );
+  const pastDue =
+    subscription.status === "attention"
+      ? account.past_due_since || new Date().toISOString()
+      : null;
+  const active =
+    ["active", "non-renewing"].includes(String(subscription.status)) ||
+    (subscription.status === "attention" &&
+      Date.now() - new Date(String(pastDue)).getTime() <
+        Number(policy?.days ?? 7) * 86400000);
   await sql.transaction((tx) => [
+    tx.query("update billing_accounts set past_due_since=$2 where user_id=$1", [
+      userId,
+      pastDue,
+    ]),
+    tx.query(
+      "update billing_accounts set billing_interval=$2 where user_id=$1",
+      [userId, plan.interval || null],
+    ),
     tx.query(
       "update billing_accounts set subscription_status=$2,renewal_at=$3,amount=$4,currency=$5,payment_method=$6::jsonb,updated_at=now() where user_id=$1",
       [

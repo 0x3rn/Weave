@@ -29,7 +29,9 @@
     "test:notifications": "node scripts/verify-notification-center.mjs",
     "test:admin": "node scripts/verify-admin-dashboard.mjs",
     "db:apply-admin": "node --env-file=.env.local scripts/apply-neon-schema.mjs 0013_admin_dashboard_integrity.sql",
-    "db:apply-notifications": "node --env-file=.env.local scripts/apply-neon-schema.mjs 0012_notification_center.sql"
+    "db:apply-notifications": "node --env-file=.env.local scripts/apply-neon-schema.mjs 0012_notification_center.sql",
+    "test:admin-operations": "node scripts/verify-admin-operations.mjs",
+    "db:apply-admin-operations": "node --env-file=.env.local scripts/apply-neon-schema.mjs 0014_admin_operations.sql"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1127.0",

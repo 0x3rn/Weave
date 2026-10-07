@@ -1,10 +1,10 @@
 "use server";
-import { requireAdminUser } from "./auth";
+import { adminSession, adminRequestContext } from "@/lib/admin-ops-access";
 import { sql } from "@/lib/neon";
 import { safeNotificationLink } from "@/lib/notification-catalog";
 import { revalidatePath } from "next/cache";
 export async function getNotificationAnnouncements() {
-  await requireAdminUser();
+  await adminSession("announcements.read");
   return sql.query(
     "select id,event_type,title,message,link,publish_at,published_at from notification_announcements order by publish_at desc limit 100",
   );
@@ -17,7 +17,7 @@ export async function publishNotificationAnnouncement(data: {
   publishAt?: string;
 }) {
   try {
-    const uid = await requireAdminUser();
+    const { uid } = await adminSession("announcements.write");
     if (
       ![
         "community_update",
@@ -43,7 +43,7 @@ export async function publishNotificationAnnouncement(data: {
     if (!Number.isFinite(date.getTime()))
       throw new Error("Choose a valid publish date");
     await sql.query(
-      "insert into notification_announcements(id,author_id,event_type,title,message,link,publish_at) values($1,$2,$3,$4,$5,$6,$7)",
+      "with changed as(insert into notification_announcements(id,author_id,event_type,title,message,link,publish_at) values($1,$2,$3,$4,$5,$6,$7)returning id,title,event_type,publish_at)select admin_ops_audit($2,'announcements',id,'publish',null,to_jsonb(changed),'Schedule platform announcement',$1,$8::jsonb)from changed",
       [
         crypto.randomUUID(),
         uid,
@@ -52,6 +52,7 @@ export async function publishNotificationAnnouncement(data: {
         data.message.trim(),
         data.link || null,
         date.toISOString(),
+        JSON.stringify(await adminRequestContext()),
       ],
     );
     revalidatePath("/admin/notifications");
@@ -67,10 +68,10 @@ export async function publishNotificationAnnouncement(data: {
   }
 }
 export async function cancelNotificationAnnouncement(id: string) {
-  const uid = await requireAdminUser();
+  const { uid } = await adminSession("announcements.write");
   const rows = await sql.query(
-    "delete from notification_announcements where id=$1 and published_at is null and $2::text is not null returning id",
-    [id, uid],
+    "with removed as(delete from notification_announcements where id=$1 and published_at is null returning id,title,event_type,publish_at),audited as(select admin_ops_audit($2,'announcements',id,'cancel',to_jsonb(removed),null,'Cancel scheduled announcement',$3,$4::jsonb)from removed) select id from removed cross join audited",
+    [id, uid, crypto.randomUUID(), JSON.stringify(await adminRequestContext())],
   );
   revalidatePath("/admin/notifications");
   return rows.length

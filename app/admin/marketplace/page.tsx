@@ -1,9 +1,10 @@
-import ComingSoon from "@/components/admin/coming-soon";
-
-export const metadata = {
-  title: "Marketplace Operations"
-};
-
-export default function AdminPage() {
-  return <ComingSoon title="Marketplace Operations" />;
+import OperationsPage from "@/components/admin/operations-page";
+export const dynamic = "force-dynamic";
+export const metadata = { title: "marketplace" };
+export default function Page({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  return <OperationsPage area="marketplace" searchParams={searchParams} />;
 }

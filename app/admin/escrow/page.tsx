@@ -1,9 +1,10 @@
-import ComingSoon from "@/components/admin/coming-soon";
-
-export const metadata = {
-  title: "Escrow Holdings"
-};
-
-export default function AdminPage() {
-  return <ComingSoon title="Escrow Holdings" />;
+import OperationsPage from "@/components/admin/operations-page";
+export const dynamic = "force-dynamic";
+export const metadata = { title: "escrow" };
+export default function Page({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  return <OperationsPage area="escrow" searchParams={searchParams} />;
 }

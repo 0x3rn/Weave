@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Menu, X, Sun, Moon } from "lucide-react";
 import { useTheme } from "next-themes";
+import { SiteManagedContent } from "./site-managed-content";
 
 export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -18,10 +19,16 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <SiteManagedContent placement="announcement" />
+      <SiteManagedContent placement="header" />
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           <div className="flex flex-1 items-center justify-start">
-            <Link href="/" className="flex items-center gap-2" onClick={() => setIsMobileMenuOpen(false)}>
+            <Link
+              href="/"
+              className="flex items-center gap-2"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
               <span className="font-heading text-xl font-bold tracking-tight text-primary">
                 Weave
               </span>
@@ -30,13 +37,22 @@ export default function Header() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex flex-1 justify-center gap-6 items-center">
-            <Link href="/#how-it-works" className="text-sm font-medium text-muted hover:text-primary transition-colors">
+            <Link
+              href="/#how-it-works"
+              className="text-sm font-medium text-muted hover:text-primary transition-colors"
+            >
               How It Works
             </Link>
-            <Link href="/#marketplace" className="text-sm font-medium text-muted hover:text-primary transition-colors">
+            <Link
+              href="/#marketplace"
+              className="text-sm font-medium text-muted hover:text-primary transition-colors"
+            >
               Marketplace
             </Link>
-            <Link href="/#pricing" className="text-sm font-medium text-muted hover:text-primary transition-colors">
+            <Link
+              href="/#pricing"
+              className="text-sm font-medium text-muted hover:text-primary transition-colors"
+            >
               Pricing
             </Link>
           </nav>
@@ -45,18 +61,30 @@ export default function Header() {
           <div className="hidden md:flex flex-1 items-center justify-end gap-3 lg:gap-4">
             {mounted && (
               <button
-                onClick={() => setTheme(currentTheme === "dark" ? "light" : "dark")}
+                onClick={() =>
+                  setTheme(currentTheme === "dark" ? "light" : "dark")
+                }
                 className="p-2 text-muted hover:text-primary transition-colors rounded-full hover:bg-surface-secondary"
                 aria-label="Toggle theme"
               >
-                {currentTheme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                {currentTheme === "dark" ? (
+                  <Sun className="w-5 h-5" />
+                ) : (
+                  <Moon className="w-5 h-5" />
+                )}
               </button>
             )}
-            
-            <Link href="/login" className="text-sm font-medium text-heading hover:text-primary transition-colors ml-2">
+
+            <Link
+              href="/login"
+              className="text-sm font-medium text-heading hover:text-primary transition-colors ml-2"
+            >
               Sign In
             </Link>
-            <Link href="/request-invite" className="text-sm font-medium text-surface bg-primary border border-transparent px-4 py-2 rounded-[var(--radius-button)] hover:bg-primary-hover transition-colors">
+            <Link
+              href="/request-invite"
+              className="text-sm font-medium text-surface bg-primary border border-transparent px-4 py-2 rounded-[var(--radius-button)] hover:bg-primary-hover transition-colors"
+            >
               Request Invite
             </Link>
           </div>
@@ -65,18 +93,28 @@ export default function Header() {
           <div className="md:hidden flex items-center gap-2">
             {mounted && (
               <button
-                onClick={() => setTheme(currentTheme === "dark" ? "light" : "dark")}
+                onClick={() =>
+                  setTheme(currentTheme === "dark" ? "light" : "dark")
+                }
                 className="p-2 text-muted hover:text-primary transition-colors rounded-full"
                 aria-label="Toggle theme"
               >
-                {currentTheme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                {currentTheme === "dark" ? (
+                  <Sun className="w-5 h-5" />
+                ) : (
+                  <Moon className="w-5 h-5" />
+                )}
               </button>
             )}
-            <button 
+            <button
               className="p-2 text-muted hover:text-primary"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             >
-              {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {isMobileMenuOpen ? (
+                <X className="w-6 h-6" />
+              ) : (
+                <Menu className="w-6 h-6" />
+              )}
             </button>
           </div>
         </div>
@@ -86,21 +124,41 @@ export default function Header() {
       {isMobileMenuOpen && (
         <div className="md:hidden border-t border-border bg-background">
           <div className="container mx-auto px-4 py-4 flex flex-col space-y-4">
-            <Link href="/#how-it-works" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium text-body hover:text-primary transition-colors">
+            <Link
+              href="/#how-it-works"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="text-sm font-medium text-body hover:text-primary transition-colors"
+            >
               How It Works
             </Link>
-            <Link href="/#marketplace" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium text-body hover:text-primary transition-colors">
+            <Link
+              href="/#marketplace"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="text-sm font-medium text-body hover:text-primary transition-colors"
+            >
               Marketplace
             </Link>
-            <Link href="/#pricing" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium text-body hover:text-primary transition-colors">
+            <Link
+              href="/#pricing"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="text-sm font-medium text-body hover:text-primary transition-colors"
+            >
               Pricing
             </Link>
-            
+
             <div className="pt-4 mt-2 border-t border-border flex flex-col gap-3">
-              <Link href="/login" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium text-center text-heading bg-surface border border-border px-4 py-3 rounded-[var(--radius-button)] hover:bg-surface-secondary transition-colors">
+              <Link
+                href="/login"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="text-sm font-medium text-center text-heading bg-surface border border-border px-4 py-3 rounded-[var(--radius-button)] hover:bg-surface-secondary transition-colors"
+              >
                 Sign In
               </Link>
-              <Link href="/request-invite" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium text-center text-surface bg-primary border border-transparent px-4 py-3 rounded-[var(--radius-button)] hover:bg-primary-hover transition-colors">
+              <Link
+                href="/request-invite"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="text-sm font-medium text-center text-surface bg-primary border border-transparent px-4 py-3 rounded-[var(--radius-button)] hover:bg-primary-hover transition-colors"
+              >
                 Request Invite
               </Link>
             </div>

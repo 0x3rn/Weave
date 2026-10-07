@@ -17,6 +17,9 @@ function escapeHtml(value: string) {
     .replaceAll("'", "&#39;");
 }
 export async function deliverNotificationEmails() {
+  const [templateRow] = await sql.query(
+    "select value->>'emailTemplate' as template from platform_settings where section='notifications'",
+  );
   const rows = await sql.query(
     `with due as(select q.notification_id from notification_email_queue q join users u on u.id=q.user_id where coalesce(u.account_status,'active')='active' and sent_at is null and due_at<=now() and attempts<8 and (claimed_at is null or claimed_at<now()-interval '10 minutes') order by due_at limit 100 for update of q skip locked), claimed as(update notification_email_queue q set claimed_at=now(),attempts=q.attempts+1 from due where q.notification_id=due.notification_id returning q.notification_id,q.user_id) select c.notification_id,c.user_id,n.why,n.title,n.message,n.link,n.notification_type,u.email,u.payload from claimed c join notifications n on n.id=c.notification_id join users u on u.id=c.user_id where coalesce(u.account_status,'active')='active'`,
   );
@@ -87,6 +90,17 @@ export async function deliverNotificationEmails() {
             safeNotificationLink(
               typeof row.link === "string" ? row.link : undefined,
             ) || "/notifications";
+          if (templateRow?.template) {
+            const text = String(templateRow.template)
+              .replaceAll("{{title}}", String(row.title))
+              .replaceAll("{{message}}", String(row.message))
+              .replaceAll("{{url}}", origin + path);
+            return (
+              "<section><p>" +
+              escapeHtml(text).replaceAll("\n", "<br/>") +
+              "</p></section>"
+            );
+          }
           return (
             "<section><h3>" +
             escapeHtml(String(row.title)) +

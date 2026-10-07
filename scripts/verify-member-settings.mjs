@@ -23,7 +23,9 @@ async function loadModule(path, mocks = {}) {
   return loaded.exports;
 }
 const catalog = await loadModule("lib/notification-catalog.ts");
-const settings = await loadModule("lib/settings.ts",{"./notification-catalog":catalog});
+const settings = await loadModule("lib/settings.ts", {
+  "./notification-catalog": catalog,
+});
 assert.equal(settings.settingsFor("privacy", {}).showSkillHourBalance, false);
 assert.equal(
   settings.settingsFor("preferences", { maxConcurrentExchanges: "bad" })
@@ -201,7 +203,9 @@ try {
   await db.exec(
     await readFile("database/migrations/0011_member_settings.sql", "utf8"),
   );
-  await db.exec(await readFile("database/migrations/0012_notification_center.sql","utf8"));
+  await db.exec(
+    await readFile("database/migrations/0012_notification_center.sql", "utf8"),
+  );
   const query = (sql, args = []) => db.query(sql, args);
   const scalar = async (sql, args = []) =>
     Object.values((await query(sql, args)).rows[0])[0];
@@ -318,16 +322,16 @@ try {
   ]);
   await assert.rejects(
     query(
-      "insert into exchanges(id,requester_id,provider_id,status,is_mutual,payload) values('oneway','a','b','in_progress',false,'{}')",
+      "insert into exchanges(id,requester_id,provider_id,status,is_mutual,skill_hours,payload) values('oneway','a','b','in_progress',false,1,'{}')",
     ),
     /reciprocal/,
   );
   await query(
-    "insert into exchanges(id,requester_id,provider_id,status,is_mutual,payload) values('swap','a','b','in_progress',true,'{}')",
+    "insert into exchanges(id,requester_id,provider_id,status,is_mutual,skill_hours,payload) values('swap','a','b','in_progress',true,1,'{}')",
   );
   await assert.rejects(
     query(
-      "insert into exchanges(id,requester_id,provider_id,status,is_mutual,payload) values('second','c','b','in_progress',true,'{}')",
+      "insert into exchanges(id,requester_id,provider_id,status,is_mutual,skill_hours,payload) values('second','c','b','in_progress',true,1,'{}')",
     ),
     /concurrent/,
   );
@@ -457,7 +461,10 @@ try {
     },
     "./settings": settings,
     "./notification-catalog": catalog,
-    "./notification-maintenance": {productivitySummary:async()=>({}),summaryHtml:()=>""},
+    "./notification-maintenance": {
+      productivitySummary: async () => ({}),
+      summaryHtml: () => "",
+    },
   });
   assert.deepEqual(await delivery.deliverNotificationEmails(), {
     sent: 0,

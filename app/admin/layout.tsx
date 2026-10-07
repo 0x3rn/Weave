@@ -1,59 +1,23 @@
-import { Metadata } from "next";
-import AdminShell from "../../components/admin/admin-shell";
-
-export const metadata: Metadata = {
-  title: {
-    default: "Admin Dashboard | Weave",
-    template: "%s | Weave Admin",
-  },
-  robots: {
-    index: false,
-    follow: false,
-  },
-};
-
-import { cookies } from "next/headers";
+import { type Metadata } from "next";
 import { redirect } from "next/navigation";
-import { requireAuth } from "@/app/actions/user";
-import { getUserById } from "@/lib/users";
-
+import AdminShell from "@/components/admin/admin-shell";
+import { adminSession } from "@/lib/admin-ops-access";
+export const metadata: Metadata = {
+  title: { default: "Admin Dashboard | Weave", template: "%s | Weave Admin" },
+  robots: { index: false, follow: false },
+};
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get("session")?.value;
-
-  if (!sessionCookie) {
+  let session: Awaited<ReturnType<typeof adminSession>>;
+  try {
+    session = await adminSession();
+  } catch (error) {
+    if (error instanceof Error && error.message === "Forbidden")
+      redirect("/dashboard");
     redirect("/api/auth/logout");
   }
-
-  let targetRedirect = "";
-
-  try {
-    // 1. Verify the session cookie
-    const decodedClaims = await requireAuth();
-
-    // 2. Fetch the user's application profile
-    const userData = await getUserById(decodedClaims.uid);
-    if (!userData) {
-      targetRedirect = "/api/auth/logout";
-    } else {
-      // 3. Check for admin privileges
-      if (userData.role !== "Admin" || userData.status !== "active") {
-        targetRedirect = "/dashboard"; // Send non-admins back to their dashboard
-      }
-    }
-  } catch (error) {
-    // If the session cookie is invalid, expired, or tampered with
-    console.error("Admin route protection error:", error);
-    targetRedirect = "/api/auth/logout";
-  }
-
-  if (targetRedirect) {
-    redirect(targetRedirect);
-  }
-
-  return <AdminShell>{children}</AdminShell>;
+  return <AdminShell session={session}>{children}</AdminShell>;
 }

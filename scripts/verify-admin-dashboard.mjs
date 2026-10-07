@@ -42,6 +42,9 @@ try {
       "utf8",
     ),
   );
+  await db.exec(
+    await readFile("database/migrations/0014_admin_operations.sql", "utf8"),
+  );
   const sql = {
     query: async (query, args) => (await db.query(query, args)).rows,
   };
@@ -56,9 +59,20 @@ try {
     "./neon": neon,
   });
   let uid = "admin";
+  const access = await load("lib/admin-ops-access.ts", {
+    "server-only": {},
+    "./neon": neon,
+    "./admin-ops-types": await load("lib/admin-ops-types.ts"),
+    "@/app/actions/user": {
+      requireAuth: async () => {
+        if (!uid) throw new Error("Unauthorized");
+        return { uid, auth_time: Date.now() / 1000 };
+      },
+    },
+    "next/headers": { headers: async () => new Headers() },
+  });
   const guard = await load("app/actions/admin/auth.ts", {
-    "@/lib/users": users,
-    "../user": { getCurrentUserId: async () => uid },
+    "@/lib/admin-ops-access": access,
   });
   const cache = { revalidatePath: () => {} };
   let mailOk = false,
@@ -476,7 +490,7 @@ try {
         "insert into users(id,role,account_status,payload) values('busy-member','Member','active','{}')",
       );
       await db.query(
-        "insert into exchanges(id,requester_id,provider_id,status,payload)values('busy-exchange','busy-member','stale','in_progress','{}')",
+        "insert into exchanges(id,requester_id,provider_id,status,skill_hours,payload)values('busy-exchange','busy-member','stale','in_progress',1,'{}')",
       );
       assert.ok((await admin.deleteUserAccount("busy-member")).error);
     },

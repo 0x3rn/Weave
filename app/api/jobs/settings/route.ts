@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { runAdminMaintenance } from "@/lib/admin-maintenance";
 import { deliverNotificationEmails } from "@/lib/notification-email";
 import { completeDueDeletions } from "@/lib/account-maintenance";
 import {
@@ -20,15 +21,20 @@ export async function POST(request: Request) {
   if (expected.length !== actual.length || !timingSafeEqual(expected, actual))
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   try {
+    const admin = await runAdminMaintenance();
     const activity = await generateNotificationActivity();
     const digest = await deliverProductivityDigests();
     const email = await deliverNotificationEmails();
     const deletion = await completeDueDeletions();
     return Response.json(
-      { activity, digest, email, deletion },
+      { activity, digest, email, deletion, admin },
       {
         status:
-          activity.failed || digest.failed || deletion.failed || email.failed
+          activity.failed ||
+          digest.failed ||
+          deletion.failed ||
+          email.failed ||
+          admin.failed
             ? 503
             : 200,
         headers: { "cache-control": "no-store" },

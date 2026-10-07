@@ -1,9 +1,10 @@
-import { getMessageReports } from "@/app/actions/admin/message-reports";
-import MessageReportsClient from "@/components/admin/message-reports-client";
-
-export const metadata = { title: "Reports & Flagging" };
-
-export default async function AdminPage() {
-  const reports = await getMessageReports();
-  return <MessageReportsClient reports={reports} />;
+import OperationsPage from "@/components/admin/operations-page";
+export const dynamic = "force-dynamic";
+export const metadata = { title: "reports" };
+export default function Page({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  return <OperationsPage area="reports" searchParams={searchParams} />;
 }

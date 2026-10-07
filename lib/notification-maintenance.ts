@@ -138,6 +138,9 @@ export function summaryHtml(
   return `<h2>Good morning 👋</h2><p>Today you have:</p><ul><li>${summary.reviews} exchanges awaiting review</li><li>${summary.messages} unread messages</li><li>${summary.matches} new collaboration matches</li>${summary.trustChanges ? `<li>Your Trust Score is now ${summary.trust}</li>` : ""}</ul>`;
 }
 export async function deliverProductivityDigests() {
+  const [platform] = await sql.query(
+    "select value->>'digestHour' as hour from platform_settings where section='notifications'",
+  );
   const members = await sql.query(
     `select id,email,payload from users where coalesce(account_status,'active')='active' and payload->'notificationPreferences'->'dailySummary'->>'enabled'='true' and email is not null`,
   );
@@ -159,8 +162,12 @@ export async function deliverProductivityDigests() {
     }).formatToParts(new Date());
     const part = (key: string) =>
       parts.find((value) => value.type === key)?.value || "";
-    if (`${part("hour")}:${part("minute")}` < preferences.dailySummary.time)
-      continue;
+    const raw = object(object(row.payload).notificationPreferences);
+    const summary = object(raw.dailySummary);
+    const scheduled = summary.time
+      ? preferences.dailySummary.time
+      : String(platform?.hour ?? 8).padStart(2, "0") + ":00";
+    if (`${part("hour")}:${part("minute")}` < scheduled) continue;
     const period = `${part("year")}-${part("month")}-${part("day")}`;
     const claimed = await sql.query(
       `insert into notification_digest_deliveries(user_id,period,claimed_at,attempts) values($1,$2,now(),1) on conflict(user_id,period) do update set claimed_at=now(),attempts=notification_digest_deliveries.attempts+1 where notification_digest_deliveries.sent_at is null and notification_digest_deliveries.attempts<8 and notification_digest_deliveries.claimed_at<now()-interval '15 minutes' returning user_id`,

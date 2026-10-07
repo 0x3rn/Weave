@@ -1,14 +1,7 @@
 "use server";
 
-import { getUserById } from "@/lib/users";
-import { getCurrentUserId } from "../user";
+import { adminSession } from "@/lib/admin-ops-access";
 
 export async function requireAdminUser() {
-  const uid = await getCurrentUserId();
-  if (!uid) throw new Error("Unauthorized");
-  const user = await getUserById(uid);
-  if (user?.role !== "Admin" || user.status !== "active")
-    throw new Error("Forbidden");
-
-  return uid;
+  return (await adminSession("legacy.manage")).uid;
 }

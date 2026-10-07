@@ -3,6 +3,52 @@
 html[data-font-size="small"] {
   font-size: 14px;
 }
+
+.prose {
+  overflow-wrap: anywhere;
+}
+.prose > * + * {
+  margin-top: 1rem;
+}
+.prose h1 {
+  font-size: 2rem;
+}
+.prose h2 {
+  font-size: 1.5rem;
+}
+.prose h3 {
+  font-size: 1.25rem;
+}
+.prose ul {
+  list-style: disc;
+  padding-left: 1.5rem;
+}
+.prose ol {
+  list-style: decimal;
+  padding-left: 1.5rem;
+}
+.prose li + li {
+  margin-top: 0.35rem;
+}
+.prose a {
+  color: var(--primary);
+  text-decoration: underline;
+}
+.prose blockquote {
+  border-left: 3px solid var(--border);
+  padding-left: 1rem;
+}
+.prose pre {
+  overflow: auto;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  background: var(--surface-secondary);
+}
+.prose img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.75rem;
+}
 html[data-font-size="medium"] {
   font-size: 16px;
 }

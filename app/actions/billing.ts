@@ -11,7 +11,22 @@ import { verifyFirebaseIdToken } from "@/lib/firebase-auth-server";
 export async function startSubscriptionCheckout() {
   try {
     const { uid } = await requireAuth();
-    if (!billingConfigured())
+    const [configuredPlan] = await sql.query(
+      "select provider_plan_code,enabled from platform_plans where id='verified'",
+    );
+    if (configuredPlan?.enabled === false)
+      throw new Error("Verified subscriptions are temporarily unavailable");
+    const planCode =
+      configuredPlan?.provider_plan_code ||
+      process.env.PAYSTACK_VERIFIED_PLAN_CODE;
+    if (
+      !billingConfigured() &&
+      !(
+        process.env.PAYSTACK_SECRET_KEY &&
+        planCode &&
+        process.env.NEXT_PUBLIC_APP_URL
+      )
+    )
       throw new Error("Weave billing setup is not complete.");
     const [user] = await sql.query("select email from users where id=$1", [
       uid,
@@ -30,9 +45,7 @@ export async function startSubscriptionCheckout() {
         "Manage your current subscription before starting another one.",
       );
     const plan = object(
-      await paystack(
-        `/plan/${encodeURIComponent(process.env.PAYSTACK_VERIFIED_PLAN_CODE!)}`,
-      ),
+      await paystack(`/plan/${encodeURIComponent(planCode!)}`),
     );
     if (
       !Number.isInteger(plan.amount) ||
@@ -43,13 +56,7 @@ export async function startSubscriptionCheckout() {
     const reference = `weave_${crypto.randomUUID().replaceAll("-", "")}`;
     const [reservation] = await sql.query(
       "select * from reserve_member_checkout($1,$2,$3,$4,$5)",
-      [
-        uid,
-        reference,
-        plan.amount,
-        plan.currency,
-        process.env.PAYSTACK_VERIFIED_PLAN_CODE,
-      ],
+      [uid, reference, plan.amount, plan.currency, planCode],
     );
     if (reservation.reference !== reference) {
       if (reservation.authorization_url)
@@ -62,7 +69,7 @@ export async function startSubscriptionCheckout() {
       await paystack("/transaction/initialize", {
         email: user.email,
         amount: plan.amount,
-        plan: process.env.PAYSTACK_VERIFIED_PLAN_CODE,
+        plan: planCode,
         reference,
         callback_url: new URL(
           "/api/billing/callback",

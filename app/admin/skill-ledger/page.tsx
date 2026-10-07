@@ -1,9 +1,10 @@
-import ComingSoon from "@/components/admin/coming-soon";
-
-export const metadata = {
-  title: "Skill Hour Ledger"
-};
-
-export default function AdminPage() {
-  return <ComingSoon title="Skill Hour Ledger" />;
+import OperationsPage from "@/components/admin/operations-page";
+export const dynamic = "force-dynamic";
+export const metadata = { title: "skill-ledger" };
+export default function Page({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  return <OperationsPage area="skill-ledger" searchParams={searchParams} />;
 }

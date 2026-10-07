@@ -188,7 +188,7 @@ try {
     false,
   );
   await sql.query(
-    "insert into exchanges(id,requester_id,provider_id,status,title,payload,updated_at) values('exchange','a','b','in_progress','Exchange project','{}',now()-interval '2 days')",
+    "insert into exchanges(id,requester_id,provider_id,status,title,skill_hours,payload,updated_at) values('exchange','a','b','in_progress','Exchange project',1,'{}',now()-interval '2 days')",
   );
   await sql.query(
     "update exchanges set status='in_review' where id='exchange'",
@@ -581,7 +581,7 @@ try {
   await assert.rejects(
     () =>
       sql.query(
-        "insert into exchanges(id,requester_id,provider_id,marketplace_request_id,status,payload) values('late-exchange','a','b','expired','in_progress','{}')",
+        "insert into exchanges(id,requester_id,provider_id,marketplace_request_id,status,skill_hours,payload) values('late-exchange','a','b','expired','in_progress',1,'{}')",
       ),
     /expired/,
   );

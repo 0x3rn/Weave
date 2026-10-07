@@ -1,9 +1,7 @@
-import ComingSoon from "@/components/admin/coming-soon";
-
-export const metadata = {
-  title: "Platform Settings"
-};
-
-export default function AdminPage() {
-  return <ComingSoon title="Platform Settings" />;
+import { platformSettingsData } from "@/app/actions/admin/operations";
+import PlatformSettingsClient from "@/components/admin/platform-settings-client";
+export const dynamic = "force-dynamic";
+export const metadata = { title: "Platform Settings" };
+export default async function Page() {
+  return <PlatformSettingsClient initial={await platformSettingsData()} />;
 }
