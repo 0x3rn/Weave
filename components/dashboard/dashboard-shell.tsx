@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -20,10 +20,13 @@ import {
   Search,
   Plus,
   ShieldCheck,
+  LogOut,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import NotificationDropdown from "@/components/notifications/notification-dropdown";
 import { PreferencesProvider } from "@/components/settings/preferences-provider";
+import { signOut } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 const NAV_ITEMS = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -49,8 +52,28 @@ export default function DashboardShell({
 }) {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState("");
+  const signOutPending = useRef(false);
 
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
+
+  const handleSignOut = async () => {
+    if (signOutPending.current) return;
+    signOutPending.current = true;
+    setIsSigningOut(true);
+    setSignOutError("");
+    try {
+      const response = await fetch("/api/auth/logout", { method: "POST" });
+      if (!response.ok) throw new Error("Session revocation failed");
+      await signOut(auth);
+      window.location.replace("/login");
+    } catch {
+      setSignOutError("Couldn't sign out. Please try again.");
+      signOutPending.current = false;
+      setIsSigningOut(false);
+    }
+  };
 
   return (
     <PreferencesProvider
@@ -85,6 +108,8 @@ export default function DashboardShell({
               <span className="text-primary">Weave</span>
             </Link>
             <button
+              type="button"
+              aria-label="Close navigation"
               className="lg:hidden text-muted hover:text-heading"
               onClick={closeMobileMenu}
             >
@@ -135,6 +160,20 @@ export default function DashboardShell({
                 View Ledger →
               </Link>
             </div>
+            <button
+              type="button"
+              onClick={handleSignOut}
+              disabled={isSigningOut}
+              className="mt-3 flex w-full items-center gap-3 rounded-[var(--radius-input)] px-3 py-2 text-sm font-medium text-error transition-colors hover:bg-error/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-wait disabled:opacity-60"
+            >
+              <LogOut className="h-4 w-4" aria-hidden="true" />
+              {isSigningOut ? "Signing out…" : "Sign out"}
+            </button>
+            {signOutError && (
+              <p role="alert" className="mt-2 px-3 text-xs text-error">
+                {signOutError}
+              </p>
+            )}
           </div>
         </aside>
 
@@ -144,6 +183,8 @@ export default function DashboardShell({
           <header className="h-16 bg-background border-b border-border flex items-center justify-between px-4 lg:px-8 shrink-0 z-10">
             <div className="flex items-center gap-4">
               <button
+                type="button"
+                aria-label="Open navigation"
                 className="lg:hidden text-muted hover:text-heading"
                 onClick={() => setIsMobileMenuOpen(true)}
               >
