@@ -1,6 +1,7 @@
 "use server";
 import { sql } from "@/lib/neon";
 import { adminSession, adminRequestContext } from "@/lib/admin-ops-access";
+import { requireAdminEvidenceResource } from "@/lib/admin-evidence-scope";
 export async function inspectAdminEvidence(
   area: string,
   id: string,
@@ -34,6 +35,7 @@ export async function inspectAdminEvidence(
     if (policy?.enabled !== true)
       throw new Error("Message inspection is disabled by platform policy");
   }
+  await requireAdminEvidenceResource(area, id);
   await sql.query(
     "select admin_ops_audit($1,$2,$3,'evidence_access',null,null,$4,$5,$6::jsonb)",
     [
@@ -75,7 +77,7 @@ export async function inspectAdminEvidence(
     );
   else
     messages = await sql.query(
-      "select m.id,m.sender_id,m.content,m.created_at from messages m join conversations c on c.id=m.conversation_id where c.id=$1 or c.context_id=$1 order by m.created_at desc limit 100",
+      "select m.id,m.sender_id,m.content,m.created_at from messages m join conversations c on c.id=m.conversation_id join exchanges e on e.id=$1 where c.conversation_type='exchange' and c.context_id=e.id order by m.created_at desc limit 100",
       [id],
     );
   const files =

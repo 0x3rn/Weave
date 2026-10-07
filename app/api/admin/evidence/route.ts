@@ -2,6 +2,7 @@ import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { sql } from "@/lib/neon";
 import { neonStorage, privateBucket } from "@/lib/neon-storage";
 import { adminSession, adminRequestContext } from "@/lib/admin-ops-access";
+import { requireAdminEvidenceResource } from "@/lib/admin-evidence-scope";
 export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
@@ -40,6 +41,7 @@ export async function GET(request: Request) {
           status: 403,
         });
     }
+    await requireAdminEvidenceResource(String(area), id);
     const [row] =
       area === "verification"
         ? await sql.query(

@@ -182,8 +182,23 @@ export async function adminLookups(permission: string) {
   ];
   if (!allowed.includes(permission)) throw new Error("Invalid lookup");
   await adminSession(permission);
+  const contentLookup =
+    permission === "cms.write" || permission === "blog.write";
+  const staffLookup = [
+    "support.write",
+    "reports.write",
+    "disputes.write",
+  ].includes(permission);
   const members = await sql.query(
-    "select id,coalesce(full_name,username,email,'Member')as name,email,admin_ops_role(id)as role from users where coalesce(account_status,'active')='active' order by full_name,id",
+    "select id,coalesce(full_name,username,'Member')as name," +
+      (contentLookup || staffLookup ? "null::text" : "email") +
+      " as email,admin_ops_role(id)as role from users where coalesce(account_status,'active')='active'" +
+      (contentLookup
+        ? " and (admin_ops_role(id) is not null or exists(select 1 from cms_taxonomy t where t.kind='author' and t.user_id=users.id))"
+        : staffLookup
+          ? " and admin_ops_role(id) is not null"
+          : "") +
+      " order by full_name,id",
   );
   const taxonomy =
     permission.includes("cms") || permission.includes("blog")

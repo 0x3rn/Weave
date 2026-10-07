@@ -20,6 +20,11 @@ export async function POST(request: Request) {
         { status: 403 },
       );
     const body = object(await request.json());
+    if (body.rememberMe !== undefined && typeof body.rememberMe !== "boolean")
+      return NextResponse.json(
+        { error: "Invalid persistence preference" },
+        { status: 400 },
+      );
     if (typeof body.idToken !== "string")
       return NextResponse.json({ error: "Missing ID token" }, { status: 400 });
     const claims = await verifyFirebaseIdToken(body.idToken);
@@ -44,19 +49,28 @@ export async function POST(request: Request) {
       );
     const recovery = user.status !== "active";
     const securityState = await getFirebaseSecurityState(claims.uid);
-    const expiresIn = (body.rememberMe === true ? 14 : 1) * 86400000;
-    const sessionCookie = await createFirebaseSessionCookie(
-      body.idToken,
-      expiresIn,
-    );
     const store = await cookies(),
       existingId = store.get("deviceId")?.value;
     const [existing] = existingId
       ? await sql.query(
-          "select id from user_devices where id=$1 and user_id=$2",
+          "select id,payload from user_devices where id=$1 and user_id=$2",
           [existingId, claims.uid],
         )
       : [];
+    const currentCookie = store.get("session")?.value;
+    const boundSession =
+      currentCookie &&
+      object(existing?.payload).sessionHash ===
+        createHash("sha256").update(currentCookie).digest("hex");
+    const rememberMe =
+      body.rememberMe === undefined
+        ? Boolean(boundSession && object(existing?.payload).rememberMe === true)
+        : body.rememberMe === true;
+    const expiresIn = (rememberMe ? 14 : 1) * 86400000;
+    const sessionCookie = await createFirebaseSessionCookie(
+      body.idToken,
+      expiresIn,
+    );
     const deviceId = existing ? String(existing.id) : crypto.randomUUID();
     const parser = new UAParser(request.headers.get("user-agent") || ""),
       browser = parser.getBrowser(),
@@ -91,6 +105,7 @@ export async function POST(request: Request) {
           ip,
           now,
           JSON.stringify({
+            rememberMe,
             createdAt: now,
             lastActive: now,
             expiresAt: new Date(Date.now() + expiresIn).toISOString(),
@@ -125,7 +140,7 @@ export async function POST(request: Request) {
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax" as const,
       path: "/",
-      maxAge: expiresIn / 1000,
+      ...(rememberMe ? { maxAge: expiresIn / 1000 } : {}),
     };
     store.set("session", sessionCookie, options);
     store.set("deviceId", deviceId, options);

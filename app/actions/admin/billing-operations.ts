@@ -24,7 +24,7 @@ export async function adminBillingOperation(input: {
       input.reason.trim().length < 3 ||
       input.reason.length > 5000 ||
       !/^[a-f0-9-]{36}$/.test(input.operationId) ||
-      !input.confirmed
+      input.confirmed !== true
     )
       throw new Error("Confirm the provider action and enter a reason");
     const [account] = await sql.query(
@@ -47,7 +47,7 @@ export async function adminBillingOperation(input: {
           "Enter a valid transaction reference and refund amount",
         );
       const [event] = await sql.query(
-        "select id,amount,occurred_at from billing_events where user_id=$1 and id=$2 and event_type='payment'",
+        "select id,amount,currency,occurred_at from billing_events where user_id=$1 and id=$2 and event_type='payment'",
         [input.userId, input.transactionId],
       );
       if (!event) throw new Error("Choose a recorded payment for this member");
@@ -68,7 +68,7 @@ export async function adminBillingOperation(input: {
         transaction.status !== "success" ||
         object(transaction.customer).customer_code !== account.customer_id ||
         Number(transaction.amount) !== Number(event.amount) ||
-        transaction.currency !== account.currency
+        transaction.currency !== event.currency
       )
         throw new Error(
           "Payment ownership, amount, or currency differs from the recorded transaction",
@@ -142,7 +142,14 @@ export async function adminBillingOperation(input: {
         interval: object(subscription.plan).interval,
       };
     }
-    const state = input.action === "refund" ? "submitted" : "completed";
+    const providerConfirmed =
+      input.action === "sync" ||
+      (input.action === "cancel" &&
+        ["non-renewing", "cancelled", "complete"].includes(
+          String(result.status),
+        )) ||
+      (input.action === "reactivate" && result.status === "active");
+    const state = providerConfirmed ? "completed" : "submitted";
     await sql.query(
       "with updated as(update admin_billing_operations set state=$2,provider_id=$3,result=$4::jsonb,updated_at=now() where id=$1 returning *)select admin_ops_audit($5,'subscriptions',$6,$7,$8::jsonb,$4::jsonb,$9,$1,$10::jsonb)from updated",
       [

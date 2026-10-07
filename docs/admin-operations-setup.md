@@ -1,5 +1,7 @@
 # Admin operations setup
 
+See [the pre-push audit](prepush-audit.md) for verified checks, security fixes and outstanding findings. The isolated security suite runs with `npm run test:security` and does not load live credentials.
+
 The remaining admin sections use `database/migrations/0014_admin_operations.sql`. Overview, Invites, and Users retain their existing page and workflow implementations. Their shared authorization and navigation now participate in the staff permission system.
 
 ## Apply the database migration
@@ -9,17 +11,20 @@ First test on an isolated Neon branch with migrations 0001–0013 already applie
 ```powershell
 npm run test:admin-operations
 npm run db:apply-admin-operations
+npm run db:apply-admin-adjustment-policy
 ```
 
-The second command loads `.env.local` and applies **only migration 0014** in a transaction. Verify that its `DATABASE_URL` points to the intended branch before running it. After reviewing the branch, apply the same command against production during the deployment window. Deploy the code and migration together: the shared admin guard requires the new role functions and settings tables. The migration is safe to rerun and does not reset configured settings or role assignments.
+The database commands load `.env.local` and each apply only the named migration in a transaction: 0014 first, then 0015. Migration 0015 makes the existing Users Skill Hour adjustment enforce the platform switch and amount limit while preserving completed operation retries. Verify that `DATABASE_URL` points to the intended branch before running them. After reviewing the branch, apply the same commands against production during the deployment window. Deploy the code and migrations together: the shared admin guard requires the new role functions and settings tables. These migrations are safe to rerun and do not reset configured settings or role assignments. If rerunning migration 0013, reapply 0015 afterward because 0013 defines the earlier adjustment function.
 
 Alternative: paste the complete SQL file into the Neon SQL Editor for the intended branch and execute it in a transaction. Do not run individual financial functions manually against production.
 
-This implementation does not automatically apply migration 0014 to your live database.
+The application does not automatically apply these migrations to your live database.
 
 ## Credentials and services
 
 No new secret names are required. Use the existing server-only `DATABASE_URL`, Firebase Admin credentials, `NEON_STORAGE_*` bucket credentials, `PAYSTACK_SECRET_KEY`, `PAYSTACK_VERIFIED_PLAN_CODE`, email credentials, `CRON_SECRET`, and `NEXT_PUBLIC_APP_URL`. Public Firebase configuration remains separate from server credentials. Private identity/support documents use the existing private bucket; CMS images use public portfolio storage.
+
+SMTP requires `SMTP_HOST`, `SMTP_USER`, and `SMTP_PASS`. Use port 587 with STARTTLS or port 465 with implicit TLS; `SMTP_PORT` defaults to 587, and `SMTP_SECURE=true` selects implicit TLS. Both modes require TLS 1.2 or newer and a valid server certificate. A server that cannot provide encryption fails delivery rather than receiving credentials in plaintext. Configure `SMTP_FROM` with your provider-approved sender. Missing credentials return a configuration error without connecting; delivery failures retain the existing retry behavior. Verify the transport locally with `npm run test:email`, which never loads live credentials or sends external email.
 
 Configure the recurring maintenance request to `/api/jobs/settings` with `Authorization: Bearer <CRON_SECRET>`. Keep the secret at least 32 characters long. Maintenance publishes scheduled content, expires verification, escalates unattended cases, flags reported requests, reconciles provider-confirmed refunds, handles configured eligible releases, and runs the existing notification/deletion jobs. Errors remain retryable and produce an unsuccessful job response.
 
@@ -77,6 +82,7 @@ Current Weave contracts reserve **Skill Hours** and do not fund cash security de
 ## Verification
 
 ```powershell
+npm run test:security
 npm run test:admin-operations
 npm run test:admin
 npm run test:settings
@@ -86,7 +92,7 @@ npm run lint
 npm run build
 ```
 
-The four regression suites use isolated PGlite databases and mocked external services. Existing `test:exchange-workflow`, `test:messaging-system`, and `test:collaboration-workspace` scripts use `DATABASE_URL` and write fixtures; run those only against an explicitly selected test branch. The new operations suite also exercises the canonical member contract/approval/delivery/completion workflow.
+The five regression suites use isolated PGlite databases and mocked external services. Existing `test:exchange-workflow`, `test:messaging-system`, and `test:collaboration-workspace` scripts use `DATABASE_URL` and write fixtures; run those only against an explicitly selected test branch. The new operations suite also exercises the canonical member contract/approval/delivery/completion workflow.
 
 The implementation was also checked in Edge with the actual admin client components and mocked server actions. Browser checks covered required reasons, failed-save retries, duplicate submissions, settlement previews and confirmation, support replies, draft publishing, platform settings, permission-based navigation, keyboard dialogs, and the mobile navigation drawer. The production webpack build completed using dummy database credentials; no live migration, charge, refund, or deployment was performed during verification.
 

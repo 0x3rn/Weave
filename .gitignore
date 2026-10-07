@@ -54,3 +54,4 @@ firebase-config.json
 docs/*
 !docs/admin-dashboard-setup.md
 !docs/admin-operations-setup.md
+!docs/prepush-audit.md

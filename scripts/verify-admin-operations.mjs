@@ -8,7 +8,7 @@ const require = createRequire(import.meta.url),
 let uid = "super",
   checks = 0;
 async function load(file, mocks = {}) {
-  const module = { exports: {} };
+  const loaded = { exports: {} };
   new Function(
     "require",
     "module",
@@ -22,10 +22,10 @@ async function load(file, mocks = {}) {
     }).outputText,
   )(
     (name) => (Object.hasOwn(mocks, name) ? mocks[name] : require(name)),
-    module,
-    module.exports,
+    loaded,
+    loaded.exports,
   );
-  return module.exports;
+  return loaded.exports;
 }
 async function check(name, fn) {
   await fn();
@@ -39,6 +39,12 @@ try {
     await db.exec(await readFile("database/migrations/" + file, "utf8"));
   await db.exec(
     await readFile("database/migrations/0014_admin_operations.sql", "utf8"),
+  );
+  await db.exec(
+    await readFile(
+      "database/migrations/0015_admin_adjustment_policy.sql",
+      "utf8",
+    ),
   );
   const sql = { query: async (q, args = []) => (await db.query(q, args)).rows },
     neon = {

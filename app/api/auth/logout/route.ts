@@ -5,65 +5,68 @@ import {
   verifyFirebaseSessionCookie,
 } from "@/lib/firebase-auth-server";
 import { sql } from "@/lib/neon";
+import { createHash } from "node:crypto";
+import { internalRedirect } from "@/lib/internal-redirect";
 
-export async function POST() {
-  try {
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get("session")?.value;
-    const deviceId = cookieStore.get("deviceId")?.value;
-
-    if (sessionCookie) {
-      // Clear the session from Firebase backend
-      const decodedClaims = await verifyFirebaseSessionCookie(
-        sessionCookie,
-        false,
-      ).catch(() => null);
-      if (decodedClaims) {
-        // Remove device tracking
-        if (deviceId) {
-          try {
-            await sql.query(
-              "delete from user_devices where id=$1 and user_id=$2",
-              [deviceId, decodedClaims.sub],
-            );
-          } catch (e) {
-            console.error("Failed to delete device on logout:", e);
-          }
-        }
-        // Tracked sessions revoke independently. Legacy sessions require a global revoke.
-        if (!deviceId) await revokeFirebaseRefreshTokens(decodedClaims.sub);
-      }
+async function endSession() {
+  const store = await cookies();
+  const session = store.get("session")?.value;
+  const device = store.get("deviceId")?.value;
+  if (session && device) {
+    // The stored token fingerprint proves ownership without a certificate fetch.
+    // A database failure leaves the cookies intact so revocation can be retried.
+    await sql.query(
+      "delete from user_devices where id=$1 and payload->>'sessionHash'=$2",
+      [device, createHash("sha256").update(session).digest("hex")],
+    );
+  } else if (session) {
+    const claims = await verifyFirebaseSessionCookie(session, false).catch(
+      () => null,
+    );
+    if (claims) {
+      await revokeFirebaseRefreshTokens(claims.uid || claims.sub);
     }
+  }
+  store.delete("session");
+  store.delete("deviceId");
+}
 
-    // Clear the cookie from the browser
-    cookieStore.delete("session");
-    cookieStore.delete("deviceId");
-
-    return NextResponse.json({ status: "success" }, { status: 200 });
-  } catch (error) {
-    console.error("Logout error:", error);
+export async function POST(request: Request) {
+  const origin = new URL(process.env.NEXT_PUBLIC_APP_URL || request.url).origin;
+  if (request.headers.get("origin") !== origin)
     return NextResponse.json(
-      { error: "Internal Server Error" },
-      { status: 500 },
+      { error: "Invalid request origin" },
+      { status: 403 },
+    );
+  try {
+    await endSession();
+    return NextResponse.json({ status: "success" }, { status: 200 });
+  } catch {
+    return NextResponse.json(
+      { error: "Session revocation failed. Retry signing out." },
+      { status: 503 },
     );
   }
 }
 
 export async function GET(request: Request) {
+  if (request.headers.get("sec-fetch-site") === "cross-site")
+    return NextResponse.json(
+      { error: "Invalid request origin" },
+      { status: 403 },
+    );
   try {
-    const cookieStore = await cookies();
-    cookieStore.delete("session");
-    cookieStore.delete("deviceId");
+    await endSession();
 
     const url = new URL(request.url);
     const requestedRedirect = url.searchParams.get("redirect") || "/login";
-    const redirectTo =
-      requestedRedirect.startsWith("/") && !requestedRedirect.startsWith("//")
-        ? requestedRedirect
-        : "/login";
+    const redirectTo = internalRedirect(requestedRedirect, "/login");
 
     return NextResponse.redirect(new URL(redirectTo, request.url));
   } catch {
-    return NextResponse.redirect(new URL("/login", request.url));
+    return NextResponse.json(
+      { error: "Session revocation failed. Retry signing out." },
+      { status: 503 },
+    );
   }
 }

@@ -51,7 +51,6 @@ export function SecurityClient({
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         idToken: await auth.currentUser?.getIdToken(true),
-        rememberMe: true,
       }),
     });
     if (!response.ok) throw new Error("Sign in again to refresh your session.");

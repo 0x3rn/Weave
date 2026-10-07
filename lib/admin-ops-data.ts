@@ -242,7 +242,9 @@ export async function getAdminDetail(
             risk_flag: "Risk / Flag",
             document_count: "Private documents",
           }),
-          text: String(row.statement || ""),
+          text: hasPermission(session.permissions, "verification.sensitive")
+            ? String(row.statement || "")
+            : undefined,
         },
       );
       actions = [
@@ -496,7 +498,9 @@ export async function getAdminDetail(
           balance_before: "Before balance",
           balance_after: "After balance",
           description: "Reason",
-          notes: "Internal note",
+          ...(hasPermission(session.permissions, "ledger.adjust")
+            ? { notes: "Internal note" }
+            : {}),
           source_collection: "Source",
           occurred_at: "Timestamp",
           related_user_id: "Created by / related member",

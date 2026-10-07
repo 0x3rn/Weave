@@ -6,6 +6,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Lock } from "lucide-react";
 import {
   signInWithEmailAndPassword,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
   getMultiFactorResolver,
   TotpMultiFactorGenerator,
   type MultiFactorResolver,
@@ -14,6 +17,7 @@ import {
 import { auth } from "@/lib/firebase";
 import { Suspense } from "react";
 import { object } from "@/lib/settings";
+import { internalRedirect } from "@/lib/internal-redirect";
 
 function LoginContent() {
   const router = useRouter();
@@ -35,6 +39,10 @@ function LoginContent() {
     setIsSubmitting(true);
 
     try {
+      await setPersistence(
+        auth,
+        rememberMe ? browserLocalPersistence : browserSessionPersistence,
+      );
       // 1. Authenticate with Firebase Client SDK
       const userCredential = resolver
         ? await resolver.resolveSignIn(
@@ -71,15 +79,14 @@ function LoginContent() {
       router.push(
         result.recovery
           ? "/account-recovery"
-          : searchParams.has("next") && /^\/(?!\/|\\)/.test(nextUrl)
-            ? nextUrl
-            : typeof result.landing === "string"
-              ? result.landing
-              : "/dashboard",
+          : internalRedirect(
+              searchParams.has("next") ? nextUrl : result.landing,
+            ),
       );
       router.refresh();
-    } catch (err: any) {
-      if (err.code === "auth/multi-factor-auth-required") {
+    } catch (err: unknown) {
+      const code = object(err).code;
+      if (code === "auth/multi-factor-auth-required") {
         const next = getMultiFactorResolver(auth, err as MultiFactorError);
         setResolver(next);
         setFactorId(
@@ -91,13 +98,28 @@ function LoginContent() {
         return;
       }
       console.error("Login Error:", err);
-      if (["auth/invalid-credential","auth/wrong-password","auth/user-not-found"].includes(err.code) && !resolver) {
-        void fetch("/api/auth/failed-sign-in",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({email,password})}).catch(()=>{});
+      if (
+        [
+          "auth/invalid-credential",
+          "auth/wrong-password",
+          "auth/user-not-found",
+        ].includes(String(code)) &&
+        !resolver
+      ) {
+        void fetch("/api/auth/failed-sign-in", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        }).catch(() => {});
       }
-      if (err.code === "auth/invalid-credential") {
+      if (code === "auth/invalid-credential") {
         setError("Invalid email or password.");
       } else {
-        setError(err.message || "An error occurred during login.");
+        setError(
+          err instanceof Error
+            ? err.message
+            : "An error occurred during login.",
+        );
       }
     } finally {
       setIsSubmitting(false);
@@ -289,7 +311,7 @@ function LoginContent() {
           {/* Footer Links */}
           <div className="mt-8 pt-6 border-t border-border flex flex-col gap-3 text-center text-sm text-body">
             <div>
-              Don't have an account?{" "}
+              Don&apos;t have an account?{" "}
               <Link
                 href="/request-invite"
                 className="font-medium text-primary hover:text-primary-hover transition-colors"
