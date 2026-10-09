@@ -12,8 +12,8 @@ export default function WeaveLogo({
     <span
       className={styles.logo}
       style={{ fontSize: Math.round(size * 0.75) }}
-      role={showWordmark ? undefined : "img"}
-      aria-label={showWordmark ? undefined : "Weave"}
+      role="img"
+      aria-label="Weave"
     >
       <span
         className={styles.mark}
@@ -41,7 +41,11 @@ export default function WeaveLogo({
           unoptimized
         />
       </span>
-      {showWordmark && <span>Weave</span>}
+      {showWordmark && (
+        <span className={styles.wordmark} aria-hidden="true">
+          eave
+        </span>
+      )}
     </span>
   );
 }

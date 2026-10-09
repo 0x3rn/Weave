@@ -1,7 +1,7 @@
 .logo {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 0;
   flex-shrink: 0;
   color: var(--heading, #27272a);
   font-family: var(--font-geist-sans, Arial), sans-serif;
@@ -9,6 +9,10 @@
   line-height: 1;
   letter-spacing: -0.04em;
   white-space: nowrap;
+}
+
+.wordmark {
+  display: block;
 }
 
 .mark {
