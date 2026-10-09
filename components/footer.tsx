@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SiteManagedContent } from "./site-managed-content";
+import WeaveLogo from "./brand/weave-logo";
 
 export default function Footer() {
   const sections = [
@@ -57,9 +58,9 @@ export default function Footer() {
           <div className="col-span-2 md:col-span-1 mb-4 md:mb-0">
             <Link
               href="/"
-              className="font-heading text-2xl font-bold tracking-tight text-primary inline-block"
+              className="inline-block"
             >
-              Weave
+              <WeaveLogo />
             </Link>
           </div>
           {sections.map((section, index) => (

@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Lock } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import WeaveLogo from "@/components/brand/weave-logo";
 import {
   signInWithEmailAndPassword,
   setPersistence,
@@ -205,9 +206,9 @@ function LoginContent() {
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center">
-          <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/20">
-            <Lock className="w-6 h-6 text-primary" />
-          </div>
+          <Link href="/" aria-label="Weave home">
+            <WeaveLogo size={48} />
+          </Link>
         </div>
         <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-heading">
           Welcome back

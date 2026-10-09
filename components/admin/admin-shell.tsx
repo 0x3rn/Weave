@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X, Bell, Search, ExternalLink, HelpCircle } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import WeaveLogo from "@/components/brand/weave-logo";
 import { hasPermission } from "@/lib/admin-ops-types";
 import {
   searchAdmin,
@@ -154,8 +155,8 @@ export default function AdminShell({
         }
       >
         <div className="h-16 shrink-0 px-5 flex items-center justify-between border-b border-border">
-          <Link href={home} className="font-bold text-xl text-primary">
-            Weave <span className="text-xs text-muted">Admin</span>
+          <Link href={home} className="flex items-center gap-2">
+            <WeaveLogo /> <span className="text-xs text-muted">Admin</span>
           </Link>
           <button
             className="lg:hidden"
@@ -208,6 +209,9 @@ export default function AdminShell({
           >
             <Menu />
           </button>
+          <Link href={home} className="lg:hidden" aria-label="Weave admin home">
+            <WeaveLogo size={28} showWordmark={false} />
+          </Link>
           <div className="relative flex-1 min-w-40 max-w-xl">
             <label className="flex items-center gap-2 rounded-lg border border-border px-3">
               <Search size={16} />

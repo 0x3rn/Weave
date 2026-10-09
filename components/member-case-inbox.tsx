@@ -1,6 +1,8 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import WeaveLogo from "@/components/brand/weave-logo";
 import {
   submitMemberCase,
   respondToMemberCase,
@@ -20,6 +22,9 @@ export default function MemberCaseInbox({
     [message, setMessage] = useState("");
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-6">
+      <Link href="/dashboard" className="inline-block" aria-label="Weave dashboard">
+        <WeaveLogo />
+      </Link>
       <h1 className="text-3xl font-bold">
         {kind === "verification" ? "Identity Verification" : "Support Inbox"}
       </h1>

@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Mail, AlertCircle, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, AlertCircle, CheckCircle2 } from "lucide-react";
+import WeaveLogo from "@/components/brand/weave-logo";
 import { sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "@/lib/firebase"; // Client SDK
 
@@ -46,9 +47,9 @@ export default function ForgotPasswordPage() {
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center">
-          <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/20">
-            <Mail className="w-6 h-6 text-primary" />
-          </div>
+          <Link href="/" aria-label="Weave home">
+            <WeaveLogo size={48} />
+          </Link>
         </div>
         <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-heading">
           Reset Password

@@ -1,6 +1,8 @@
 "use client";
 import { useState } from "react";
 import { submitPlatformReport } from "@/app/actions/member-operations";
+import Link from "next/link";
+import WeaveLogo from "@/components/brand/weave-logo";
 export default function PlatformReportForm({
   id,
   type,
@@ -29,6 +31,9 @@ export default function PlatformReportForm({
       }}
       className="max-w-2xl mx-auto p-6 space-y-4"
     >
+      <Link href="/dashboard" className="inline-block" aria-label="Weave dashboard">
+        <WeaveLogo />
+      </Link>
       <h1 className="text-2xl font-bold">Report {type}</h1>
       <p className="text-sm text-muted">
         Your report is private and reviewed by authorized staff. Resource: {id}

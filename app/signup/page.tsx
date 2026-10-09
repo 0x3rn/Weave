@@ -2,6 +2,7 @@ import { getInviteDetails } from "@/app/actions/auth";
 import SignupForm from "./signup-form";
 import Link from "next/link";
 import { AlertCircle } from "lucide-react";
+import WeaveLogo from "@/components/brand/weave-logo";
 
 export const metadata = {
   title: "Create Your Account | Weave"
@@ -27,9 +28,7 @@ export default async function SignupPage({
         {/* Logo/Header */}
         <div className="text-center">
           <Link href="/" className="inline-block mb-6">
-            <span className="font-heading text-3xl font-bold tracking-tight text-primary">
-              Weave
-            </span>
+            <WeaveLogo size={48} />
           </Link>
           <h1 className="text-2xl font-bold text-heading">Create Your Account</h1>
           <p className="text-sm text-body mt-2">

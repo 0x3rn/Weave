@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "../components/theme-provider";
 import { Toaster } from "react-hot-toast";
+import ConnectionNotice from "@/components/feedback/connection-notice";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -20,15 +21,19 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://weave.network"),
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL || "https://weave.network",
+  ),
   title: {
     default: "Weave | Trade Skills, Not Cash",
-    template: "%s | Weave"
+    template: "%s | Weave",
   },
-  description: "Invite-only skill exchange for freelancers. Trade hours, not money. Built by professionals, for professionals.",
+  description:
+    "Invite-only skill exchange for freelancers. Trade hours, not money. Built by professionals, for professionals.",
   openGraph: {
     title: "Weave | Trade Skills, Not Cash",
-    description: "Invite-only skill exchange for freelancers. Trade hours, not money.",
+    description:
+      "Invite-only skill exchange for freelancers. Trade hours, not money.",
     url: "https://weave.network",
     siteName: "Weave",
     images: [
@@ -37,7 +42,7 @@ export const metadata: Metadata = {
         width: 1200,
         height: 630,
         alt: "Weave Network",
-      }
+      },
     ],
     locale: "en_US",
     type: "website",
@@ -45,9 +50,10 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Weave | Trade Skills, Not Cash",
-    description: "Invite-only skill exchange for freelancers. Trade hours, not money.",
+    description:
+      "Invite-only skill exchange for freelancers. Trade hours, not money.",
     images: ["/og-image.png"],
-  }
+  },
 };
 
 export default function RootLayout({
@@ -70,6 +76,7 @@ export default function RootLayout({
         >
           {children}
           <Toaster position="bottom-right" />
+          <ConnectionNotice />
         </ThemeProvider>
       </body>
     </html>

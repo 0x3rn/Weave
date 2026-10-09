@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Menu, X, Sun, Moon } from "lucide-react";
 import { useTheme } from "next-themes";
 import { SiteManagedContent } from "./site-managed-content";
+import WeaveLogo from "./brand/weave-logo";
 
 export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -29,9 +30,7 @@ export default function Header() {
               className="flex items-center gap-2"
               onClick={() => setIsMobileMenuOpen(false)}
             >
-              <span className="font-heading text-xl font-bold tracking-tight text-primary">
-                Weave
-              </span>
+              <WeaveLogo />
             </Link>
           </div>
 

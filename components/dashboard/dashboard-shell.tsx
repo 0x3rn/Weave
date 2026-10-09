@@ -27,6 +27,7 @@ import NotificationDropdown from "@/components/notifications/notification-dropdo
 import { PreferencesProvider } from "@/components/settings/preferences-provider";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import WeaveLogo from "@/components/brand/weave-logo";
 
 const NAV_ITEMS = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -105,7 +106,7 @@ export default function DashboardShell({
               onClick={closeMobileMenu}
               className="font-heading font-bold text-xl tracking-tight flex items-center gap-2"
             >
-              <span className="text-primary">Weave</span>
+              <WeaveLogo />
             </Link>
             <button
               type="button"
@@ -190,6 +191,13 @@ export default function DashboardShell({
               >
                 <Menu className="w-6 h-6" />
               </button>
+              <Link
+                href="/dashboard"
+                className="lg:hidden"
+                aria-label="Weave dashboard"
+              >
+                <WeaveLogo size={28} showWordmark={false} />
+              </Link>
               <h1 className="text-lg font-bold text-heading hidden sm:block">
                 {NAV_ITEMS.find(
                   (item) =>

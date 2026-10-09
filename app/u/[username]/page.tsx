@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
+import WeaveLogo from "@/components/brand/weave-logo";
 import {
   getUserByUsername,
   getUserPortfolio,
@@ -106,6 +108,9 @@ export default async function UserProfilePage({
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl py-8 md:py-12">
+        <Link href="/" className="inline-block mb-8" aria-label="Weave home">
+          <WeaveLogo />
+        </Link>
         {/* Responsive Grid: Sidebar (Left) + Main Content (Right) */}
         <div className="flex flex-col gap-8 lg:grid lg:grid-cols-12 lg:gap-12 lg:items-start">
           {/* LEFT SIDEBAR (Hero + Stats + Trust Score + Calendar) */}

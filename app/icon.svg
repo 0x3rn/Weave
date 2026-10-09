@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="100" height="100" viewBox="0 0 100 100">
+      <title>Weave woven rope icon</title>
+      <defs>
+    <mask id="strand-a" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100">
+      <rect width="100" height="100" fill="white"/>
+      <path d="M57 20C57 25 43 25 43 30" fill="none" stroke="black" stroke-width="12"/>
+    </mask>
+    <mask id="strand-b" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100">
+      <rect width="100" height="100" fill="white"/>
+      <path d="M57 30C57 35 43 35 43 40" fill="none" stroke="black" stroke-width="12"/>
+    </mask>
+    <symbol id="woven-rope" viewBox="0 0 100 100">
+      <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 20L29 69Q32 76 36 68L40 49M88 20L71 69Q68 76 64 68L60 49" stroke-width="12"/>
+        <path d="M40 49L43 40C43 35 57 35 57 30C57 25 43 25 43 20" stroke-width="8" mask="url(#strand-a)"/>
+        <path d="M60 49L57 40C57 35 43 35 43 30C43 25 57 25 57 20" stroke-width="8" mask="url(#strand-b)"/>
+      </g>
+    </symbol>
+  </defs>
+      
+      <use xlink:href="#woven-rope" x="0" y="5" width="100" height="100" color="#2e7d32"/>
+    </svg>

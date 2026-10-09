@@ -1,0 +1,52 @@
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  color: var(--heading, #27272a);
+  font-family: var(--font-geist-sans, Arial), sans-serif;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  white-space: nowrap;
+}
+
+.mark {
+  box-sizing: border-box;
+  width: var(--weave-mark-size);
+  height: var(--weave-mark-size);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  padding: 3px;
+  border-radius: 6px;
+}
+
+.mark img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+:global(.dark) .mark {
+  background: #fafafa;
+}
+
+:global(.dark) .logo[data-wordmark] .mark {
+  width: 1em;
+  height: 1em;
+  padding: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :global(html[data-weave-fallback]) .mark {
+    background: #fafafa;
+  }
+  :global(html[data-weave-fallback]) .logo[data-wordmark] .mark {
+    width: 1em;
+    height: 1em;
+    padding: 2px;
+    border-radius: 4px;
+  }
+}

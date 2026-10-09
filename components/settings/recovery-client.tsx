@@ -2,6 +2,8 @@
 import { useState } from "react";
 import { freshIdentity } from "@/lib/reauthenticate";
 import { restoreAccount } from "@/app/actions/account-recovery";
+import Link from "next/link";
+import WeaveLogo from "@/components/brand/weave-logo";
 export function RecoveryClient({
   status,
   deleteAfter,
@@ -20,6 +22,9 @@ export function RecoveryClient({
       new Date(deleteAfter).getTime() > Date.now());
   return (
     <main className="mx-auto max-w-lg space-y-5 px-4 py-20">
+      <Link href="/" className="inline-block" aria-label="Weave home">
+        <WeaveLogo size={40} />
+      </Link>
       <h1 className="text-3xl font-bold text-heading">
         {status === "deactivated"
           ? "Reactivate your account"
