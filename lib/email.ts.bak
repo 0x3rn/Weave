@@ -28,8 +28,15 @@ export async function sendEmail({ to, subject, html }: SendEmailParams) {
     !process.env.SMTP_HOST ||
     !process.env.SMTP_USER ||
     !process.env.SMTP_PASS
-  )
+  ) {
+    console.error("Email delivery is not configured", {
+      hasHost: Boolean(process.env.SMTP_HOST),
+      hasUser: Boolean(process.env.SMTP_USER),
+      hasPass: Boolean(process.env.SMTP_PASS),
+    });
+
     return { error: "Email delivery is not configured" };
+  }
   try {
     const info = await transporter.sendMail({
       from: `"Weave Network" <${process.env.SMTP_FROM || "no-reply@weave.network"}>`,
@@ -38,8 +45,21 @@ export async function sendEmail({ to, subject, html }: SendEmailParams) {
       html,
     });
     return { success: true, messageId: info.messageId };
-  } catch {
-    console.error("Email delivery failed; retry required");
+  } catch (error) {
+    const details =
+      error instanceof Error
+        ? {
+            name: error.name,
+            message: error.message,
+            code:
+              "code" in error && typeof error.code === "string"
+                ? error.code
+                : undefined,
+          }
+        : { message: String(error) };
+
+    console.error("Email delivery failed:", details);
+
     return { error: "Failed to send email" };
   }
 }

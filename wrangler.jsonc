@@ -23,7 +23,7 @@
   },
   "vars": {
     "NEXT_PUBLIC_APP_URL": "https://weave.corstack.dev",
-    "SMTP_FROM": "info@weave.corstack.dev",
+    "RESEND_FROM": "info@weave.corstack.dev",
     "SMTP_HOST": "smtp.resend.com",
     "SMTP_PORT": "465",
     "SMTP_SECURE": "true",
